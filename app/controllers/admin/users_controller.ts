@@ -9,6 +9,7 @@ import { adminCreateUserValidator } from '#validators/admin_validator'
 import UserService from '#services/user_service'
 import BankService from '#services/bank_service'
 import KycService from '#services/kyc_service'
+import Purchase from '#models/purchase'
 import GoldService from '#services/gold_service'
 
 export default class AdminUsersController {
@@ -79,7 +80,7 @@ export default class AdminUsersController {
     }
 
     // Auto-assign role and auto-activate
-    await User.create({
+    const newUser = await User.create({
       name: data.name,
       email: data.email,
       phone: data.phone,
@@ -87,6 +88,15 @@ export default class AdminUsersController {
       parentId,
       role: (data.role as any) || 'user',
       activatedAt: DateTime.now(),
+    })
+
+    // Create purchase record for activation business tracking
+    await Purchase.create({
+      userId: newUser.id,
+      amount: 1000,
+      buyerName: data.name,
+      remark: 'Account activation (admin)',
+      approvedAt: DateTime.now(),
     })
 
     session.flash('success', 'User created and activated successfully')

@@ -118,6 +118,15 @@ export default class ImportUsersSeeder extends BaseSeeder {
             remark: 'Initial wallet balance from CSV import',
             approvedAt: createdAt || DateTime.now(),
           })
+        } else if (isActivated) {
+          // Activated users with no purchase value get activation purchase
+          await Purchase.create({
+            userId: user.id,
+            amount: 1000,
+            buyerName: name.trim(),
+            remark: 'Account activation',
+            approvedAt: createdAt || DateTime.now(),
+          })
         }
 
         // Create bank record if bank data exists

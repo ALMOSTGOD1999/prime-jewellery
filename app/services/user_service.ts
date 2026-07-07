@@ -5,6 +5,7 @@ import { UserRoleEnum } from '#enums/user'
 import { TransactionTypeEnum } from '#enums/transaction'
 import { DateTime } from 'luxon'
 import WalletService from '#services/wallet_service'
+import Purchase from '#models/purchase'
 import { ACTIVATION_AMOUNT } from '#constants/activation'
 
 export default class UserService {
@@ -411,6 +412,15 @@ export default class UserService {
 
     user.activatedAt = DateTime.now()
     await user.save()
+
+    // Create purchase record so activation counts toward business
+    await Purchase.create({
+      userId: user.id,
+      amount: ACTIVATION_AMOUNT,
+      buyerName: user.name,
+      remark: 'Admin activation',
+      approvedAt: DateTime.now(),
+    })
   }
 
   static async selfActivateUser(userId: number, amount?: number) {
@@ -440,11 +450,20 @@ export default class UserService {
     user.activatedAt = DateTime.now()
     await user.save()
 
-    // Create activation transaction record (for history/record keeping)
+    // Create activation transaction record
     await user.related('transactions').create({
       utr: `SELF-${DateTime.now().toFormat('yyyyMMddHHmmss')}-${userId}`,
       amount: activationAmount,
       type: TransactionTypeEnum.ACTIVATION,
+      approvedAt: DateTime.now(),
+    })
+
+    // Create purchase record so activation counts toward business
+    await Purchase.create({
+      userId: user.id,
+      amount: activationAmount,
+      buyerName: user.name,
+      remark: 'Account activation',
       approvedAt: DateTime.now(),
     })
   }
