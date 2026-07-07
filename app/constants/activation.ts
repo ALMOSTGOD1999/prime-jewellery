@@ -1,0 +1,1 @@
+export const ACTIVATION_AMOUNT = 1000;
