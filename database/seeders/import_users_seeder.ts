@@ -58,7 +58,8 @@ export default class ImportUsersSeeder extends BaseSeeder {
         const email = this.getField(row, header, 'real_email') || `${userId}@primejewellery.com`
         const phone = this.getField(row, header, 'phone') || ''
         const isActivated = this.getField(row, header, 'is_activated') === 'true'
-        const totalPurchase = Number(this.getField(row, header, 'total_purchase_value')) || 0
+        const totalPurchase =
+          this.parseNumber(this.getField(row, header, 'total_purchase_value')) || 0
         const createdAt = this.parseDate(this.getField(row, header, 'created_at'))
         const updatedAt = this.parseDate(this.getField(row, header, 'updated_at'))
 
@@ -73,9 +74,7 @@ export default class ImportUsersSeeder extends BaseSeeder {
         // Address fields
         user.address = this.getField(row, header, 'address') || null
         user.city = this.getField(row, header, 'city') || null
-        user.zipcode = this.getField(row, header, 'pincode')
-          ? Number(this.getField(row, header, 'pincode'))
-          : null
+        user.zipcode = this.parseNumber(this.getField(row, header, 'pincode'))
 
         // State mapping
         const stateStr = this.getField(row, header, 'state')
@@ -213,6 +212,11 @@ export default class ImportUsersSeeder extends BaseSeeder {
     const match = memberCode.match(/PJ(\d+)/i)
     if (!match) return null
     return Number(match[1])
+  }
+
+  private parseNumber(value: string): number | null {
+    const num = Number(value)
+    return isNaN(num) || value === '' ? null : num
   }
 
   private parseDate(dateStr: string): DateTime | null {
