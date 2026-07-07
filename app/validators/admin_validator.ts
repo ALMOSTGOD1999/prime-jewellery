@@ -80,7 +80,6 @@ export const adminCreateUserValidator = vine.compile(
     phone: vine.string(),
     password: vine.string().trim().confirmed({ confirmationField: 'confirmPassword' }),
     parentId: vine.number().optional().nullable(),
-    leg: vine.enum(['left', 'right']).optional(),
     role: vine.enum(['user', 'franchise']).optional(),
   })
 )

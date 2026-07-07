@@ -34,7 +34,6 @@ export function CreateUserDialog({ isOpen, onOpenChange }: CreateUserDialogProps
     password: '',
     confirmPassword: '',
     parentId: '',
-    leg: '',
     role: 'user',
   })
 
@@ -52,45 +51,42 @@ export function CreateUserDialog({ isOpen, onOpenChange }: CreateUserDialogProps
     }
   }, [isOpen])
 
-  const lookupParent = useCallback(
-    (id: string) => {
-      if (lookupTimerRef.current) {
-        clearTimeout(lookupTimerRef.current)
-      }
+  const lookupParent = useCallback((id: string) => {
+    if (lookupTimerRef.current) {
+      clearTimeout(lookupTimerRef.current)
+    }
 
-      if (!id) {
-        setParentName('')
-        setParentError('')
-        return
-      }
-
-      setParentLoading(true)
+    if (!id) {
+      setParentName('')
       setParentError('')
+      return
+    }
 
-      lookupTimerRef.current = setTimeout(async () => {
-        try {
-          const res = await fetch(`/admin/users/${id}/lookup`)
-          if (res.ok) {
-            const user = await res.json()
-            setParentName(user.name)
-            setParentError('')
-          } else if (res.status === 404) {
-            setParentName('')
-            setParentError('User not found')
-          } else {
-            setParentName('')
-            setParentError('Lookup failed')
-          }
-        } catch {
+    setParentLoading(true)
+    setParentError('')
+
+    lookupTimerRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/admin/users/${id}/lookup`)
+        if (res.ok) {
+          const user = await res.json()
+          setParentName(user.name)
+          setParentError('')
+        } else if (res.status === 404) {
+          setParentName('')
+          setParentError('User not found')
+        } else {
           setParentName('')
           setParentError('Lookup failed')
-        } finally {
-          setParentLoading(false)
         }
-      }, 400)
-    },
-    []
-  )
+      } catch {
+        setParentName('')
+        setParentError('Lookup failed')
+      } finally {
+        setParentLoading(false)
+      }
+    }, 400)
+  }, [])
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -163,9 +159,7 @@ export function CreateUserDialog({ isOpen, onOpenChange }: CreateUserDialogProps
                 <span className="text-xs text-muted-foreground">Looking up user...</span>
               )}
               {parentName && !parentLoading && (
-                <span className="text-xs text-green-600 font-medium">
-                  {parentName}
-                </span>
+                <span className="text-xs text-green-600 font-medium">{parentName}</span>
               )}
               {parentError && !parentLoading && (
                 <span className="text-xs text-destructive">{parentError}</span>
@@ -173,23 +167,6 @@ export function CreateUserDialog({ isOpen, onOpenChange }: CreateUserDialogProps
               {errors.parentId && (
                 <span className="text-xs text-destructive">{errors.parentId}</span>
               )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="leg">Leg Position</Label>
-              <Select
-                value={data.leg}
-                onValueChange={(value) => setData('leg', value)}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select leg" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="left">Left Leg</SelectItem>
-                  <SelectItem value="right">Right Leg</SelectItem>
-                </SelectContent>
-              </Select>
-              {errors.leg && <span className="text-xs text-destructive">{errors.leg}</span>}
             </div>
 
             <div className="space-y-2">

@@ -76,7 +76,6 @@ export default class UserService {
       'activated_at',
       'avatar',
       'parent_id',
-      'leg',
     ]
 
     if (scope === 'team' || scope.startsWith('level_')) {
@@ -374,33 +373,17 @@ export default class UserService {
         )
         .first(),
       db
-        .from('transactions')
-        .whereIn('type', [TransactionTypeEnum.TOPUP, TransactionTypeEnum.EMI])
+        .from('purchases')
         .whereNotNull('approved_at')
+        .whereNull('cancelled_at')
         .select(
-          // Total Business
           db.raw('sum(amount) as total_business'),
-          db.raw('sum(case when type = ? then amount else 0 end) as total_emi_business', [
-            TransactionTypeEnum.EMI,
-          ]),
-
-          // Monthly Business
-          db.raw('sum(case when created_at >= ? then amount else 0 end) as month_business', [
+          db.raw('sum(case when approved_at >= ? then amount else 0 end) as month_business', [
             startOfMonth,
           ]),
-          db.raw(
-            'sum(case when type = ? and created_at >= ? then amount else 0 end) as month_emi_business',
-            [TransactionTypeEnum.EMI, startOfMonth]
-          ),
-
-          // Today's Business
-          db.raw('sum(case when created_at >= ? then amount else 0 end) as today_business', [
+          db.raw('sum(case when approved_at >= ? then amount else 0 end) as today_business', [
             today,
-          ]),
-          db.raw(
-            'sum(case when type = ? and created_at >= ? then amount else 0 end) as today_emi_business',
-            [TransactionTypeEnum.EMI, today]
-          )
+          ])
         )
         .first(),
     ])
@@ -415,11 +398,8 @@ export default class UserService {
 
       business: {
         total: Number(businessStats.total_business) || 0,
-        totalEmi: Number(businessStats.total_emi_business) || 0,
         month: Number(businessStats.month_business) || 0,
-        monthEmi: Number(businessStats.month_emi_business) || 0,
         today: Number(businessStats.today_business) || 0,
-        todayEmi: Number(businessStats.today_emi_business) || 0,
       },
     }
   }

@@ -38,7 +38,6 @@ export function AddMemberDialog() {
     password: '',
     confirmPassword: '',
     inviteCode: '',
-    leg: '',
   })
 
   const lookupParent = React.useCallback((id: string) => {
@@ -190,9 +189,7 @@ export function AddMemberDialog() {
                 }}
                 placeholder="Enter parent user ID"
               />
-              {parentLoading && (
-                <p className="text-xs text-muted-foreground">Looking up user...</p>
-              )}
+              {parentLoading && <p className="text-xs text-muted-foreground">Looking up user...</p>}
               {parentName && !parentLoading && (
                 <p className="text-xs text-green-600 font-medium">{parentName}</p>
               )}
@@ -202,23 +199,6 @@ export function AddMemberDialog() {
               {form.errors.inviteCode && (
                 <p className="text-sm text-destructive">{form.errors.inviteCode}</p>
               )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="leg">Leg Position</Label>
-              <Select
-                value={form.data.leg}
-                onValueChange={(value) => value && form.setData('leg', value)}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select leg" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="left">Left Leg</SelectItem>
-                  <SelectItem value="right">Right Leg</SelectItem>
-                </SelectContent>
-              </Select>
-              {form.errors.leg && <p className="text-sm text-destructive">{form.errors.leg}</p>}
             </div>
 
             <div className="space-y-2">

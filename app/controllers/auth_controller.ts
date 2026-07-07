@@ -2,14 +2,12 @@ import type { HttpContext } from '@adonisjs/core/http'
 import { loginValidator, signupValidator } from '#validators/auth_validator'
 import User from '#models/user'
 import Session from '#models/session'
-import { UserLegEnum, UserRoleEnum } from '#enums/user'
-import BinaryTreeService from '#services/binary_tree_service'
+import { UserRoleEnum } from '#enums/user'
 
 export default class AuthController {
   async signupPage({ inertia, request }: HttpContext) {
     const ref = (request.qs().ref as string) || ''
-    const leg = (request.qs().leg as string) || ''
-    return inertia.render('auth/signup', { ref, leg })
+    return inertia.render('auth/signup', { ref })
   }
 
   async loginPage({ inertia }: HttpContext) {
@@ -18,31 +16,21 @@ export default class AuthController {
 
   async signup(ctx: HttpContext) {
     const { request } = ctx
-    let { referralCode, leg, ...rest } = await request.validateUsing(signupValidator)
+    let { referralCode, ...rest } = await request.validateUsing(signupValidator)
 
     let parentId: number | null = null
-    let resolvedLeg: UserLegEnum | null = null
 
-    if (referralCode && leg) {
-      // Parse referral code - strip prefix (PJL, PJR, etc.)
+    if (referralCode) {
       const cleanCode = referralCode.replace(/^[a-zA-Z]+/i, '')
       const rootUser = await User.find(cleanCode)
-
       if (rootUser) {
-        // Use DFS spillover to find placement position
-        const placementParent = await BinaryTreeService.findPlacement(
-          rootUser.id,
-          leg as UserLegEnum
-        )
-        parentId = placementParent.id
-        resolvedLeg = leg as UserLegEnum
+        parentId = rootUser.id
       }
     }
 
     const user = await User.create({
       ...rest,
       parentId,
-      leg: resolvedLeg,
       role: UserRoleEnum.USER,
     })
 

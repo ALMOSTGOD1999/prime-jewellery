@@ -5,6 +5,9 @@ import app from '@adonisjs/core/services/app'
 import db from '@adonisjs/lucid/services/db'
 import User from '#models/user'
 import Bank from '#models/bank'
+import Purchase from '#models/purchase'
+import Transaction from '#models/transaction'
+import { TransactionTypeEnum } from '#enums/transaction'
 
 export default class ImportUsersSeeder extends BaseSeeder {
   async run() {
@@ -98,6 +101,25 @@ export default class ImportUsersSeeder extends BaseSeeder {
 
         await user.save()
 
+        // Create purchase record if user has purchase value
+        if (totalPurchase > 0) {
+          await Purchase.create({
+            userId: user.id,
+            amount: totalPurchase,
+            buyerName: name.trim(),
+            approvedAt: createdAt || DateTime.now(),
+          })
+
+          // Create corresponding wallet credit transaction
+          await Transaction.create({
+            userId: user.id,
+            type: TransactionTypeEnum.WALLET_CREDIT,
+            amount: totalPurchase,
+            remark: 'Initial wallet balance from CSV import',
+            approvedAt: createdAt || DateTime.now(),
+          })
+        }
+
         // Create bank record if bank data exists
         const bankName = this.getField(row, header, 'bank_name')
         const accountHolder = this.getField(row, header, 'account_holder')
@@ -154,20 +176,6 @@ export default class ImportUsersSeeder extends BaseSeeder {
 
         if (user && sponsor && user.id !== sponsor.id) {
           user.parentId = sponsorId
-
-          // Assign leg based on sponsor's children count
-          const leftCount = await User.query()
-            .where('parent_id', sponsorId)
-            .where('leg', 'left')
-            .count('* as total')
-          const rightCount = await User.query()
-            .where('parent_id', sponsorId)
-            .where('leg', 'right')
-            .count('* as total')
-          const left = Number(leftCount[0].$extras.total || 0)
-          const right = Number(rightCount[0].$extras.total || 0)
-
-          user.leg = left <= right ? ('left' as any) : ('right' as any)
           await user.save()
           parentUpdated++
         }

@@ -1568,6 +1568,17 @@ export default class RewardService {
       .sum('amount as total')
     const myBusiness = Number(personalRes[0].$extras.total) || 0
 
+    // My Business this month
+    const startOfMonth = DateTime.now().startOf('month').toSQLDate()
+    const personalMonthRes = await user
+      .related('purchases')
+      .query()
+      .whereNotNull('approvedAt')
+      .andWhereNull('cancelledAt')
+      .where('approved_at', '>=', startOfMonth)
+      .sum('amount as total')
+    const myBusinessMonth = Number(personalMonthRes[0].$extras.total) || 0
+
     // 3. My Team & Team Business
     const descendantsResult = await db.rawQuery(
       `
@@ -1589,6 +1600,7 @@ export default class RewardService {
     const myTeam = descendantIds.length
 
     let teamBusiness = 0
+    let teamBusinessMonth = 0
     if (myTeam > 0) {
       const teamRes = await Purchase.query()
         .whereIn('userId', descendantIds)
@@ -1596,6 +1608,14 @@ export default class RewardService {
         .andWhereNull('cancelledAt')
         .sum('amount as total')
       teamBusiness = Number(teamRes[0].$extras.total) || 0
+
+      const teamMonthRes = await Purchase.query()
+        .whereIn('userId', descendantIds)
+        .andWhereNotNull('approvedAt')
+        .andWhereNull('cancelledAt')
+        .where('approved_at', '>=', startOfMonth)
+        .sum('amount as total')
+      teamBusinessMonth = Number(teamMonthRes[0].$extras.total) || 0
     }
 
     // 4. Power & Weaker (Lifetime up to now)
@@ -1606,8 +1626,10 @@ export default class RewardService {
       myDirects,
       myTeam,
       myBusiness,
+      myBusinessMonth,
       directBusiness,
       teamBusiness,
+      teamBusinessMonth,
       powerToday,
       weakerToday,
       designation: this.getSalaryInfo(powerToday, weakerToday)?.designation || 'N/A',

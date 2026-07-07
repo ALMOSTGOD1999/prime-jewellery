@@ -3,7 +3,6 @@ import vine from '@vinejs/vine'
 export const signupValidator = vine.compile(
   vine.object({
     referralCode: vine.string().optional(),
-    leg: vine.enum(['left', 'right']).optional(),
     name: vine.string(),
     email: vine.string(),
     phone: vine.string(),
@@ -26,6 +25,5 @@ export const addMemberValidator = vine.compile(
     password: vine.string().trim().confirmed({ confirmationField: 'confirmPassword' }),
     type: vine.enum(['user', 'franchise']),
     inviteCode: vine.string(),
-    leg: vine.enum(['left', 'right']).optional(),
   })
 )

@@ -16,6 +16,7 @@ import {
   ArrowUp01Icon,
   ArrowDown01Icon,
   InformationCircleIcon,
+  Calendar01Icon,
 } from '@hugeicons/core-free-icons'
 
 interface DashboardProps {
@@ -23,8 +24,10 @@ interface DashboardProps {
     myDirects: number
     myTeam: number
     myBusiness: number
+    myBusinessMonth: number
     directBusiness: number
     teamBusiness: number
+    teamBusinessMonth: number
     powerToday: number
     weakerToday: number
     designation: string
@@ -72,9 +75,19 @@ export default function DashboardPage({
       valueColor: 'text-sky',
     },
     {
-      title: 'Self Investment',
+      title: 'Self Business',
       value: formatCurrency(metrics?.directBusiness || 0),
-      subtitle: 'Direct Business',
+      subtitle: 'Direct Referrals',
+      icon: UserIcon,
+      gradient: 'from-sky/20 via-sky/5 to-transparent',
+      border: 'border-sky/20',
+      iconBg: 'bg-sky/10 text-sky',
+      valueColor: 'text-sky',
+    },
+    {
+      title: 'Self Investment',
+      value: formatCurrency(metrics?.myBusiness || 0),
+      subtitle: `₹${formatCurrency(metrics?.myBusinessMonth || 0)} this month`,
       icon: Wallet01Icon,
       gradient: 'from-emerald/20 via-emerald/5 to-transparent',
       border: 'border-emerald/20',
@@ -82,14 +95,24 @@ export default function DashboardPage({
       valueColor: 'text-emerald',
     },
     {
-      title: 'Team Investment',
+      title: 'Total Business',
       value: formatCurrency(metrics?.teamBusiness || 0),
-      subtitle: 'Team Business',
+      subtitle: 'All-time team purchases',
       icon: Wallet01Icon,
       gradient: 'from-gold/20 via-gold/5 to-transparent',
       border: 'border-gold/20',
       iconBg: 'bg-gold/10 text-gold',
       valueColor: 'text-gold',
+    },
+    {
+      title: 'Business (Month)',
+      value: formatCurrency(metrics?.teamBusinessMonth || 0),
+      subtitle: 'Team purchases this month',
+      icon: Calendar01Icon,
+      gradient: 'from-sky/20 via-sky/5 to-transparent',
+      border: 'border-sky/20',
+      iconBg: 'bg-sky/10 text-sky',
+      valueColor: 'text-sky',
     },
     {
       title: 'Gold Rate (22K/1g)',

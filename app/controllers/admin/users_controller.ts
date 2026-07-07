@@ -1,5 +1,6 @@
 import User from '#models/user'
 import type { HttpContext } from '@adonisjs/core/http'
+import { DateTime } from 'luxon'
 import { updateBankValidator } from '#validators/bank_validator'
 import { updateKycValidator } from '#validators/kyc_validator'
 import { filterValidator, paginationValidator } from '#validators/common_validator'
@@ -47,7 +48,6 @@ export default class AdminUsersController {
           email: u.email,
           phone: u.phone,
           avatar: u.avatar,
-          leg: u.leg,
           role: u.role,
           activatedAt: u.activatedAt,
           createdAt: u.createdAt,
@@ -67,7 +67,6 @@ export default class AdminUsersController {
     const data = await request.validateUsing(adminCreateUserValidator)
 
     if (data.parentId) {
-      // potentially validate parent exists, but FK constraint might handle it or we check manually
       const parent = await User.find(data.parentId)
       if (!parent) {
         session.flash('errors.parentId', 'Parent user not found')
@@ -75,18 +74,18 @@ export default class AdminUsersController {
       }
     }
 
+    // Auto-assign role and auto-activate
     await User.create({
       name: data.name,
       email: data.email,
       phone: data.phone,
       password: data.password,
       parentId: data.parentId || null,
-      leg: (data.leg as any) || null,
       role: (data.role as any) || 'user',
-      activatedAt: null, // New users created by admin are not auto-activated unless specified, assuming standard flow
+      activatedAt: DateTime.now(),
     })
 
-    session.flash('success', 'User created successfully')
+    session.flash('success', 'User created and activated successfully')
     return response.redirect().back()
   }
 

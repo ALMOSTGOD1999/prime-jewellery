@@ -13,7 +13,6 @@ export type User = {
   phone: string
   inviteCode: string
   avatar: { url: string } | null
-  leg: string | null
   createdAt: string
   activatedAt: string | null
   parent: {
@@ -28,7 +27,7 @@ export const columns: ColumnDef<User>[] = [
   {
     accessorKey: 'id',
     header: ({ column }) => <DataTableColumnHeader column={column} label="ID" />,
-    cell: ({ row }) => <div className="w-[80px]">{formatUserId(row.getValue('id'), null, row.original.leg)}</div>,
+    cell: ({ row }) => <div className="w-[80px]">{formatUserId(row.getValue('id'))}</div>,
     enableSorting: false,
     enableHiding: false,
   },

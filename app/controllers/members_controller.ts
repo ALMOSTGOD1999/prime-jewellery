@@ -1,7 +1,6 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import { UserRoleEnum, UserLegEnum } from '#enums/user'
+import { UserRoleEnum } from '#enums/user'
 import UserService from '#services/user_service'
-import BinaryTreeService from '#services/binary_tree_service'
 import { addMemberValidator } from '#validators/auth_validator'
 import User from '#models/user'
 
@@ -60,31 +59,17 @@ export default class MembersController {
 
   public async store({ request, response, auth, session }: HttpContext) {
     const parent = auth.getUserOrFail()
-    const { name, password, email, phone, type, inviteCode, leg: formLeg } =
+    const { name, password, email, phone, type, inviteCode } =
       await request.validateUsing(addMemberValidator)
 
     let finalParentId = parent.id
-    let finalLeg: UserLegEnum | null = null
 
     if (inviteCode) {
-      // Strip prefix (PJL = left, PJR = right) to get the numeric ID
       const cleanCode = inviteCode.replace(/^[a-zA-Z]+/i, '')
-
-      // Prefer leg from form data; fall back to extracting from invite code prefix
-      let leg: UserLegEnum | null = (formLeg as UserLegEnum) || null
-      if (!leg) {
-        const prefix = inviteCode.match(/^[a-zA-Z]+/i)?.[0]?.toLowerCase() || ''
-        if (prefix.endsWith('l')) {
-          leg = UserLegEnum.LEFT
-        } else if (prefix.endsWith('r')) {
-          leg = UserLegEnum.RIGHT
-        }
-      }
 
       try {
         const targetParent = await User.findOrFail(cleanCode)
 
-        // Verify permission: Allow if it's the user themselves OR a descendant
         if (targetParent.id !== parent.id) {
           const isDescendant = await UserService.isDescendant(parent.id, targetParent.id)
           if (!isDescendant) {
@@ -93,14 +78,7 @@ export default class MembersController {
           }
         }
 
-        // If leg is specified, use DFS spillover to find placement
-        if (leg) {
-          const placementParent = await BinaryTreeService.findPlacement(targetParent.id, leg)
-          finalParentId = placementParent.id
-          finalLeg = leg
-        } else {
-          finalParentId = targetParent.id
-        }
+        finalParentId = targetParent.id
       } catch (error) {
         session.flash('error', 'Invalid Invite Code or User ID')
         return response.redirect().back()
@@ -113,7 +91,6 @@ export default class MembersController {
       email,
       phone,
       parentId: finalParentId,
-      leg: finalLeg,
       role: type as UserRoleEnum,
     })
 

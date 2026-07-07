@@ -6,53 +6,30 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/com
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '~/components/ui/select'
 import { toast } from 'sonner'
 
 export function InviteSection({ userId }: { userId: number }) {
   const [refId, setRefId] = useState(userId.toString())
-  const [leg, setLeg] = useState<'left' | 'right'>('left')
 
-  const getInviteLink = () =>
-    `${window.location.origin}/signup?ref=${refId}&leg=${leg}`
+  const getInviteLink = () => `${window.location.origin}/signup?ref=${refId}`
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Grow Your Team</CardTitle>
         <CardDescription>
-          Share your invite link to add new members to your downline. You can edit the Ref ID and Leg below.
+          Share your invite link to add new members directly under you.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>Ref ID</Label>
-            <Input
-              type="number"
-              value={refId}
-              onChange={(e) => setRefId(e.target.value)}
-              placeholder="User ID"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Leg</Label>
-            <Select value={leg} onValueChange={(v) => setLeg(v as 'left' | 'right')}>
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="left">Left Leg</SelectItem>
-                <SelectItem value="right">Right Leg</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+        <div className="space-y-2">
+          <Label>Ref ID</Label>
+          <Input
+            type="number"
+            value={refId}
+            onChange={(e) => setRefId(e.target.value)}
+            placeholder="User ID"
+          />
         </div>
 
         <div className="space-y-2">

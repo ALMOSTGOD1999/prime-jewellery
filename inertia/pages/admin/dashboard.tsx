@@ -21,11 +21,8 @@ interface AdminDashboardProps {
     monthActiveUsers: number
     business: {
       total: number
-      totalEmi: number
       month: number
-      monthEmi: number
       today: number
-      todayEmi: number
     }
   }
   goldPrice: string
@@ -74,7 +71,7 @@ export default function AdminDashboardPage({ stats, goldPrice }: AdminDashboardP
     {
       title: 'Total Business',
       value: formatCurrency(stats.business.total),
-      subtitle: `${formatCurrency(stats.business.totalEmi)} from investment`,
+      subtitle: 'All-time approved purchases',
       icon: Tick01Icon,
       gradient: 'from-gold/20 via-gold/5 to-transparent',
       border: 'border-gold/20',
@@ -84,7 +81,7 @@ export default function AdminDashboardPage({ stats, goldPrice }: AdminDashboardP
     {
       title: 'Business (Month)',
       value: formatCurrency(stats.business.month),
-      subtitle: `${formatCurrency(stats.business.monthEmi)} from investment`,
+      subtitle: 'Approved purchases this month',
       icon: Calendar01Icon,
       gradient: 'from-sky/20 via-sky/5 to-transparent',
       border: 'border-sky/20',
@@ -94,7 +91,7 @@ export default function AdminDashboardPage({ stats, goldPrice }: AdminDashboardP
     {
       title: 'Business (Today)',
       value: formatCurrency(stats.business.today),
-      subtitle: `${formatCurrency(stats.business.todayEmi)} from investment`,
+      subtitle: 'Approved purchases today',
       icon: Calendar03Icon,
       gradient: 'from-emerald/20 via-emerald/5 to-transparent',
       border: 'border-emerald/20',
