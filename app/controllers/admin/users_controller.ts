@@ -66,8 +66,12 @@ export default class AdminUsersController {
   async store({ request, response, session }: HttpContext) {
     const data = await request.validateUsing(adminCreateUserValidator)
 
+    let parentId: number | null = null
     if (data.parentId) {
-      const parent = await User.find(data.parentId)
+      // Strip PJ prefix
+      const cleanId = String(data.parentId).replace(/^[a-zA-Z]+/i, '')
+      parentId = Number(cleanId)
+      const parent = await User.find(parentId)
       if (!parent) {
         session.flash('errors.parentId', 'Parent user not found')
         return response.redirect().back()
@@ -80,7 +84,7 @@ export default class AdminUsersController {
       email: data.email,
       phone: data.phone,
       password: data.password,
-      parentId: data.parentId || null,
+      parentId,
       role: (data.role as any) || 'user',
       activatedAt: DateTime.now(),
     })

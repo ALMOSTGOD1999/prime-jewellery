@@ -192,7 +192,7 @@ export default class UserService {
     await user.loadCount('children')
     await user.load('children', (query) => {
       query.withCount('children')
-      query.select('id', 'name', 'created_at', 'activated_at', 'avatar', 'leg')
+      query.select('id', 'name', 'created_at', 'activated_at', 'avatar')
     })
     const rootUser = user.serialize()
     rootUser.childrenCount = Number(user.$extras.children_count)
@@ -202,7 +202,6 @@ export default class UserService {
       createdAt: c.createdAt,
       activatedAt: c.activatedAt,
       avatar: c.avatar,
-      leg: c.leg,
       childrenCount: Number(c.$extras.children_count),
     }))
     return rootUser
@@ -214,7 +213,7 @@ export default class UserService {
       .related('children')
       .query()
       .withCount('children')
-      .select('id', 'name', 'created_at', 'activated_at', 'avatar', 'leg')
+      .select('id', 'name', 'created_at', 'activated_at', 'avatar')
 
     return children.map((c) => ({
       id: c.id,
@@ -222,7 +221,6 @@ export default class UserService {
       createdAt: c.createdAt,
       activatedAt: c.activatedAt,
       avatar: c.avatar,
-      leg: c.leg,
       childrenCount: Number(c.$extras.children_count),
     }))
   }

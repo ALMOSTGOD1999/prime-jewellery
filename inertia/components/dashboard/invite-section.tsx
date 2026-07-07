@@ -7,9 +7,10 @@ import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
 import { toast } from 'sonner'
+import { formatUserId } from '~/lib/utils'
 
 export function InviteSection({ userId }: { userId: number }) {
-  const [refId, setRefId] = useState(userId.toString())
+  const [refId, setRefId] = useState(formatUserId(userId))
 
   const getInviteLink = () => `${window.location.origin}/signup?ref=${refId}`
 
@@ -25,10 +26,10 @@ export function InviteSection({ userId }: { userId: number }) {
         <div className="space-y-2">
           <Label>Ref ID</Label>
           <Input
-            type="number"
+            type="text"
             value={refId}
             onChange={(e) => setRefId(e.target.value)}
-            placeholder="User ID"
+            placeholder="PJ123456"
           />
         </div>
 

@@ -21,9 +21,8 @@ export interface OrgChartUser {
   id: number
   name: string
   createdAt: string
-  leg?: 'left' | 'right' | null
   children?: OrgChartUser[]
-  collapsed?: boolean // UI state
+  collapsed?: boolean
   activatedAt?: string | null
   childrenCount?: number
   avatar?: { url: string } | null
@@ -39,9 +38,10 @@ interface OrgChartProps {
 const CONFIG = {
   nodeWidth: 260,
   nodeHeight: 110,
-  horizontalGap: 30,
-  verticalGap: 80,
-  paddingTop: 90,
+  horizontalGap: 0,
+  verticalGap: 40,
+  paddingTop: 50,
+  paddingLeft: 100,
 }
 
 export default function OrgChart({ rootUser }: OrgChartProps) {
@@ -53,7 +53,6 @@ export default function OrgChart({ rootUser }: OrgChartProps) {
   const layout = useMemo(() => {
     const nodes: any[] = []
     const links: any[] = []
-    let currentX = 0
 
     // Helper to reset X for a new calculation pass if needed,
     // but here we traverse depth-first (post-order mostly for X)
@@ -66,31 +65,34 @@ export default function OrgChart({ rootUser }: OrgChartProps) {
     // We need to reset currentX for every calculation to avoid infinite growth if we were re-calculating in a loop,
     // but useMemo handles dependencies.
 
-    const traverse = (node: OrgChartUser, depth: number, parentId: number | null = null) => {
+    const traverse = (
+      node: OrgChartUser,
+      depth: number,
+      parentId: number | null = null,
+      xOffset: number = 0
+    ) => {
       const y = depth * (CONFIG.nodeHeight + CONFIG.verticalGap) + CONFIG.paddingTop
+      const x = CONFIG.paddingLeft + xOffset
 
       const nodeData: any = {
         ...node,
+        x,
         y,
         depth,
         parentId,
       }
 
-      if (!node.children || node.children.length === 0 || node.collapsed) {
-        nodeData.x = currentX
-        currentX += CONFIG.nodeWidth + CONFIG.horizontalGap
-        nodes.push(nodeData)
-        return nodeData.x
+      nodes.push(nodeData)
+
+      if (node.children && node.children.length > 0 && !node.collapsed) {
+        let childDepth = depth + 1
+        node.children.forEach((child, index) => {
+          traverse(child, childDepth, node.id, xOffset + 50)
+          childDepth++
+        })
       }
 
-      const childrenX = node.children.map((child) => traverse(child, depth + 1, node.id))
-
-      const minX = childrenX[0]
-      const maxX = childrenX[childrenX.length - 1]
-      nodeData.x = (minX + maxX) / 2
-
-      nodes.push(nodeData)
-      return nodeData.x
+      return x
     }
 
     traverse(data, 0)
@@ -107,7 +109,7 @@ export default function OrgChart({ rootUser }: OrgChartProps) {
       }
     })
 
-    return { nodes, links, width: currentX }
+    return { nodes, links, width: 1000 }
   }, [data])
 
   // --- HANDLERS ---
@@ -217,12 +219,8 @@ export default function OrgChart({ rootUser }: OrgChartProps) {
     const endX = t.x + CONFIG.nodeWidth / 2
     const endY = t.y
 
-    const cp1x = startX
-    const cp1y = startY + CONFIG.verticalGap / 2
-    const cp2x = endX
-    const cp2y = endY - CONFIG.verticalGap / 2
-
-    const pathData = `M ${startX} ${startY} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${endX} ${endY}`
+    // Straight vertical line
+    const pathData = `M ${startX} ${startY} L ${endX} ${endY}`
 
     return (
       <path
@@ -386,18 +384,6 @@ export default function OrgChart({ rootUser }: OrgChartProps) {
                           <h3 className="text-sm font-bold text-foreground truncate leading-tight">
                             {node.name}
                           </h3>
-                          {node.leg && (
-                            <span
-                              className={cn(
-                                'shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase leading-none',
-                                node.leg === 'left'
-                                  ? 'bg-blue-500/10 text-blue-600'
-                                  : 'bg-amber-500/10 text-amber-600'
-                              )}
-                            >
-                              {node.leg}
-                            </span>
-                          )}
                           {node.activatedAt && (
                             <span className="relative flex h-2 w-2 shrink-0">
                               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
@@ -408,7 +394,7 @@ export default function OrgChart({ rootUser }: OrgChartProps) {
 
                         <div className="flex flex-col gap-0.5">
                           <p className="text-[10px] text-muted-foreground font-mono">
-                            ID: {formatUserId(node.id, node.leg)}
+                            ID: {formatUserId(node.id)}
                           </p>
 
                           {/* Metadata Row */}

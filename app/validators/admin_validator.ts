@@ -79,7 +79,7 @@ export const adminCreateUserValidator = vine.compile(
     email: vine.string().email(),
     phone: vine.string(),
     password: vine.string().trim().confirmed({ confirmationField: 'confirmPassword' }),
-    parentId: vine.number().optional().nullable(),
+    parentId: vine.string().optional(),
     role: vine.enum(['user', 'franchise']).optional(),
   })
 )
