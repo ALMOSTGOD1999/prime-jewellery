@@ -101,8 +101,8 @@ export default class ImportUsersSeeder extends BaseSeeder {
 
         await user.save()
 
-        // Create purchase record if user has purchase value
-        if (totalPurchase > 0) {
+        // Create purchase record only for real purchases (skip activation-only amounts)
+        if (totalPurchase > 1000) {
           await Purchase.create({
             userId: user.id,
             amount: totalPurchase,
