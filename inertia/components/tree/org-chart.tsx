@@ -38,10 +38,10 @@ interface OrgChartProps {
 const CONFIG = {
   nodeWidth: 260,
   nodeHeight: 110,
-  horizontalGap: 0,
-  verticalGap: 40,
+  horizontalGap: 30,
+  verticalGap: 80,
   paddingTop: 50,
-  paddingLeft: 100,
+  paddingLeft: 50,
 }
 
 export default function OrgChart({ rootUser }: OrgChartProps) {
@@ -53,45 +53,28 @@ export default function OrgChart({ rootUser }: OrgChartProps) {
   const layout = useMemo(() => {
     const nodes: any[] = []
     const links: any[] = []
+    let currentX = CONFIG.paddingLeft
 
-    // Helper to reset X for a new calculation pass if needed,
-    // but here we traverse depth-first (post-order mostly for X)
-    // Actually the example uses a specific traversal.
-
-    // The example's traversal:
-    // It calculates X based on children's X (center of children)
-    // Leaf nodes get X incremented by nodeWidth + gap.
-
-    // We need to reset currentX for every calculation to avoid infinite growth if we were re-calculating in a loop,
-    // but useMemo handles dependencies.
-
-    const traverse = (
-      node: OrgChartUser,
-      depth: number,
-      parentId: number | null = null,
-      xOffset: number = 0
-    ) => {
+    const traverse = (node: OrgChartUser, depth: number, parentId: number | null = null) => {
       const y = depth * (CONFIG.nodeHeight + CONFIG.verticalGap) + CONFIG.paddingTop
-      const x = CONFIG.paddingLeft + xOffset
 
-      const nodeData: any = {
-        ...node,
-        x,
-        y,
-        depth,
-        parentId,
+      if (!node.children || node.children.length === 0 || node.collapsed) {
+        // Leaf or collapsed: assign next available X position
+        const x = currentX
+        currentX += CONFIG.nodeWidth + CONFIG.horizontalGap
+        nodes.push({ ...node, x, y, depth, parentId })
+        return x
       }
 
-      nodes.push(nodeData)
+      // First, recursively process all children to get their X positions
+      const childrenX = node.children.map((child) => traverse(child, depth + 1, node.id))
 
-      if (node.children && node.children.length > 0 && !node.collapsed) {
-        let childDepth = depth + 1
-        node.children.forEach((child, index) => {
-          traverse(child, childDepth, node.id, xOffset + 50)
-          childDepth++
-        })
-      }
+      // Parent is centered between first and last child
+      const minX = childrenX[0]
+      const maxX = childrenX[childrenX.length - 1]
+      const x = (minX + maxX) / 2
 
+      nodes.push({ ...node, x, y, depth, parentId })
       return x
     }
 
@@ -109,7 +92,7 @@ export default function OrgChart({ rootUser }: OrgChartProps) {
       }
     })
 
-    return { nodes, links, width: 1000 }
+    return { nodes, links, width: Math.max(currentX, 1000) }
   }, [data])
 
   // --- HANDLERS ---
@@ -219,8 +202,12 @@ export default function OrgChart({ rootUser }: OrgChartProps) {
     const endX = t.x + CONFIG.nodeWidth / 2
     const endY = t.y
 
-    // Straight vertical line
-    const pathData = `M ${startX} ${startY} L ${endX} ${endY}`
+    const cp1x = startX
+    const cp1y = startY + CONFIG.verticalGap / 2
+    const cp2x = endX
+    const cp2y = endY - CONFIG.verticalGap / 2
+
+    const pathData = `M ${startX} ${startY} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${endX} ${endY}`
 
     return (
       <path
