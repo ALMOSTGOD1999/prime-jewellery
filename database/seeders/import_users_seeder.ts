@@ -58,7 +58,6 @@ export default class ImportUsersSeeder extends BaseSeeder {
         const email = this.getField(row, header, 'real_email') || `${userId}@primejewellery.com`
         const phone = this.getField(row, header, 'phone') || ''
         const isActivated = this.getField(row, header, 'is_activated') === 'true'
-        const isKycVerified = this.getField(row, header, 'kyc_verified') === 'true'
         const totalPurchase = Number(this.getField(row, header, 'total_purchase_value')) || 0
         const createdAt = this.parseDate(this.getField(row, header, 'created_at'))
         const updatedAt = this.parseDate(this.getField(row, header, 'updated_at'))
@@ -80,7 +79,7 @@ export default class ImportUsersSeeder extends BaseSeeder {
 
         // State mapping
         const stateStr = this.getField(row, header, 'state')
-        user.state = this.mapState(stateStr)
+        user.state = this.mapState(stateStr) as any
 
         // Wallet/Investment
         if (totalPurchase > 0) {

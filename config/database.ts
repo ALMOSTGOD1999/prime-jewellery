@@ -20,8 +20,6 @@ const dbConfig = defineConfig({
         createRetryIntervalMillis: 200,
         reapIntervalMillis: 1000,
       },
-      healthCheck: true,
-      healthCheckInterval: 60000,
       migrations: {
         naturalSort: true,
         paths: ['database/migrations'],
