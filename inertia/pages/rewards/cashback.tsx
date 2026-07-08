@@ -44,7 +44,7 @@ export default function RewardCashbackPage({
               <HugeiconsIcon icon={InformationCircleIcon} className="h-4 w-4 text-amber-600" />
               <AlertTitle className="text-amber-800">Month-end payout pending</AlertTitle>
               <AlertDescription className="text-amber-700">
-                Your income, transactions, and ROI will be visible after the admin processes the
+                Your income, transactions, and Cashback will be visible after the admin processes the
                 month-end payout.
               </AlertDescription>
             </Alert>

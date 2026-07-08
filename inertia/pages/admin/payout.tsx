@@ -49,7 +49,7 @@ export default function AdminPayoutPage({
             <HugeiconsIcon icon={InformationCircleIcon} className="h-4 w-4 text-amber-600" />
             <AlertTitle className="text-amber-800">Important</AlertTitle>
             <AlertDescription className="text-amber-700">
-              Users cannot see their income, transactions, or ROI until both payout buttons are
+              Users cannot see their income, transactions, or Cashback until both payout buttons are
               clicked for the month. Click both buttons at the start of each month to release the
               previous month&apos;s earnings.
             </AlertDescription>
@@ -65,7 +65,7 @@ export default function AdminPayoutPage({
                   </div>
                   <div>
                     <CardTitle>Income Wallet Payout</CardTitle>
-                    <CardDescription>ROI only — 70% income + 30% gold wallet</CardDescription>
+                    <CardDescription>Cashback only — 70% income + 30% gold wallet</CardDescription>
                   </div>
                 </div>
               </CardHeader>
@@ -109,7 +109,7 @@ export default function AdminPayoutPage({
                   </div>
                   <div>
                     <CardTitle>Working Wallet Payout</CardTitle>
-                    <CardDescription>All other incomes except ROI</CardDescription>
+                    <CardDescription>All other incomes except Cashback</CardDescription>
                   </div>
                 </div>
               </CardHeader>

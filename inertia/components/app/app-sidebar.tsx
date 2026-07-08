@@ -19,6 +19,7 @@ import {
 } from '~/components/ui/sidebar'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '~/components/ui/collapsible'
 import { NavUser } from './nav-user'
+import { ThemeToggle } from '~/components/theme-toggle'
 import type { NavGroup, NavItem } from './types'
 import { cn } from '~/lib/utils'
 
@@ -72,7 +73,8 @@ export function AppSidebar({ sidebarLinks }: { sidebarLinks: NavGroup[] }) {
         ))}
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-sidebar-border p-3">
+      <SidebarFooter className="border-t border-sidebar-border p-3 space-y-3">
+        <ThemeToggle />
         <NavUser />
       </SidebarFooter>
     </Sidebar>
