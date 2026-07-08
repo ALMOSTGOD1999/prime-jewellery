@@ -1,8 +1,11 @@
 import { DateTime } from 'luxon'
 import PlatformConfig from '#models/platform_config'
 import InvestmentReturnDistribution from '#models/investment_return_distribution'
+import MonthlyIncomeSnapshot from '#models/monthly_income_snapshot'
 import User from '#models/user'
+import Purchase from '#models/purchase'
 import WalletService from '#services/wallet_service'
+import db from '@adonisjs/lucid/services/db'
 import { WithdrawlTypeEnum } from '#enums/withdrawl'
 
 export default class PayoutService {
@@ -34,7 +37,6 @@ export default class PayoutService {
     if (!income || !working) return false
 
     const now = DateTime.now().startOf('month')
-    // Both payouts must be at least for the previous month
     return income >= now.minus({ months: 1 }) && working >= now.minus({ months: 1 })
   }
 
@@ -46,16 +48,79 @@ export default class PayoutService {
 
     const now = DateTime.now().startOf('month')
     if (!last) {
-      // First ever payout: pay out the previous month
       return now.minus({ months: 1 })
     }
 
     const next = last.plus({ months: 1 })
-    // Don't allow paying out future months
     if (next > now.minus({ months: 1 })) {
       return now.minus({ months: 1 })
     }
     return next
+  }
+
+  /**
+   * Snapshot all user incomes for a given month.
+   * Computes total income from all sources for each activated user.
+   */
+  static async snapshotMonthlyIncomes(month: DateTime) {
+    const period = month.startOf('month')
+    const periodEnd = period.endOf('month')
+
+    const users = await User.query().where('role', 'user').whereNotNull('activated_at')
+
+    let created = 0
+
+    for (const user of users) {
+      // Skip if snapshot already exists
+      const existing = await MonthlyIncomeSnapshot.query()
+        .where('user_id', user.id)
+        .where('month', period.toISODate()!)
+        .first()
+      if (existing) continue
+
+      // Sum approved purchases for this user in the month
+      const purchaseRes = await Purchase.query()
+        .where('user_id', user.id)
+        .whereNotNull('approved_at')
+        .whereNull('cancelled_at')
+        .whereBetween('approved_at', [period.toSQL()!, periodEnd.toSQL()!])
+        .sum('amount as total')
+      const purchaseAmount = Number(purchaseRes[0].$extras.total || 0)
+
+      // Sum direct referrals' purchase amounts as their activation/sponsor income
+      const children = await user.related('children').query().whereNotNull('activated_at')
+      let sponsorIncome = 0
+      for (const child of children) {
+        const childPurchases = await Purchase.query()
+          .where('user_id', child.id)
+          .whereNotNull('approved_at')
+          .whereNull('cancelled_at')
+          .whereBetween('approved_at', [period.toSQL()!, periodEnd.toSQL()!])
+          .sum('amount as total')
+        sponsorIncome += Number(childPurchases[0].$extras.total || 0)
+      }
+
+      const grossAmount = purchaseAmount + sponsorIncome
+
+      if (grossAmount <= 0) continue
+
+      // 70% income wallet, 30% repurchase wallet
+      const incomeWalletAmount = Math.round(grossAmount * 0.7 * 100) / 100
+      const repurchaseWalletAmount = Math.round(grossAmount * 0.3 * 100) / 100
+
+      await MonthlyIncomeSnapshot.create({
+        userId: user.id,
+        month: period,
+        grossAmount,
+        incomeWalletAmount,
+        repurchaseWalletAmount,
+        paidOutAt: null,
+      })
+
+      created++
+    }
+
+    return { created, month: period.toISODate()! }
   }
 
   static async processIncomeWalletPayout(month: DateTime, adminId: number) {
@@ -67,7 +132,6 @@ export default class PayoutService {
     let processed = 0
 
     for (const distribution of distributions) {
-      // Credit gold amount to wallet balance
       const goldTransaction = await WalletService.creditWallet(
         distribution.userId,
         Number(distribution.goldAmount),
@@ -75,7 +139,6 @@ export default class PayoutService {
         `Gold wallet share from monthly investment return for ${period.toFormat('LLLL yyyy')}`
       )
 
-      // Credit income amount to income wallet
       const incomeTransaction = await WalletService.creditWallet(
         distribution.userId,
         Number(distribution.incomeAmount),
@@ -83,12 +146,10 @@ export default class PayoutService {
         `Income wallet share from monthly investment return for ${period.toFormat('LLLL yyyy')}`
       )
 
-      // Update user income wallet
       const user = await User.findOrFail(distribution.userId)
       user.incomeWallet = Number(user.incomeWallet ?? 0) + Number(distribution.incomeAmount)
       await user.save()
 
-      // Update distribution record
       distribution.goldTransactionId = goldTransaction.id
       distribution.incomeWalletTransactionId = incomeTransaction.id
       distribution.paidOutAt = DateTime.now()
@@ -97,7 +158,6 @@ export default class PayoutService {
       processed += 1
     }
 
-    // Update config
     await PlatformConfig.set(
       'income_wallet_payout_month',
       period.toFormat('yyyy-MM'),
@@ -109,10 +169,43 @@ export default class PayoutService {
     return { processed, month: period.toISODate()! }
   }
 
-  static async processWorkingWalletPayout(month: DateTime) {
+  static async processWorkingWalletPayout(month: DateTime, adminId: number) {
     const period = month.startOf('month')
 
-    // Update config
+    // First, compute snapshots for this month if not already done
+    await this.snapshotMonthlyIncomes(period)
+
+    // Credit pending snapshots to user wallets
+    const snapshots = await MonthlyIncomeSnapshot.query()
+      .where('month', period.toISODate()!)
+      .whereNull('paid_out_at')
+
+    let credited = 0
+    let totalAmount = 0
+
+    for (const snapshot of snapshots) {
+      // Credit 70% to income wallet
+      const user = await User.findOrFail(snapshot.userId)
+      user.incomeWallet = Number(user.incomeWallet ?? 0) + Number(snapshot.incomeWalletAmount)
+      await user.save()
+
+      // Credit 30% to main wallet as repurchase/gold
+      if (snapshot.repurchaseWalletAmount > 0) {
+        await WalletService.creditWallet(
+          snapshot.userId,
+          Number(snapshot.repurchaseWalletAmount),
+          adminId,
+          `Monthly income payout (30% repurchase) for ${period.toFormat('LLLL yyyy')}`
+        )
+      }
+
+      snapshot.paidOutAt = DateTime.now()
+      await snapshot.save()
+
+      credited++
+      totalAmount += Number(snapshot.grossAmount)
+    }
+
     await PlatformConfig.set(
       'working_wallet_payout_month',
       period.toFormat('yyyy-MM'),
@@ -121,15 +214,13 @@ export default class PayoutService {
       'Last month for which working wallet payout was processed'
     )
 
-    return { month: period.toISODate()! }
+    return {
+      credited,
+      totalAmount,
+      month: period.toISODate()!,
+    }
   }
 
-  /**
-   * Apply working wallet deductions:
-   * - 10% admin charges
-   * - 20% deducted after admin charges
-   * Net amount = gross * 0.9 * 0.8 = gross * 0.72
-   */
   static calculateWorkingWalletNetAmount(grossAmount: number): {
     gross: number
     adminCharges: number
@@ -140,7 +231,6 @@ export default class PayoutService {
     const afterAdmin = grossAmount - adminCharges
     const otherDeductions = Math.round(afterAdmin * 0.2 * 100) / 100
     const net = Math.round((afterAdmin - otherDeductions) * 100) / 100
-
     return { gross: grossAmount, adminCharges, otherDeductions, net }
   }
 

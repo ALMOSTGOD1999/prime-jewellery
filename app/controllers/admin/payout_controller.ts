@@ -37,15 +37,19 @@ export default class AdminPayoutController {
     return response.redirect().back()
   }
 
-  async workingWalletPayout({ request, session, response }: HttpContext) {
+  async workingWalletPayout({ auth, request, session, response }: HttpContext) {
+    const admin = auth.getUserOrFail()
     const { month } = request.all()
     const targetMonth = month
       ? DateTime.fromISO(month + '-01').startOf('month')
       : await PayoutService.getNextPayoutMonth('working')
 
     try {
-      const result = await PayoutService.processWorkingWalletPayout(targetMonth)
-      session.flash('success', `Working wallet payout completed for ${result.month}.`)
+      const result = await PayoutService.processWorkingWalletPayout(targetMonth, admin.id)
+      session.flash(
+        'success',
+        `Working wallet payout completed for ${result.month}. Credited ${result.credited} users, total ₹${result.totalAmount.toLocaleString('en-IN')}.`
+      )
     } catch (error) {
       session.flash('errors.global', error.message)
     }
