@@ -51,11 +51,7 @@ export default class PayoutService {
       return now.minus({ months: 1 })
     }
 
-    const next = last.plus({ months: 1 })
-    if (next > now.minus({ months: 1 })) {
-      return now.minus({ months: 1 })
-    }
-    return next
+    return last.plus({ months: 1 })
   }
 
   /**
