@@ -5,7 +5,6 @@ import MonthlyIncomeSnapshot from '#models/monthly_income_snapshot'
 import User from '#models/user'
 import Purchase from '#models/purchase'
 import WalletService from '#services/wallet_service'
-import db from '@adonisjs/lucid/services/db'
 import { WithdrawlTypeEnum } from '#enums/withdrawl'
 
 export default class PayoutService {

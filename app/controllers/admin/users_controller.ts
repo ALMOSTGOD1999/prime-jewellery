@@ -79,7 +79,7 @@ export default class AdminUsersController {
     }
 
     // Auto-assign role and auto-activate
-    const newUser = await User.create({
+    await User.create({
       name: data.name,
       email: data.email,
       phone: data.phone,
