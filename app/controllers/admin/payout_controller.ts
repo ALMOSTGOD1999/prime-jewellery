@@ -13,20 +13,29 @@ export default class AdminPayoutController {
 
       let hasUnpaidIncome = false
       let hasUnpaidWorking = false
+      let diagnostic = {
+        activeUsers: 0,
+        junePurchaseCount: 0,
+        junePurchaseAmount: 0,
+        activeInvestments: 0,
+      }
 
       try {
         hasUnpaidIncome = await PayoutService.hasUnpaidIncomeDistributions(nextIncomeMonth)
       } catch {
         hasUnpaidIncome = false
       }
-
       try {
         hasUnpaidWorking = await PayoutService.hasUnpaidWorkingSnapshots(nextWorkingMonth)
       } catch {
         hasUnpaidWorking = false
       }
+      try {
+        diagnostic = await PayoutService.getDiagnostics(nextIncomeMonth)
+      } catch {
+        /* ignore */
+      }
 
-      // Detect if stored payout month is in the future (incorrect state)
       const now = DateTime.now().startOf('month')
       const incomeIsFuture = incomeMonth && incomeMonth > now
       const workingIsFuture = workingMonth && workingMonth > now
@@ -39,6 +48,7 @@ export default class AdminPayoutController {
         hasUnpaidIncome,
         hasUnpaidWorking,
         needsReset: incomeIsFuture || workingIsFuture,
+        diagnostic,
       })
     } catch {
       return inertia.render('admin/payout', {
@@ -49,21 +59,21 @@ export default class AdminPayoutController {
         hasUnpaidIncome: false,
         hasUnpaidWorking: false,
         needsReset: false,
+        diagnostic: {
+          activeUsers: 0,
+          junePurchaseCount: 0,
+          junePurchaseAmount: 0,
+          activeInvestments: 0,
+        },
       })
     }
   }
 
-  /**
-   * Reset payout month configs to null so the next month is correctly calculated.
-   */
   async reset({ session, response }: HttpContext) {
     try {
       await PlatformConfig.set('income_wallet_payout_month', '', 'payout')
       await PlatformConfig.set('working_wallet_payout_month', '', 'payout')
-      session.flash(
-        'success',
-        'Payout months have been reset. You can now process payouts from the beginning.'
-      )
+      session.flash('success', 'Payout months reset. You can now process payouts.')
     } catch (error) {
       session.flash('errors.global', error.message)
     }
@@ -77,12 +87,11 @@ export default class AdminPayoutController {
       ? DateTime.fromISO(month + '-01').startOf('month')
       : await PayoutService.getNextPayoutMonth('income')
 
-    // Prevent processing future months
     const now = DateTime.now().startOf('month')
     if (targetMonth >= now) {
       session.flash(
         'errors.global',
-        `Cannot process payout for ${targetMonth.toFormat('yyyy-MM')} — the month has not completed yet.`
+        `Cannot process ${targetMonth.toFormat('yyyy-MM')} — month not complete.`
       )
       return response.redirect().back()
     }
@@ -91,12 +100,11 @@ export default class AdminPayoutController {
       const result = await PayoutService.processIncomeWalletPayout(targetMonth, admin.id)
       session.flash(
         'success',
-        `Income wallet payout completed for ${result.month}. Processed ${result.processed} distributions.`
+        `Income payout done for ${result.month}. Processed ${result.processed} distributions.`
       )
     } catch (error) {
       session.flash('errors.global', error.message)
     }
-
     return response.redirect().back()
   }
 
@@ -107,12 +115,11 @@ export default class AdminPayoutController {
       ? DateTime.fromISO(month + '-01').startOf('month')
       : await PayoutService.getNextPayoutMonth('working')
 
-    // Prevent processing future months
     const now = DateTime.now().startOf('month')
     if (targetMonth >= now) {
       session.flash(
         'errors.global',
-        `Cannot process payout for ${targetMonth.toFormat('yyyy-MM')} — the month has not completed yet.`
+        `Cannot process ${targetMonth.toFormat('yyyy-MM')} — month not complete.`
       )
       return response.redirect().back()
     }
@@ -121,12 +128,11 @@ export default class AdminPayoutController {
       const result = await PayoutService.processWorkingWalletPayout(targetMonth, admin.id)
       session.flash(
         'success',
-        `Working wallet payout completed for ${result.month}. Credited ${result.credited} users, total ₹${result.totalAmount.toLocaleString('en-IN')}.`
+        `Working payout done for ${result.month}. Credited ${result.credited} users, total ₹${result.totalAmount.toLocaleString('en-IN')}.`
       )
     } catch (error) {
       session.flash('errors.global', error.message)
     }
-
     return response.redirect().back()
   }
 }

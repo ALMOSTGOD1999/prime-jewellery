@@ -23,6 +23,12 @@ interface PayoutPageProps {
   hasUnpaidIncome: boolean
   hasUnpaidWorking: boolean
   needsReset: boolean
+  diagnostic: {
+    activeUsers: number
+    junePurchaseCount: number
+    junePurchaseAmount: number
+    activeInvestments: number
+  }
 }
 
 export default function AdminPayoutPage({
@@ -33,6 +39,7 @@ export default function AdminPayoutPage({
   hasUnpaidIncome,
   hasUnpaidWorking,
   needsReset,
+  diagnostic,
 }: PayoutPageProps) {
   const incomeForm = useForm({ month: nextIncomeMonth })
   const workingForm = useForm({ month: nextWorkingMonth })
@@ -70,6 +77,42 @@ export default function AdminPayoutPage({
               </AlertDescription>
             </Alert>
           )}
+
+          {/* Data Diagnostic */}
+          <Card className="border-blue-200 bg-blue-50/30">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm text-blue-800">
+                Data Available for {nextIncomeMonth}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-4 gap-4 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Active Users:</span>{' '}
+                  <strong>{diagnostic.activeUsers}</strong>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">June Purchases:</span>{' '}
+                  <strong>{diagnostic.junePurchaseCount}</strong>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">June Amount:</span>{' '}
+                  <strong>₹{diagnostic.junePurchaseAmount.toLocaleString('en-IN')}</strong>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Active Investments:</span>{' '}
+                  <strong>{diagnostic.activeInvestments}</strong>
+                </div>
+              </div>
+              {(diagnostic.activeUsers === 0 ||
+                (diagnostic.junePurchaseCount === 0 && diagnostic.activeInvestments === 0)) && (
+                <p className="mt-2 text-xs text-amber-600">
+                  No data exists for {nextIncomeMonth}. Users need approved purchases or active
+                  investments to receive payouts.
+                </p>
+              )}
+            </CardContent>
+          </Card>
 
           <Alert className="border-amber-200 bg-amber-50/50">
             <HugeiconsIcon icon={InformationCircleIcon} className="h-4 w-4 text-amber-600" />
