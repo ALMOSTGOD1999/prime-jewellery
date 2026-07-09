@@ -486,4 +486,7 @@ router.get('gatekeep', ({ inertia }) => {
   return inertia.render('gatekeep')
 })
 
+const DebugController = () => import('#controllers/debug_controller')
+router.get('debug/payout', [DebugController, 'payout']).use(middleware.admin())
+
 router.attachments()
