@@ -19,7 +19,7 @@ import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
 import { Badge } from '~/components/ui/badge'
 
-const ACTIVATION_OPTIONS = [500, 1000]
+const ACTIVATION_OPTIONS = [1000]
 
 interface SearchResult {
   id: number
@@ -235,28 +235,22 @@ export default function ActivationPage() {
                   <Label className="mb-2 block">Select Activation Amount</Label>
                   <div className="grid grid-cols-2 gap-3">
                     {ACTIVATION_OPTIONS.map((amount) => {
-                      const affordable = selectedUser.walletBalance >= amount
                       return (
                         <button
                           key={amount}
                           type="button"
-                          onClick={() => affordable && setSelectedAmount(amount)}
-                          disabled={!affordable}
+                          onClick={() => setSelectedAmount(amount)}
                           className={`relative flex items-center justify-between rounded-xl border-2 p-4 text-left transition-all ${
                             selectedAmount === amount
                               ? 'border-primary bg-primary/5'
-                              : affordable
-                                ? 'border-border hover:border-primary/50 hover:bg-muted/30'
-                                : 'border-border opacity-40 cursor-not-allowed'
+                              : 'border-border hover:border-primary/50 hover:bg-muted/30'
                           }`}
                         >
                           <div>
                             <p className="font-semibold text-lg">
                               ₹{amount.toLocaleString('en-IN')}
                             </p>
-                            <p className="text-xs text-muted-foreground">
-                              {amount === 500 ? 'Basic Activation' : 'Premium Activation'}
-                            </p>
+                            <p className="text-xs text-muted-foreground">Account Activation</p>
                           </div>
                           <div
                             className={`flex h-6 w-6 items-center justify-center rounded-full border-2 ${
@@ -291,8 +285,7 @@ export default function ActivationPage() {
                         className="h-5 w-5 text-green-600"
                       />
                       <span className="text-sm font-medium text-green-800 dark:text-green-200">
-                        {selectedUser.name} activated successfully! ₹
-                        {selectedAmount?.toLocaleString('en-IN')} deducted from wallet.
+                        {selectedUser.name} activated successfully!
                       </span>
                     </div>
                   </div>
@@ -321,19 +314,6 @@ export default function ActivationPage() {
               </CardContent>
             </Card>
           )}
-
-          {/* Self Activation Note */}
-          <Card className="border-dashed">
-            <CardContent className="pt-6">
-              <p className="text-sm text-muted-foreground text-center">
-                To activate your own admin account, use the{' '}
-                <a href="/wallet" className="text-primary hover:underline">
-                  Wallet page
-                </a>
-                .
-              </p>
-            </CardContent>
-          </Card>
         </Main>
       </AppLayout>
     </>

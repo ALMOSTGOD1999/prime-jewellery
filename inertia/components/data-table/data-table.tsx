@@ -30,8 +30,8 @@ export function DataTable<TData>({
   return (
     <div className={cn('flex w-full flex-col gap-2.5', className)} {...props}>
       {children}
-      <div className="overflow-auto rounded-md border">
-        <Table className="table-fixed w-full">
+      <div className="overflow-x-auto rounded-md border">
+        <Table className="min-w-full">
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>

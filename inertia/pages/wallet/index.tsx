@@ -31,7 +31,7 @@ import {
   DialogTrigger,
 } from '~/components/ui/dialog'
 
-const ACTIVATION_OPTIONS = [500, 1000]
+const ACTIVATION_OPTIONS = [1000]
 
 interface WalletPageProps {
   isAdmin: boolean
@@ -144,8 +144,8 @@ function UserWalletView({
   const [activationError, setActivationError] = useState<string | null>(null)
   const [activationSuccess, setActivationSuccess] = useState(false)
 
-  const canAfford500 = user.walletBalance >= 500
-  const minRequired = 500
+  const canAfford = user.walletBalance >= 1000
+  const minRequired = 1000
 
   const handleActivate = async () => {
     if (!selectedAmount) return
@@ -229,7 +229,7 @@ function UserWalletView({
                 <Dialog onOpenChange={handleDialogClose}>
                   <DialogTrigger
                     render={
-                      <Button variant={canAfford500 ? 'default' : 'outline'}>
+                      <Button variant={canAfford ? 'default' : 'outline'}>
                         <HugeiconsIcon icon={UserCheck01Icon} className="mr-2 h-4 w-4" />
                         Activate Account
                       </Button>
@@ -267,9 +267,7 @@ function UserWalletView({
                               <p className="font-semibold text-lg">
                                 ₹{amount.toLocaleString('en-IN')}
                               </p>
-                              <p className="text-sm text-muted-foreground">
-                                {amount === 500 ? 'Basic Activation' : 'Premium Activation'}
-                              </p>
+                              <p className="text-sm text-muted-foreground">Account Activation</p>
                             </div>
                             <div
                               className={`flex h-6 w-6 items-center justify-center rounded-full border-2 ${

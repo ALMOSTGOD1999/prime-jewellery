@@ -162,9 +162,9 @@ export default function SalaryRewards({
           />
         </div>
 
-        <div className="flex gap-4">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
           <Select value={month} onValueChange={(v) => handleFilterChange('month', v!)}>
-            <SelectTrigger className="w-45">
+            <SelectTrigger className="w-full sm:w-45">
               <SelectValue placeholder="All Months" />
             </SelectTrigger>
             <SelectContent>
@@ -178,7 +178,7 @@ export default function SalaryRewards({
           </Select>
 
           <Select value={year} onValueChange={(v) => handleFilterChange('year', v!)}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-full sm:w-[180px]">
               <SelectValue placeholder="All Years" />
             </SelectTrigger>
             <SelectContent>

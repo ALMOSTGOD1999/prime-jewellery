@@ -218,6 +218,14 @@ export default class WalletController {
    */
   public async activateAccount({ request, auth, response }: HttpContext) {
     const user = auth.user!
+
+    // Admin never needs activation
+    if (user.role === 'admin') {
+      return response.badRequest({
+        error: 'Admin accounts do not require activation.',
+      })
+    }
+
     const { amount } = request.only(['amount'])
 
     try {

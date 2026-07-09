@@ -9,11 +9,17 @@ export default class AdminPayoutController {
     const nextIncomeMonth = await PayoutService.getNextPayoutMonth('income')
     const nextWorkingMonth = await PayoutService.getNextPayoutMonth('working')
 
+    // Check if there is actual unpaid data for the target months
+    const hasUnpaidIncome = await PayoutService.hasUnpaidIncomeDistributions(nextIncomeMonth)
+    const hasUnpaidWorking = await PayoutService.hasUnpaidWorkingSnapshots(nextWorkingMonth)
+
     return inertia.render('admin/payout', {
       incomeWalletPayoutMonth: incomeMonth?.toFormat('yyyy-MM') ?? null,
       workingWalletPayoutMonth: workingMonth?.toFormat('yyyy-MM') ?? null,
       nextIncomeMonth: nextIncomeMonth.toFormat('yyyy-MM'),
       nextWorkingMonth: nextWorkingMonth.toFormat('yyyy-MM'),
+      hasUnpaidIncome,
+      hasUnpaidWorking,
     })
   }
 

@@ -63,7 +63,8 @@ export default class AdminUsersController {
     })
   }
 
-  async store({ request, response, session }: HttpContext) {
+  async store({ request, response, session, auth }: HttpContext) {
+    const admin = auth.getUserOrFail()
     const data = await request.validateUsing(adminCreateUserValidator)
 
     let parentId: number | null = null
@@ -79,7 +80,7 @@ export default class AdminUsersController {
     }
 
     // Auto-assign role and auto-activate
-    await User.create({
+    const user = await User.create({
       name: data.name,
       email: data.email,
       phone: data.phone,
@@ -87,6 +88,15 @@ export default class AdminUsersController {
       parentId,
       role: (data.role as any) || 'user',
       activatedAt: DateTime.now(),
+    })
+
+    // Create transaction record for admin-created & auto-activated user
+    await user.related('transactions').create({
+      utr: `ADMIN-CREATE-${DateTime.now().toFormat('yyyyMMddHHmmss')}-${user.id}`,
+      amount: 0,
+      type: 'activation' as any,
+      approvedAt: DateTime.now(),
+      remark: `Created and activated by admin #${admin.id}`,
     })
 
     session.flash('success', 'User created and activated successfully')
@@ -179,9 +189,10 @@ export default class AdminUsersController {
     return response.redirect().toPath('/dashboard')
   }
 
-  async activate({ params, session, response }: HttpContext) {
+  async activate({ params, session, response, auth }: HttpContext) {
+    const admin = auth.getUserOrFail()
     try {
-      await UserService.activateUser(params.id)
+      await UserService.activateUser(params.id, admin.id)
       session.flash('success', 'User activated successfully')
     } catch (error) {
       session.flash('errors.global', error.message)
@@ -225,7 +236,8 @@ export default class AdminUsersController {
    * Admin makes a gold purchase on behalf of a user.
    * The amount is deducted from the user's wallet.
    */
-  async makePurchase({ params, request, response, session }: HttpContext) {
+  async makePurchase({ params, request, response, session, auth }: HttpContext) {
+    const admin = auth.getUserOrFail()
     const user = await User.findOrFail(params.id)
     const { amount } = request.only(['amount'])
 
@@ -235,7 +247,7 @@ export default class AdminUsersController {
     }
 
     try {
-      await GoldService.purchaseGold(user, { amount: Number(amount) })
+      await GoldService.adminPurchaseGold(user, { amount: Number(amount) }, admin.id)
       session.flash(
         'success',
         `Gold purchase of ₹${Number(amount).toLocaleString('en-IN')} completed for ${user.name}`

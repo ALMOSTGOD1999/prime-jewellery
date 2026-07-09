@@ -18,6 +18,8 @@ interface PayoutPageProps {
   workingWalletPayoutMonth: string | null
   nextIncomeMonth: string
   nextWorkingMonth: string
+  hasUnpaidIncome: boolean
+  hasUnpaidWorking: boolean
 }
 
 export default function AdminPayoutPage({
@@ -25,6 +27,8 @@ export default function AdminPayoutPage({
   workingWalletPayoutMonth,
   nextIncomeMonth,
   nextWorkingMonth,
+  hasUnpaidIncome,
+  hasUnpaidWorking,
 }: PayoutPageProps) {
   const incomeForm = useForm({ month: nextIncomeMonth })
   const workingForm = useForm({ month: nextWorkingMonth })
@@ -81,7 +85,7 @@ export default function AdminPayoutPage({
                   </div>
                 </div>
 
-                {incomeWalletPayoutMonth === nextIncomeMonth ? (
+                {incomeWalletPayoutMonth === nextIncomeMonth && !hasUnpaidIncome ? (
                   <div className="flex items-center gap-2 text-sm text-green-600">
                     <HugeiconsIcon icon={CheckmarkCircle01Icon} className="h-4 w-4" />
                     <span>Payout already completed for {nextIncomeMonth}</span>
@@ -125,7 +129,7 @@ export default function AdminPayoutPage({
                   </div>
                 </div>
 
-                {workingWalletPayoutMonth === nextWorkingMonth ? (
+                {workingWalletPayoutMonth === nextWorkingMonth && !hasUnpaidWorking ? (
                   <div className="flex items-center gap-2 text-sm text-green-600">
                     <HugeiconsIcon icon={CheckmarkCircle01Icon} className="h-4 w-4" />
                     <span>Payout already completed for {nextWorkingMonth}</span>

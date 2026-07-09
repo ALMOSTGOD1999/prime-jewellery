@@ -249,7 +249,6 @@ router
     router
       .group(() => {
         router.get('/', ({ inertia }) => inertia.render('admin/activation')).as('page')
-        router.post('/', [ActivationController, 'activate']).as('self.activate')
         router.post('/user', [ActivationController, 'activateUser']).as('activate.user')
       })
       .prefix('activation')

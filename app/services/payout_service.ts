@@ -70,6 +70,29 @@ export default class PayoutService {
   }
 
   /**
+   * Check if there are unpaid distributions for a given month.
+   */
+  static async hasUnpaidIncomeDistributions(month: DateTime): Promise<boolean> {
+    const period = month.startOf('month')
+    const result = await InvestmentReturnDistribution.query()
+      .where('period_month', period.toISODate()!)
+      .whereNull('paid_out_at')
+      .count('* as total')
+      .first()
+    return Number(result?.$extras.total || 0) > 0
+  }
+
+  static async hasUnpaidWorkingSnapshots(month: DateTime): Promise<boolean> {
+    const period = month.startOf('month')
+    const result = await MonthlyIncomeSnapshot.query()
+      .where('month', period.toISODate()!)
+      .whereNull('paid_out_at')
+      .count('* as total')
+      .first()
+    return Number(result?.$extras.total || 0) > 0
+  }
+
+  /**
    * Snapshot all user incomes for a given month.
    * Computes total income from all sources for each activated user.
    */

@@ -1,12 +1,8 @@
 import { Link, usePage } from '@inertiajs/react'
 import { useState } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
-import {
-  Cancel01Icon,
-  Menu01Icon,
-  Search01Icon,
-  UserIcon,
-} from '@hugeicons/core-free-icons'
+import { Cancel01Icon, Menu01Icon, Search01Icon, UserIcon } from '@hugeicons/core-free-icons'
+import { ThemeToggle } from '~/components/theme-toggle'
 
 const navigation = [
   { name: 'Home', href: '/' },
@@ -65,12 +61,15 @@ const Header = () => {
               ))}
             </nav>
 
-            <button className="p-2 hover:bg-muted rounded-md transition-colors shrink-0">
+            <button className="p-2 hover:bg-muted rounded-md transition-colors shrink-0 hidden sm:flex">
               <HugeiconsIcon icon={Search01Icon} className="h-5 w-5" />
             </button>
+            <div className="hidden sm:block">
+              <ThemeToggle />
+            </div>
             <Link
               href={user ? '/dashboard' : '/login'}
-              className="inline-flex items-center gap-2 bg-gradient-gold text-navy-dark px-4 py-2 rounded-xl text-sm font-medium hover:shadow-gold transition-all"
+              className="inline-flex items-center gap-2 bg-gradient-gold text-navy-dark px-3 py-2 sm:px-4 rounded-xl text-sm font-medium hover:shadow-gold transition-all shrink-0"
             >
               <HugeiconsIcon icon={UserIcon} className="h-4 w-4" />
               <span className="hidden sm:inline">{user ? 'Dashboard' : 'Login'}</span>
@@ -95,6 +94,10 @@ const Header = () => {
                 {item.name}
               </Link>
             ))}
+            <div className="flex items-center gap-3 py-2 border-t border-border mt-2">
+              <span className="text-sm text-muted-foreground">Theme</span>
+              <ThemeToggle />
+            </div>
           </nav>
         </div>
       )}

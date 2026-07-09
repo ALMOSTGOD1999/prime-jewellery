@@ -9,8 +9,12 @@ import BankService from '#services/bank_service'
 import KycService from '#services/kyc_service'
 
 export default class ProfilesController {
-  async activatePage({ auth, inertia }: HttpContext) {
+  async activatePage({ auth, inertia, response }: HttpContext) {
     const user = auth.getUserOrFail()
+    // Admin never needs activation
+    if (user.role === 'admin') {
+      return response.redirect('/dashboard')
+    }
     return inertia.render('settings/activate', {
       isActivated: !!user.activatedAt,
       walletBalance: Number(user.walletBalance ?? 0),

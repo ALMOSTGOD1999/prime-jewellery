@@ -126,7 +126,7 @@ export function MembersToolbar({ table, counts, maxDepth }: MembersToolbarProps)
               placeholder="Search ID, name, email..."
               value={search}
               onChange={(e) => handleSearchChange(e.target.value)}
-              className="h-8 w-64"
+              className="h-8 w-full sm:w-64"
             />
           </div>
 

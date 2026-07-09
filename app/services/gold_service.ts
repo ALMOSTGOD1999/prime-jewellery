@@ -6,6 +6,7 @@ import Purchase from '#models/purchase'
 import WalletService from '#services/wallet_service'
 import logger from '@adonisjs/core/services/logger'
 import CalculateAchievement from '#jobs/calculate_achievement'
+import { TransactionTypeEnum } from '#enums/transaction'
 
 export default class GoldService {
   static async getPurchaseData(
@@ -99,7 +100,7 @@ export default class GoldService {
     await WalletService.debitWallet(user.id, data.amount, 'Gold purchase')
 
     // Create purchase record with auto-approval
-    await user.related('purchases').create({
+    const purchase = await user.related('purchases').create({
       amount: data.amount,
       approvedAt: DateTime.now(),
       goldWeight: data.goldWeight ?? null,
@@ -112,6 +113,59 @@ export default class GoldService {
       totalItems: data.totalItems ?? null,
       remark: data.remark ?? null,
     })
+
+    return purchase
+  }
+
+  /**
+   * Admin makes a gold purchase on behalf of a user.
+   * Bypasses wallet balance check and records the transaction for audit.
+   */
+  static async adminPurchaseGold(
+    user: User,
+    data: {
+      amount: number
+      goldWeight?: number
+      goldCarat?: string
+      goldRate?: number
+      goldPrice?: number
+      makingCharges?: number
+      gstAmount?: number
+      hallmarkAdditional?: number
+      totalItems?: number
+      remark?: string
+    },
+    adminId: number
+  ) {
+    if (data.amount < 10000) {
+      throw new Error('Minimum purchase amount is ₹10,000')
+    }
+
+    // Create purchase record with auto-approval (no wallet deduction)
+    const purchase = await user.related('purchases').create({
+      amount: data.amount,
+      approvedAt: DateTime.now(),
+      goldWeight: data.goldWeight ?? null,
+      goldCarat: data.goldCarat ?? null,
+      goldRate: data.goldRate ?? null,
+      goldPrice: data.goldPrice ?? null,
+      makingCharges: data.makingCharges ?? null,
+      gstAmount: data.gstAmount ?? null,
+      hallmarkCharges: data.hallmarkAdditional ?? null,
+      totalItems: data.totalItems ?? null,
+      remark: data.remark ?? `Admin purchase by #${adminId}`,
+    })
+
+    // Record audit transaction for history
+    await user.related('transactions').create({
+      utr: `ADMIN-GOLD-${DateTime.now().toFormat('yyyyMMddHHmmss')}-${user.id}`,
+      amount: data.amount,
+      type: TransactionTypeEnum.INVESTMENT,
+      approvedAt: DateTime.now(),
+      remark: `Purchase made by admin #${adminId} of ₹${data.amount.toLocaleString('en-IN')}`,
+    })
+
+    return purchase
   }
 
   static async getAdminPurchases(filters: {

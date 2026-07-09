@@ -30,8 +30,24 @@ interface SearchResult {
 }
 
 const GOLD_PACKAGES = {
-  TIER_1: { min: 10000, max: 499000, label: 'Package 1', monthlyReward: 2, cashbackWallet: 70, repurchaseWallet: 30, maxReturn: 100 },
-  TIER_2: { min: 500000, max: Infinity, label: 'Package 2', monthlyReward: 3, cashbackWallet: 70, repurchaseWallet: 30, maxReturn: 100 },
+  TIER_1: {
+    min: 10000,
+    max: 499000,
+    label: 'Package 1',
+    monthlyReward: 2,
+    cashbackWallet: 70,
+    repurchaseWallet: 30,
+    maxReturn: 100,
+  },
+  TIER_2: {
+    min: 500000,
+    max: Infinity,
+    label: 'Package 2',
+    monthlyReward: 3,
+    cashbackWallet: 70,
+    repurchaseWallet: 30,
+    maxReturn: 100,
+  },
 }
 
 function getGoldPackage(amount: number) {
@@ -51,17 +67,24 @@ export default function AdminPurchasePage() {
   })
 
   const selectedAmount = Number(purchaseForm.data.amount)
-  const goldPackage = selectedUser && selectedAmount >= 10000 ? getGoldPackage(selectedAmount) : null
+  const goldPackage =
+    selectedUser && selectedAmount >= 10000 ? getGoldPackage(selectedAmount) : null
 
   const performSearch = useCallback(async (query: string) => {
-    if (!query.trim()) { setSearchResults([]); return }
+    if (!query.trim()) {
+      setSearchResults([])
+      return
+    }
     setSearching(true)
     try {
       const response = await fetch(`/wallet/search?q=${encodeURIComponent(query)}`)
       const data = await response.json()
-      setSearchResults(data.error ? [] : (data.data || []))
-    } catch { setSearchResults([]) }
-    finally { setSearching(false) }
+      setSearchResults(data.error ? [] : data.data || [])
+    } catch {
+      setSearchResults([])
+    } finally {
+      setSearching(false)
+    }
   }, [])
 
   useEffect(() => {
@@ -113,7 +136,10 @@ export default function AdminPurchasePage() {
                 />
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
                   {searching ? (
-                    <HugeiconsIcon icon={Loading01Icon} className="h-4 w-4 animate-spin text-muted-foreground" />
+                    <HugeiconsIcon
+                      icon={Loading01Icon}
+                      className="h-4 w-4 animate-spin text-muted-foreground"
+                    />
                   ) : (
                     <HugeiconsIcon icon={Search01Icon} className="h-4 w-4 text-muted-foreground" />
                   )}
@@ -131,9 +157,13 @@ export default function AdminPurchasePage() {
                     >
                       <div>
                         <p className="font-medium text-sm">{user.name}</p>
-                        <p className="text-xs text-muted-foreground">ID: {user.id} · {user.email} · {user.phone}</p>
+                        <p className="text-xs text-muted-foreground">
+                          ID: {user.id} · {user.email} · {user.phone}
+                        </p>
                       </div>
-                      <Badge variant="secondary">₹{user.walletBalance.toLocaleString('en-IN')}</Badge>
+                      <Badge variant="secondary">
+                        ₹{user.walletBalance.toLocaleString('en-IN')}
+                      </Badge>
                     </button>
                   ))}
                 </div>
@@ -163,14 +193,23 @@ export default function AdminPurchasePage() {
                         <p className="font-semibold">{selectedUser.name}</p>
                         <p className="text-xs text-muted-foreground">ID: {selectedUser.id}</p>
                       </div>
-                      <Button variant="ghost" size="sm" type="button" onClick={() => { setSelectedUser(null); purchaseForm.reset() }}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        type="button"
+                        onClick={() => {
+                          setSelectedUser(null)
+                          purchaseForm.reset()
+                        }}
+                      >
                         <HugeiconsIcon icon={Cancel01Icon} className="h-4 w-4" />
                       </Button>
                     </div>
                     <div className="mt-2 flex items-center gap-2">
                       <HugeiconsIcon icon={Wallet01Icon} className="h-4 w-4 text-primary" />
                       <span className="text-sm">
-                        Wallet Balance: <strong>₹{selectedUser.walletBalance.toLocaleString('en-IN')}</strong>
+                        Wallet Balance:{' '}
+                        <strong>₹{selectedUser.walletBalance.toLocaleString('en-IN')}</strong>
                       </span>
                     </div>
                   </div>
@@ -182,7 +221,6 @@ export default function AdminPurchasePage() {
                       id="purchase-amount"
                       type="number"
                       min={10000}
-                      max={selectedUser.walletBalance}
                       step="1"
                       placeholder="Enter amount (min ₹10,000)"
                       value={purchaseForm.data.amount}
@@ -191,6 +229,9 @@ export default function AdminPurchasePage() {
                     {purchaseForm.errors.amount && (
                       <p className="text-sm text-destructive">{purchaseForm.errors.amount}</p>
                     )}
+                    <p className="text-xs text-muted-foreground">
+                      Admin purchase — no wallet deduction required.
+                    </p>
                   </div>
 
                   {/* Package Info */}
@@ -198,7 +239,9 @@ export default function AdminPurchasePage() {
                     <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-2">
                       <div className="flex items-center justify-between">
                         <Badge variant="default">{goldPackage.label}</Badge>
-                        <span className="text-xs text-muted-foreground">₹{formatCurrency(selectedAmount)}</span>
+                        <span className="text-xs text-muted-foreground">
+                          ₹{formatCurrency(selectedAmount)}
+                        </span>
                       </div>
                       <div className="grid grid-cols-2 gap-3 text-sm">
                         <div>
@@ -225,15 +268,11 @@ export default function AdminPurchasePage() {
                     <p className="text-xs text-destructive">Minimum purchase amount is ₹10,000</p>
                   )}
 
-                  {selectedAmount > selectedUser.walletBalance && (
-                    <p className="text-xs text-destructive">Amount exceeds user's wallet balance</p>
-                  )}
-
                   <Button
                     type="submit"
                     className="w-full"
                     size="lg"
-                    disabled={!goldPackage || purchaseForm.processing || selectedAmount > selectedUser.walletBalance}
+                    disabled={!goldPackage || purchaseForm.processing}
                   >
                     {purchaseForm.processing ? (
                       <>

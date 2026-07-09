@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Calendar01Icon,
   ArrowDown01Icon,
@@ -35,19 +35,31 @@ interface OrgChartProps {
 /**
  * CONFIGURATION
  */
-const CONFIG = {
-  nodeWidth: 260,
-  nodeHeight: 110,
-  horizontalGap: 30,
-  verticalGap: 80,
-  paddingTop: 50,
-  paddingLeft: 50,
+function getConfig(isMobile: boolean) {
+  return {
+    nodeWidth: isMobile ? 180 : 260,
+    nodeHeight: isMobile ? 95 : 110,
+    horizontalGap: isMobile ? 20 : 30,
+    verticalGap: isMobile ? 60 : 80,
+    paddingTop: 30,
+    paddingLeft: 20,
+  }
 }
 
 export default function OrgChart({ rootUser }: OrgChartProps) {
   // Initialize data with root user, ensuring collapsed state is set
   const [data, setData] = useState<OrgChartUser>({ ...rootUser, collapsed: false })
   const [loadingNodes, setLoadingNodes] = useState<Set<number>>(new Set())
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768)
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
+  const CONFIG = useMemo(() => getConfig(isMobile), [isMobile])
 
   // --- LAYOUT ALGORITHM (VERTICAL) ---
   const layout = useMemo(() => {
@@ -92,8 +104,8 @@ export default function OrgChart({ rootUser }: OrgChartProps) {
       }
     })
 
-    return { nodes, links, width: Math.max(currentX, 1000) }
-  }, [data])
+    return { nodes, links, width: Math.max(currentX, isMobile ? 600 : 1000) }
+  }, [data, CONFIG, isMobile])
 
   // --- HANDLERS ---
 
@@ -237,7 +249,7 @@ export default function OrgChart({ rootUser }: OrgChartProps) {
       className="flex flex-col w-full h-full bg-background font-sans text-foreground overflow-hidden border rounded-lg relative bg-grid-pattern"
     >
       <TransformWrapper
-        initialScale={0.8}
+        initialScale={isMobile ? 0.5 : 0.8}
         minScale={0.1}
         maxScale={3}
         centerOnInit

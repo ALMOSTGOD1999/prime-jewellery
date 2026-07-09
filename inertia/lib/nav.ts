@@ -43,7 +43,7 @@ export const getAppNav = (user: ReturnType<typeof useUser>, stats: AdminSidebarS
       icon: Icon(Book01Icon),
     },
   ]
-  if (!user?.activatedAt) {
+  if (!user?.activatedAt && user?.role !== UserRoleEnum.ADMIN) {
     settingsItems.unshift({
       title: 'Activate',
       url: '/settings/activate',
@@ -79,7 +79,7 @@ export const getAppNav = (user: ReturnType<typeof useUser>, stats: AdminSidebarS
     },
   ]
 
-  if (user?.activatedAt) {
+  if (user?.activatedAt || user?.role === UserRoleEnum.ADMIN) {
     generalNav.push(
       {
         title: 'Gold',

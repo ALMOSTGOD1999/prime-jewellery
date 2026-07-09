@@ -3,28 +3,11 @@ import UserService from '#services/user_service'
 
 export default class ActivationController {
   /**
-   * Self-activate user account using wallet balance
+   * Admin activates a user — no wallet deduction, admin controls the system.
+   * Accepts an optional amount for record-keeping only.
    */
-  public async activate({ auth, response }: HttpContext) {
-    const user = auth.user!
-
-    try {
-      await UserService.selfActivateUser(user.id)
-      return response.ok({
-        message: 'Account activated successfully',
-      })
-    } catch (error) {
-      return response.badRequest({
-        error: error.message,
-      })
-    }
-  }
-
-  /**
-   * Admin activates a user with a chosen amount (₹500 or ₹1000).
-   * The amount is deducted from the user's wallet balance.
-   */
-  public async activateUser({ request, response }: HttpContext) {
+  public async activateUser({ request, response, auth }: HttpContext) {
+    const admin = auth.getUserOrFail()
     const { userId, amount } = request.only(['userId', 'amount'])
 
     if (!userId) {
@@ -32,7 +15,7 @@ export default class ActivationController {
     }
 
     try {
-      await UserService.selfActivateUser(Number(userId), amount ? Number(amount) : undefined)
+      await UserService.activateUser(Number(userId), admin.id, amount ? Number(amount) : undefined)
       return response.ok({
         message: 'User activated successfully',
       })

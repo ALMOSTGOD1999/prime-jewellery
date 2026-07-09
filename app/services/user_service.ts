@@ -402,7 +402,7 @@ export default class UserService {
     }
   }
 
-  static async activateUser(userId: number) {
+  static async activateUser(userId: number, adminId?: number, amount?: number) {
     const user = await User.findOrFail(userId)
 
     if (user.activatedAt) {
@@ -411,6 +411,20 @@ export default class UserService {
 
     user.activatedAt = DateTime.now()
     await user.save()
+
+    // Create activation transaction record for audit trail
+    const activationAmount = amount ?? 0
+    await user.related('transactions').create({
+      utr: adminId
+        ? `ADMIN-${DateTime.now().toFormat('yyyyMMddHHmmss')}-${userId}`
+        : `MANUAL-${DateTime.now().toFormat('yyyyMMddHHmmss')}-${userId}`,
+      amount: activationAmount,
+      type: TransactionTypeEnum.ACTIVATION,
+      approvedAt: DateTime.now(),
+      remark: adminId
+        ? `Activated by admin #${adminId}${amount ? ` (₹${amount})` : ''}`
+        : 'Activated manually',
+    })
   }
 
   static async selfActivateUser(userId: number, amount?: number) {
@@ -423,8 +437,10 @@ export default class UserService {
     const activationAmount = amount || ACTIVATION_AMOUNT
 
     // Validate activation amount
-    if (![500, 1000].includes(activationAmount)) {
-      throw new Error('Invalid activation amount. Please select ₹500 or ₹1000.')
+    if (activationAmount !== ACTIVATION_AMOUNT) {
+      throw new Error(
+        `Invalid activation amount. Activation requires ₹${ACTIVATION_AMOUNT.toLocaleString('en-IN')}.`
+      )
     }
 
     // Check if user has sufficient wallet balance for activation
