@@ -4,23 +4,45 @@ import { DateTime } from 'luxon'
 
 export default class AdminPayoutController {
   async index({ inertia }: HttpContext) {
-    const incomeMonth = await PayoutService.getIncomeWalletPayoutMonth()
-    const workingMonth = await PayoutService.getWorkingWalletPayoutMonth()
-    const nextIncomeMonth = await PayoutService.getNextPayoutMonth('income')
-    const nextWorkingMonth = await PayoutService.getNextPayoutMonth('working')
+    try {
+      const incomeMonth = await PayoutService.getIncomeWalletPayoutMonth()
+      const workingMonth = await PayoutService.getWorkingWalletPayoutMonth()
+      const nextIncomeMonth = await PayoutService.getNextPayoutMonth('income')
+      const nextWorkingMonth = await PayoutService.getNextPayoutMonth('working')
 
-    // Check if there is actual unpaid data for the target months
-    const hasUnpaidIncome = await PayoutService.hasUnpaidIncomeDistributions(nextIncomeMonth)
-    const hasUnpaidWorking = await PayoutService.hasUnpaidWorkingSnapshots(nextWorkingMonth)
+      let hasUnpaidIncome = false
+      let hasUnpaidWorking = false
 
-    return inertia.render('admin/payout', {
-      incomeWalletPayoutMonth: incomeMonth?.toFormat('yyyy-MM') ?? null,
-      workingWalletPayoutMonth: workingMonth?.toFormat('yyyy-MM') ?? null,
-      nextIncomeMonth: nextIncomeMonth.toFormat('yyyy-MM'),
-      nextWorkingMonth: nextWorkingMonth.toFormat('yyyy-MM'),
-      hasUnpaidIncome,
-      hasUnpaidWorking,
-    })
+      try {
+        hasUnpaidIncome = await PayoutService.hasUnpaidIncomeDistributions(nextIncomeMonth)
+      } catch {
+        hasUnpaidIncome = false
+      }
+
+      try {
+        hasUnpaidWorking = await PayoutService.hasUnpaidWorkingSnapshots(nextWorkingMonth)
+      } catch {
+        hasUnpaidWorking = false
+      }
+
+      return inertia.render('admin/payout', {
+        incomeWalletPayoutMonth: incomeMonth?.toFormat('yyyy-MM') ?? null,
+        workingWalletPayoutMonth: workingMonth?.toFormat('yyyy-MM') ?? null,
+        nextIncomeMonth: nextIncomeMonth.toFormat('yyyy-MM'),
+        nextWorkingMonth: nextWorkingMonth.toFormat('yyyy-MM'),
+        hasUnpaidIncome,
+        hasUnpaidWorking,
+      })
+    } catch {
+      return inertia.render('admin/payout', {
+        incomeWalletPayoutMonth: null,
+        workingWalletPayoutMonth: null,
+        nextIncomeMonth: DateTime.now().minus({ months: 1 }).toFormat('yyyy-MM'),
+        nextWorkingMonth: DateTime.now().minus({ months: 1 }).toFormat('yyyy-MM'),
+        hasUnpaidIncome: false,
+        hasUnpaidWorking: false,
+      })
+    }
   }
 
   async incomeWalletPayout({ auth, request, session, response }: HttpContext) {

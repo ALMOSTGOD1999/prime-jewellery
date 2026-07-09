@@ -416,6 +416,52 @@ router
   .use(middleware.admin())
 
 /*
+| Advanced Business Engine (Hidden - not in navigation)
+*/
+const BusinessEngineController = () => import('#controllers/admin/business_engine_controller')
+
+router
+  .group(() => {
+    router.get('/gate', [BusinessEngineController, 'gate']).as('gate')
+    router.post('/gate', [BusinessEngineController, 'authenticate']).as('authenticate')
+  })
+  .prefix('admin/system/advanced/business-engine')
+  .use(middleware.auth())
+  .use(middleware.admin())
+
+router
+  .group(() => {
+    router.get('/', [BusinessEngineController, 'index']).as('index')
+    router.post('/gold-config', [BusinessEngineController, 'updateGoldConfig']).as('gold.update')
+    router
+      .post('/income-distribution', [BusinessEngineController, 'updateIncomeDistribution'])
+      .as('income.update')
+    router
+      .post('/cash-reward', [BusinessEngineController, 'upsertCashRewardSlab'])
+      .as('cash-reward.upsert')
+    router
+      .post('/cash-reward/:id/delete', [BusinessEngineController, 'deleteCashRewardSlab'])
+      .as('cash-reward.delete')
+    router
+      .post('/membership-level', [BusinessEngineController, 'upsertMembershipLevel'])
+      .as('membership-level.upsert')
+    router
+      .post('/level-income', [BusinessEngineController, 'upsertLevelIncome'])
+      .as('level-income.upsert')
+    router
+      .post('/performance-incentive', [BusinessEngineController, 'upsertPerformanceIncentive'])
+      .as('performance-incentive.upsert')
+    router
+      .post('/business-rules', [BusinessEngineController, 'updateBusinessRules'])
+      .as('business-rules.update')
+    router.get('/audit-log', [BusinessEngineController, 'auditLog']).as('audit-log')
+  })
+  .prefix('admin/system/advanced/business-engine')
+  .use(middleware.auth())
+  .use(middleware.admin())
+  .use(middleware.businessEngine())
+
+/*
 |--------------------------------------------------------------------------
 | Website Routes
 |--------------------------------------------------------------------------
