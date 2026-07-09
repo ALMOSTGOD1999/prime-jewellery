@@ -11,6 +11,8 @@ import {
   PiggyBankIcon,
   InformationCircleIcon,
   CheckmarkCircle01Icon,
+  AlertDiamondIcon,
+  RefreshIcon,
 } from '@hugeicons/core-free-icons'
 
 interface PayoutPageProps {
@@ -20,6 +22,7 @@ interface PayoutPageProps {
   nextWorkingMonth: string
   hasUnpaidIncome: boolean
   hasUnpaidWorking: boolean
+  needsReset: boolean
 }
 
 export default function AdminPayoutPage({
@@ -29,17 +32,15 @@ export default function AdminPayoutPage({
   nextWorkingMonth,
   hasUnpaidIncome,
   hasUnpaidWorking,
+  needsReset,
 }: PayoutPageProps) {
   const incomeForm = useForm({ month: nextIncomeMonth })
   const workingForm = useForm({ month: nextWorkingMonth })
+  const resetForm = useForm({})
 
-  const handleIncomePayout = () => {
-    incomeForm.post('/admin/payout/income-wallet')
-  }
-
-  const handleWorkingPayout = () => {
-    workingForm.post('/admin/payout/working-wallet')
-  }
+  const handleIncomePayout = () => incomeForm.post('/admin/payout/income-wallet')
+  const handleWorkingPayout = () => workingForm.post('/admin/payout/working-wallet')
+  const handleReset = () => resetForm.post('/admin/payout/reset')
 
   const bothPaid = incomeWalletPayoutMonth === workingWalletPayoutMonth && !!incomeWalletPayoutMonth
 
@@ -49,6 +50,27 @@ export default function AdminPayoutPage({
       <AppLayout>
         <Header>Month-end Payout</Header>
         <Main className="space-y-6">
+          {/* Reset warning if payout month is in the future */}
+          {needsReset && (
+            <Alert className="border-red-200 bg-red-50/50">
+              <HugeiconsIcon icon={AlertDiamondIcon} className="h-4 w-4 text-red-600" />
+              <AlertTitle className="text-red-800">Payout State Needs Reset</AlertTitle>
+              <AlertDescription className="text-red-700 space-y-2">
+                <p>The stored payout month is in the future, which blocks payout processing.</p>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleReset}
+                  disabled={resetForm.processing}
+                  className="mt-2"
+                >
+                  <HugeiconsIcon icon={RefreshIcon} className="mr-2 h-4 w-4" />
+                  {resetForm.processing ? 'Resetting...' : 'Reset Payout Months'}
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+
           <Alert className="border-amber-200 bg-amber-50/50">
             <HugeiconsIcon icon={InformationCircleIcon} className="h-4 w-4 text-amber-600" />
             <AlertTitle className="text-amber-800">Important</AlertTitle>
@@ -93,7 +115,7 @@ export default function AdminPayoutPage({
                 ) : (
                   <Button
                     onClick={handleIncomePayout}
-                    disabled={incomeForm.processing}
+                    disabled={incomeForm.processing || needsReset}
                     className="w-full"
                   >
                     {incomeForm.processing
@@ -137,7 +159,7 @@ export default function AdminPayoutPage({
                 ) : (
                   <Button
                     onClick={handleWorkingPayout}
-                    disabled={workingForm.processing}
+                    disabled={workingForm.processing || needsReset}
                     variant="outline"
                     className="w-full border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
                   >

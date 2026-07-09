@@ -33,9 +33,10 @@ interface BillingRates {
   rate18ct: number
   rate22ct: number
   rate24ct: number
+  jewelleryValuePercent: number
   makingChargePercent: number
   gstPercent: number
-  hallmarkAdditionalPercent: number
+  additionalChargePercent: number
 }
 
 interface PurchasePageProps {
@@ -50,12 +51,7 @@ interface PurchasePageProps {
   purchases: {
     data: any[]
     meta: any
-    counts: {
-      total: number
-      approved: number
-      rejected: number
-      pending: number
-    }
+    counts: { total: number; approved: number; rejected: number; pending: number }
   }
 }
 
@@ -83,11 +79,6 @@ export default function PurchasePage({
     customerId: user.id,
     goldCarat: '22ct',
     goldWeight: '',
-    goldRate: billingRates.rate22ct,
-    goldPrice: '',
-    makingCharges: '',
-    gstAmount: '',
-    hallmarkAdditional: '',
     amount: '',
     totalItems: '1',
     remark: '',
@@ -95,10 +86,12 @@ export default function PurchasePage({
 
   const [calculation, setCalculation] = useState({
     goldRate: billingRates.rate22ct,
-    goldPrice: 0,
+    goldValue: 0,
+    investment: 0,
+    jewelleryValue: 0,
     makingCharges: 0,
     gstAmount: 0,
-    hallmarkAdditional: 0,
+    additionalCharges: 0,
     packageAmount: 0,
   })
 
@@ -110,21 +103,15 @@ export default function PurchasePage({
     if (!weight || weight <= 0 || !carat) {
       setCalculation({
         goldRate: 0,
-        goldPrice: 0,
+        goldValue: 0,
+        investment: 0,
+        jewelleryValue: 0,
         makingCharges: 0,
         gstAmount: 0,
-        hallmarkAdditional: 0,
+        additionalCharges: 0,
         packageAmount: 0,
       })
-      form.setData({
-        ...form.data,
-        goldRate: '',
-        goldPrice: '',
-        makingCharges: '',
-        gstAmount: '',
-        hallmarkAdditional: '',
-        amount: '',
-      })
+      form.setData('amount', '')
       return
     }
 
@@ -135,46 +122,41 @@ export default function PurchasePage({
           ? billingRates.rate24ct
           : billingRates.rate22ct
 
-    const goldPrice = rate * weight
-    const makingCharges = (goldPrice * billingRates.makingChargePercent) / 100
-    const taxableForGst = goldPrice + makingCharges
-    const gstAmount = (taxableForGst * billingRates.gstPercent) / 100
-    const hallmarkAdditional = (taxableForGst * billingRates.hallmarkAdditionalPercent) / 100
-    const packageAmount = goldPrice + makingCharges + gstAmount + hallmarkAdditional
+    // Gold Value = Weight × Rate
+    const goldValue = rate * weight
 
-    const rounded = {
+    // Investment = Gold Value ÷ (jewelleryValuePercent / 100)
+    const investment = goldValue / (billingRates.jewelleryValuePercent / 100)
+
+    // All charges calculated on Gold Value only
+    const makingCharges = (goldValue * billingRates.makingChargePercent) / 100
+    const gstAmount = (goldValue * billingRates.gstPercent) / 100
+    const additionalCharges = (goldValue * billingRates.additionalChargePercent) / 100
+    const packageAmount = goldValue + makingCharges + gstAmount + additionalCharges
+
+    const r = (n: number) => Math.round(n * 100) / 100
+
+    setCalculation({
       goldRate: rate,
-      goldPrice: Math.round(goldPrice * 100) / 100,
-      makingCharges: Math.round(makingCharges * 100) / 100,
-      gstAmount: Math.round(gstAmount * 100) / 100,
-      hallmarkAdditional: Math.round(hallmarkAdditional * 100) / 100,
-      packageAmount: Math.round(packageAmount * 100) / 100,
-    }
-
-    setCalculation(rounded)
-    form.setData({
-      ...form.data,
-      goldRate: String(rounded.goldRate),
-      goldPrice: String(rounded.goldPrice),
-      makingCharges: String(rounded.makingCharges),
-      gstAmount: String(rounded.gstAmount),
-      hallmarkAdditional: String(rounded.hallmarkAdditional),
-      amount: String(rounded.packageAmount),
+      goldValue: r(goldValue),
+      investment: r(investment),
+      jewelleryValue: r(goldValue),
+      makingCharges: r(makingCharges),
+      gstAmount: r(gstAmount),
+      additionalCharges: r(additionalCharges),
+      packageAmount: r(packageAmount),
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    form.setData('amount', String(r(packageAmount)))
   }, [form.data.goldWeight, form.data.goldCarat])
 
-  // Search customers
   const handleSearch = useCallback((query: string) => {
     setSearchQuery(query)
     if (searchTimeout.current) clearTimeout(searchTimeout.current)
-
     if (!query || query.length < 2) {
       setSearchResults([])
       setShowResults(false)
       return
     }
-
     setSearchLoading(true)
     searchTimeout.current = setTimeout(async () => {
       try {
@@ -206,7 +188,6 @@ export default function PurchasePage({
     setShowResults(false)
   }
 
-  // Click outside to close search
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
@@ -238,10 +219,12 @@ export default function PurchasePage({
         setSelectedCustomer(null)
         setCalculation({
           goldRate: 0,
-          goldPrice: 0,
+          goldValue: 0,
+          investment: 0,
+          jewelleryValue: 0,
           makingCharges: 0,
           gstAmount: 0,
-          hallmarkAdditional: 0,
+          additionalCharges: 0,
           packageAmount: 0,
         })
         router.reload({ only: ['balance', 'purchases'] })
@@ -352,7 +335,7 @@ export default function PurchasePage({
               </CardContent>
             </Card>
 
-            {/* Billing Section */}
+            {/* Billing Section — Fully Automatic */}
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-3">
@@ -362,7 +345,8 @@ export default function PurchasePage({
                   <div>
                     <CardTitle>Billing Details</CardTitle>
                     <CardDescription>
-                      Enter gold weight — all pricing fields calculate automatically
+                      Enter gold weight — all values calculate automatically using the
+                      admin-configured rates
                     </CardDescription>
                   </div>
                 </div>
@@ -389,120 +373,121 @@ export default function PurchasePage({
                   </div>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2">
-                  {/* Gold Weight */}
-                  <div className="space-y-2">
-                    <Label htmlFor="gold-weight">
-                      Gold Weight <span className="text-gold">*</span>
-                    </Label>
-                    <div className="relative">
-                      <Input
-                        id="gold-weight"
-                        type="number"
-                        step="0.001"
-                        min="0"
-                        value={form.data.goldWeight}
-                        onChange={(e) => form.setData('goldWeight', e.target.value)}
-                        placeholder="Enter weight in grams"
-                        className="pr-12"
-                      />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                        gm
+                {/* Gold Weight — Only Input */}
+                <div className="space-y-2 max-w-sm">
+                  <Label htmlFor="gold-weight">
+                    Gold Weight (grams) <span className="text-gold">*</span>
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="gold-weight"
+                      type="number"
+                      step="0.001"
+                      min="0"
+                      value={form.data.goldWeight}
+                      onChange={(e) => form.setData('goldWeight', e.target.value)}
+                      placeholder="Enter weight in grams"
+                      className="pr-12 text-lg"
+                      autoFocus
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-medium">
+                      gm
+                    </span>
+                  </div>
+                </div>
+
+                {/* Auto-calculated Summary */}
+                {calculation.goldValue > 0 && (
+                  <div className="rounded-xl border-2 border-gold/20 bg-gradient-to-br from-gold/5 to-transparent p-6 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <div className="h-1.5 w-1.5 rounded-full bg-gold animate-pulse" />
+                      <h3 className="text-sm font-semibold text-gold uppercase tracking-wider">
+                        Auto-Calculated Breakdown
+                      </h3>
+                    </div>
+
+                    {/* Today's Rate */}
+                    <div className="flex items-center justify-between py-2 border-b border-border/50">
+                      <span className="text-sm text-muted-foreground">
+                        Today's Gold Rate (per gram)
+                      </span>
+                      <span className="text-sm font-mono font-semibold">
+                        ₹{calculation.goldRate.toLocaleString('en-IN')}
+                      </span>
+                    </div>
+
+                    {/* Gold Value */}
+                    <div className="flex items-center justify-between py-2 border-b border-border/50">
+                      <span className="text-sm text-muted-foreground">
+                        Gold Value ({form.data.goldWeight}g × ₹
+                        {calculation.goldRate.toLocaleString('en-IN')})
+                      </span>
+                      <span className="text-sm font-mono font-semibold">
+                        ₹{formatCurrency(calculation.goldValue)}
+                      </span>
+                    </div>
+
+                    {/* Making Charge */}
+                    <div className="flex items-center justify-between py-2 border-b border-border/50">
+                      <span className="text-sm text-muted-foreground">
+                        Making Charge ({billingRates.makingChargePercent}%)
+                      </span>
+                      <span className="text-sm font-mono">
+                        ₹{formatCurrency(calculation.makingCharges)}
+                      </span>
+                    </div>
+
+                    {/* GST */}
+                    <div className="flex items-center justify-between py-2 border-b border-border/50">
+                      <span className="text-sm text-muted-foreground">
+                        GST ({billingRates.gstPercent}%)
+                      </span>
+                      <span className="text-sm font-mono">
+                        ₹{formatCurrency(calculation.gstAmount)}
+                      </span>
+                    </div>
+
+                    {/* Additional Charge */}
+                    <div className="flex items-center justify-between py-2 border-b border-border/50">
+                      <span className="text-sm text-muted-foreground">
+                        Additional Charge ({billingRates.additionalChargePercent}%)
+                      </span>
+                      <span className="text-sm font-mono">
+                        ₹{formatCurrency(calculation.additionalCharges)}
+                      </span>
+                    </div>
+
+                    {/* Jewellery Value */}
+                    <div className="flex items-center justify-between py-2 border-b border-border/50">
+                      <span className="text-sm text-muted-foreground">
+                        Gold Jewellery Value ({billingRates.jewelleryValuePercent}% of investment)
+                      </span>
+                      <span className="text-sm font-mono font-semibold text-amber-600">
+                        ₹{formatCurrency(calculation.jewelleryValue)}
+                      </span>
+                    </div>
+
+                    {/* Customer Investment */}
+                    <div className="flex items-center justify-between py-2">
+                      <span className="text-sm text-muted-foreground">Customer Investment</span>
+                      <span className="text-sm font-mono font-semibold text-blue-600">
+                        ₹{formatCurrency(calculation.investment)}
+                      </span>
+                    </div>
+
+                    {/* Total */}
+                    <div className="flex items-center justify-between pt-3 border-t-2 border-gold/30">
+                      <span className="text-base font-bold text-foreground">
+                        Total Package Amount
+                      </span>
+                      <span className="text-xl font-bold text-gold tracking-tight">
+                        ₹{formatCurrency(calculation.packageAmount)}
                       </span>
                     </div>
                   </div>
+                )}
 
-                  {/* Gold Rate (read-only) */}
-                  <div className="space-y-2">
-                    <Label htmlFor="gold-rate">Gold Rate (per gram)</Label>
-                    <Input
-                      id="gold-rate"
-                      value={`₹${Number(form.data.goldRate || 0).toLocaleString('en-IN')}`}
-                      readOnly
-                      className="bg-muted/50"
-                    />
-                  </div>
-                </div>
-
-                {/* Auto-calculated fields */}
-                <div className="rounded-xl border bg-muted/20 p-5 space-y-4">
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                    Auto-calculated Pricing
-                  </h3>
-
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Gold Price</Label>
-                      <Input
-                        value={
-                          calculation.goldPrice > 0 ? formatCurrency(calculation.goldPrice) : '—'
-                        }
-                        readOnly
-                        className="bg-muted/50 font-medium"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">
-                        Making Charges ({billingRates.makingChargePercent}%)
-                      </Label>
-                      <Input
-                        value={
-                          calculation.makingCharges > 0
-                            ? formatCurrency(calculation.makingCharges)
-                            : '—'
-                        }
-                        readOnly
-                        className="bg-muted/50 font-medium"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">
-                        GST ({billingRates.gstPercent}%)
-                      </Label>
-                      <Input
-                        value={
-                          calculation.gstAmount > 0 ? formatCurrency(calculation.gstAmount) : '—'
-                        }
-                        readOnly
-                        className="bg-muted/50 font-medium"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">
-                        Hallmark &amp; Additional ({billingRates.hallmarkAdditionalPercent}%)
-                      </Label>
-                      <Input
-                        value={
-                          calculation.hallmarkAdditional > 0
-                            ? formatCurrency(calculation.hallmarkAdditional)
-                            : '—'
-                        }
-                        readOnly
-                        className="bg-muted/50 font-medium"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground font-semibold text-foreground">
-                        Package Amount
-                      </Label>
-                      <Input
-                        value={
-                          calculation.packageAmount > 0
-                            ? formatCurrency(calculation.packageAmount)
-                            : '—'
-                        }
-                        readOnly
-                        className="bg-gold/10 border-gold/30 font-bold text-gold"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Manual fields */}
+                {/* Items & Remarks */}
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="total-items">
@@ -518,7 +503,6 @@ export default function PurchasePage({
                       required
                     />
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="remark">Remarks</Label>
                     <Input
@@ -530,7 +514,7 @@ export default function PurchasePage({
                   </div>
                 </div>
 
-                {/* Validation message */}
+                {/* Insufficient Balance */}
                 {!canPurchase && calculation.packageAmount > 0 && (
                   <Alert className="border-red-200 bg-red-50/50">
                     <AlertTitle className="text-red-800">Insufficient Balance</AlertTitle>
@@ -550,7 +534,8 @@ export default function PurchasePage({
                   <Button
                     type="submit"
                     disabled={!canPurchase || form.processing}
-                    className="min-w-[180px]"
+                    className="bg-gold hover:bg-gold/90 text-white"
+                    size="lg"
                   >
                     {form.processing ? (
                       <>
@@ -560,7 +545,7 @@ export default function PurchasePage({
                     ) : (
                       <>
                         <HugeiconsIcon icon={ShoppingBag03Icon} className="mr-2 h-4 w-4" />
-                        Complete Purchase
+                        Purchase for {formatCurrency(calculation.packageAmount)}
                       </>
                     )}
                   </Button>
@@ -569,67 +554,90 @@ export default function PurchasePage({
             </Card>
           </form>
 
-          {/* Recent Purchases */}
-          {purchases.data.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Recent Purchases</CardTitle>
-                <CardDescription>Your gold purchase history</CardDescription>
-              </CardHeader>
-              <CardContent>
+          {/* Purchase History */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Purchase History</CardTitle>
+              <CardDescription>
+                {purchases.counts.total} total · {purchases.counts.approved} approved ·{' '}
+                {purchases.counts.pending} pending · {purchases.counts.rejected} rejected
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {purchases.data.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">
+                  No purchases found.
+                </p>
+              ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b text-left">
-                        <th className="py-2 pr-4">ID</th>
-                        <th className="py-2 pr-4">Amount</th>
-                        <th className="py-2 pr-4">Status</th>
-                        <th className="py-2 pr-4">Date</th>
-                        <th className="py-2 pr-4">Bill</th>
+                      <tr className="border-b text-left text-xs text-muted-foreground">
+                        <th className="py-2 pr-3 font-medium">ID</th>
+                        <th className="py-2 pr-3 font-medium">Amount</th>
+                        <th className="py-2 pr-3 font-medium">Buyer</th>
+                        <th className="py-2 pr-3 font-medium">Quantity</th>
+                        <th className="py-2 pr-3 font-medium">Status</th>
+                        <th className="py-2 pr-3 font-medium">Date</th>
                       </tr>
                     </thead>
                     <tbody>
                       {purchases.data.map((p: any) => (
-                        <tr key={p.id} className="border-b last:border-0">
-                          <td className="py-3 pr-4">#{p.id}</td>
-                          <td className="py-3 pr-4 font-medium">{formatCurrency(p.amount)}</td>
-                          <td className="py-3 pr-4">
+                        <tr key={p.id} className="border-b last:border-0 hover:bg-muted/30">
+                          <td className="py-2 pr-3 font-mono text-xs">{p.id}</td>
+                          <td className="py-2 pr-3 font-medium">{formatCurrency(p.amount)}</td>
+                          <td className="py-2 pr-3">{p.buyerName}</td>
+                          <td className="py-2 pr-3">{p.quantity ?? '—'}</td>
+                          <td className="py-2 pr-3">
                             <Badge
                               variant={
                                 p.status === 'approved'
-                                  ? 'success'
-                                  : p.status === 'rejected'
-                                    ? 'destructive'
-                                    : p.status === 'cancelled'
-                                      ? 'secondary'
-                                      : 'default'
+                                  ? 'default'
+                                  : p.status === 'pending'
+                                    ? 'secondary'
+                                    : 'destructive'
                               }
-                              className="capitalize"
                             >
                               {p.status}
                             </Badge>
                           </td>
-                          <td className="py-3 pr-4 text-muted-foreground">
+                          <td className="py-2 pr-3 text-muted-foreground whitespace-nowrap">
                             {new Date(p.createdAt).toLocaleDateString('en-IN')}
-                          </td>
-                          <td className="py-3 pr-4">
-                            <a
-                              href={`/gold/purchase/${p.id}/bill`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-gold hover:underline text-xs font-medium"
-                            >
-                              Download
-                            </a>
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
-              </CardContent>
-            </Card>
-          )}
+              )}
+
+              {purchases.meta.lastPage > 1 && (
+                <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                  <span className="text-sm text-muted-foreground">
+                    Page {purchases.meta.currentPage} of {purchases.meta.lastPage}
+                  </span>
+                  <div className="flex gap-2">
+                    {purchases.meta.currentPage > 1 && (
+                      <a
+                        href={`?page=${purchases.meta.currentPage - 1}`}
+                        className="text-sm text-primary hover:underline"
+                      >
+                        Previous
+                      </a>
+                    )}
+                    {purchases.meta.currentPage < purchases.meta.lastPage && (
+                      <a
+                        href={`?page=${purchases.meta.currentPage + 1}`}
+                        className="text-sm text-primary hover:underline"
+                      >
+                        Next
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </Main>
       </AppLayout>
     </>

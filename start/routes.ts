@@ -407,6 +407,7 @@ router
         router
           .post('/working-wallet', [AdminPayoutController, 'workingWalletPayout'])
           .as('working.wallet')
+        router.post('/reset', [AdminPayoutController, 'reset']).as('reset')
       })
       .prefix('payout')
       .as('payout')

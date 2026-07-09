@@ -6,6 +6,7 @@ import { DateTime } from 'luxon'
 import { TransactionTypeEnum } from '#enums/transaction'
 import { ToWords } from 'to-words'
 import { IndianStatesEnum } from '#enums/settings'
+import GoldBillingConfig from '#services/gold_billing_config'
 
 interface InvoiceData {
   slNo: string
@@ -46,12 +47,20 @@ interface InvoiceData {
 }
 
 export default class InvoiceService {
-  private static readonly goldPurchaseBreakup = {
-    gold: 0.7,
-    cgst: 0.015,
-    sgst: 0.015,
-    additional: 0.02,
-    making: 0.25,
+  private static async getGoldBreakup() {
+    const rates = await GoldBillingConfig.getRates()
+    const gstHalf = rates.gstPercent / 2 / 100
+    return {
+      gold: rates.jewelleryValuePercent / 100,
+      cgst: gstHalf,
+      sgst: gstHalf,
+      additional: rates.additionalChargePercent / 100,
+      making: rates.makingChargePercent / 100,
+      makingDisplay: rates.makingChargePercent,
+      gstDisplay: rates.gstPercent,
+      additionalDisplay: rates.additionalChargePercent,
+      jewelleryDisplay: rates.jewelleryValuePercent,
+    }
   }
 
   /**
@@ -143,7 +152,8 @@ export default class InvoiceService {
     let y = height - margin
 
     const formatAmount = (amount: number) => `Rs. ${amount.toFixed(2)}`
-    const breakdown = this.calculateGoldPurchaseBreakup(data.totalAmount)
+    const breakdown = await this.calculateGoldPurchaseBreakup(data.totalAmount)
+    const r = breakdown.rates
 
     page.drawRectangle({ x: 0, y: height - 118, width, height: 118, color: softGold })
     page.drawRectangle({ x: 0, y: height - 122, width, height: 4, color: gold })
@@ -237,11 +247,11 @@ export default class InvoiceService {
     y -= 30
 
     const rows = [
-      ['Gold Value', '70%', breakdown.goldValue],
-      ['CGST', '1.5%', breakdown.cgst],
-      ['SGST', '1.5%', breakdown.sgst],
-      ['Additional Charges', '2%', breakdown.additionalCharges],
-      ['Making Charges', '25%', breakdown.makingCharges],
+      ['Gold Value', `${Math.round(r.jewelleryDisplay)}%`, breakdown.goldValue],
+      ['CGST', `${(r.gstDisplay / 2).toFixed(1)}%`, breakdown.cgst],
+      ['SGST', `${(r.gstDisplay / 2).toFixed(1)}%`, breakdown.sgst],
+      ['Additional Charges', `${Math.round(r.additionalDisplay)}%`, breakdown.additionalCharges],
+      ['Making Charges', `${r.makingDisplay}%`, breakdown.makingCharges],
     ] as const
 
     rows.forEach(([label, rate, amount]) => {
@@ -324,14 +334,15 @@ export default class InvoiceService {
     return pdf.save()
   }
 
-  private static calculateGoldPurchaseBreakup(totalAmount: number) {
-    const rates = this.goldPurchaseBreakup
+  private static async calculateGoldPurchaseBreakup(totalAmount: number) {
+    const rates = await this.getGoldBreakup()
     return {
       goldValue: totalAmount * rates.gold,
       cgst: totalAmount * rates.cgst,
       sgst: totalAmount * rates.sgst,
       additionalCharges: totalAmount * rates.additional,
       makingCharges: totalAmount * rates.making,
+      rates,
     }
   }
 

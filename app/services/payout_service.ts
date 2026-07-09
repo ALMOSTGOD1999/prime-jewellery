@@ -56,7 +56,8 @@ export default class PayoutService {
     const now = DateTime.now().startOf('month')
     const previousMonth = now.minus({ months: 1 })
 
-    if (!last) {
+    // If never paid out, or the stored month is in the future (incorrect state), return previous month
+    if (!last || last > now) {
       return previousMonth
     }
 
