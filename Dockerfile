@@ -1,16 +1,18 @@
 FROM node:lts-bookworm-slim AS base
 
 FROM base AS deps
+ENV NODE_ENV=development
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 
 FROM deps AS build
+ENV NODE_ENV=development
 WORKDIR /app
 COPY . .
 RUN npm run build
 
-FROM base AS production
+FROM base AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=build /app/build ./
