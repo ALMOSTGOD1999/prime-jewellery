@@ -24,6 +24,12 @@ export default class DashboardController {
     const metrics = await RewardService.getDashboardMetrics(user)
     const isPayoutReleased = await PayoutService.isPayoutReleased()
 
-    return inertia.render('dashboard', { metrics, goldPrice, userId: user.id, isPayoutReleased })
+    return inertia.render('dashboard', {
+      metrics,
+      goldPrice,
+      userId: user.id,
+      isPayoutReleased,
+      incomeWallet: Number(user.incomeWallet ?? 0),
+    })
   }
 }

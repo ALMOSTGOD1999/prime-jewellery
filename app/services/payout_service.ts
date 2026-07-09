@@ -1,13 +1,21 @@
 import { DateTime } from 'luxon'
+import db from '@adonisjs/lucid/services/db'
 import PlatformConfig from '#models/platform_config'
 import InvestmentReturnDistribution from '#models/investment_return_distribution'
 import MonthlyIncomeSnapshot from '#models/monthly_income_snapshot'
 import User from '#models/user'
 import Purchase from '#models/purchase'
+import Transaction from '#models/transaction'
 import WalletService from '#services/wallet_service'
 import { WithdrawlTypeEnum } from '#enums/withdrawl'
+import { TransactionTypeEnum } from '#enums/transaction'
+import InvestmentService from '#services/investment_service'
 
 export default class PayoutService {
+  static readonly INCOME_PERCENT = 0.7
+  static readonly REPURCHASE_PERCENT = 0.2
+  static readonly ADMIN_PERCENT = 0.1
+
   static async getIncomeWalletPayoutMonth(): Promise<DateTime | null> {
     const monthStr = await PlatformConfig.get('income_wallet_payout_month')
     return monthStr ? DateTime.fromISO(monthStr + '-01').startOf('month') : null
@@ -46,11 +54,19 @@ export default class PayoutService {
         : await this.getWorkingWalletPayoutMonth()
 
     const now = DateTime.now().startOf('month')
+    const previousMonth = now.minus({ months: 1 })
+
     if (!last) {
-      return now.minus({ months: 1 })
+      return previousMonth
     }
 
-    return last.plus({ months: 1 })
+    const candidate = last.plus({ months: 1 })
+
+    if (candidate > previousMonth) {
+      return previousMonth
+    }
+
+    return candidate
   }
 
   /**
@@ -99,9 +115,9 @@ export default class PayoutService {
 
       if (grossAmount <= 0) continue
 
-      // 70% income wallet, 30% repurchase wallet
-      const incomeWalletAmount = Math.round(grossAmount * 0.7 * 100) / 100
-      const repurchaseWalletAmount = Math.round(grossAmount * 0.3 * 100) / 100
+      // 70% income wallet, 20% repurchase wallet, 10% admin charge
+      const incomeWalletAmount = Math.round(grossAmount * this.INCOME_PERCENT * 100) / 100
+      const repurchaseWalletAmount = Math.round(grossAmount * this.REPURCHASE_PERCENT * 100) / 100
 
       await MonthlyIncomeSnapshot.create({
         userId: user.id,
@@ -118,34 +134,90 @@ export default class PayoutService {
     return { created, month: period.toISODate()! }
   }
 
+  /**
+   * Credit a user's income wallet and create an audit transaction.
+   */
+  static async creditIncomeWallet(
+    userId: number,
+    amount: number,
+    adminId: number,
+    remark?: string
+  ) {
+    return db.transaction(async (trx) => {
+      const user = await User.query({ client: trx }).where('id', userId).firstOrFail()
+
+      const transaction = await Transaction.create(
+        {
+          userId,
+          type: TransactionTypeEnum.WALLET_CREDIT,
+          amount,
+          remark: remark || `Income credited by admin #${adminId}`,
+          approvedAt: DateTime.now(),
+        },
+        { client: trx }
+      )
+
+      const currentBalance = Number(user.incomeWallet ?? 0)
+      user.incomeWallet = currentBalance + amount
+      await user.save()
+
+      return transaction
+    })
+  }
+
   static async processIncomeWalletPayout(month: DateTime, adminId: number) {
     const period = month.startOf('month')
-    const distributions = await InvestmentReturnDistribution.query()
+    const now = DateTime.now().startOf('month')
+    const previousMonth = now.minus({ months: 1 })
+
+    if (period > previousMonth) {
+      throw new Error(
+        `Cannot process payout for ${period.toFormat('yyyy-MM')} because the month has not completed yet. Payouts are only allowed up to ${previousMonth.toFormat('yyyy-MM')}.`
+      )
+    }
+
+    // Retro-generate distributions for this month if none exist yet
+    let distributions = await InvestmentReturnDistribution.query()
       .where('period_month', period.toISODate()!)
       .whereNull('paid_out_at')
+
+    if (distributions.length === 0) {
+      const { processed: created } = await InvestmentService.distributeMonthlyReturns(period)
+      if (created > 0) {
+        distributions = await InvestmentReturnDistribution.query()
+          .where('period_month', period.toISODate()!)
+          .whereNull('paid_out_at')
+      }
+    }
 
     let processed = 0
 
     for (const distribution of distributions) {
-      const goldTransaction = await WalletService.creditWallet(
+      const gross = Number(distribution.returnAmount)
+
+      // Apply 70/20/10 split per business rules (10% admin charge retained by platform)
+      const incomeAmount = Math.round(gross * this.INCOME_PERCENT * 100) / 100
+      const repurchaseAmount = Math.round(gross * this.REPURCHASE_PERCENT * 100) / 100
+
+      // 20% → Repurchase Wallet (main wallet balance)
+      const repurchaseTransaction = await WalletService.creditWallet(
         distribution.userId,
-        Number(distribution.goldAmount),
+        repurchaseAmount,
         adminId,
-        `Gold wallet share from monthly investment return for ${period.toFormat('LLLL yyyy')}`
+        `Repurchase wallet (20%) from monthly investment return for ${period.toFormat('LLLL yyyy')}`
       )
 
-      const incomeTransaction = await WalletService.creditWallet(
+      // 70% → Income Wallet
+      const incomeTransaction = await this.creditIncomeWallet(
         distribution.userId,
-        Number(distribution.incomeAmount),
+        incomeAmount,
         adminId,
-        `Income wallet share from monthly investment return for ${period.toFormat('LLLL yyyy')}`
+        `Income wallet (70%) from monthly investment return for ${period.toFormat('LLLL yyyy')}`
       )
 
-      const user = await User.findOrFail(distribution.userId)
-      user.incomeWallet = Number(user.incomeWallet ?? 0) + Number(distribution.incomeAmount)
-      await user.save()
+      // 10% Admin Charge is retained by the platform — no user wallet credit
 
-      distribution.goldTransactionId = goldTransaction.id
+      distribution.goldTransactionId = repurchaseTransaction.id
       distribution.incomeWalletTransactionId = incomeTransaction.id
       distribution.paidOutAt = DateTime.now()
       await distribution.save()
@@ -166,6 +238,14 @@ export default class PayoutService {
 
   static async processWorkingWalletPayout(month: DateTime, adminId: number) {
     const period = month.startOf('month')
+    const now = DateTime.now().startOf('month')
+    const previousMonth = now.minus({ months: 1 })
+
+    if (period > previousMonth) {
+      throw new Error(
+        `Cannot process payout for ${period.toFormat('yyyy-MM')} because the month has not completed yet. Payouts are only allowed up to ${previousMonth.toFormat('yyyy-MM')}.`
+      )
+    }
 
     // First, compute snapshots for this month if not already done
     await this.snapshotMonthlyIncomes(period)
@@ -179,26 +259,37 @@ export default class PayoutService {
     let totalAmount = 0
 
     for (const snapshot of snapshots) {
-      // Credit 70% to income wallet
-      const user = await User.findOrFail(snapshot.userId)
-      user.incomeWallet = Number(user.incomeWallet ?? 0) + Number(snapshot.incomeWalletAmount)
-      await user.save()
+      const gross = Number(snapshot.grossAmount)
 
-      // Credit 30% to main wallet as repurchase/gold
-      if (snapshot.repurchaseWalletAmount > 0) {
+      // Apply 70/20/10 split per business rules (10% admin charge retained by platform)
+      const incomeAmount = Math.round(gross * this.INCOME_PERCENT * 100) / 100
+      const repurchaseAmount = Math.round(gross * this.REPURCHASE_PERCENT * 100) / 100
+
+      // 70% → Income Wallet
+      await this.creditIncomeWallet(
+        snapshot.userId,
+        incomeAmount,
+        adminId,
+        `Income wallet (70%) from monthly working income for ${period.toFormat('LLLL yyyy')}`
+      )
+
+      // 20% → Repurchase Wallet (main wallet balance)
+      if (repurchaseAmount > 0) {
         await WalletService.creditWallet(
           snapshot.userId,
-          Number(snapshot.repurchaseWalletAmount),
+          repurchaseAmount,
           adminId,
-          `Monthly income payout (30% repurchase) for ${period.toFormat('LLLL yyyy')}`
+          `Repurchase wallet (20%) from monthly working income for ${period.toFormat('LLLL yyyy')}`
         )
       }
+
+      // 10% Admin Charge is retained by the platform — no user wallet credit
 
       snapshot.paidOutAt = DateTime.now()
       await snapshot.save()
 
       credited++
-      totalAmount += Number(snapshot.grossAmount)
+      totalAmount += gross
     }
 
     await PlatformConfig.set(

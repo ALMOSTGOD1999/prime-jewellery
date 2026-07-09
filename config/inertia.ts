@@ -32,6 +32,10 @@ const inertiaConfig = defineConfig({
               city: user.city,
               state: user.state,
               createdAt: user.createdAt,
+              walletBalance: Number(user.walletBalance ?? 0),
+              incomeWallet: Number(user.incomeWallet ?? 0),
+              rewardWallet: Number(user.rewardWallet ?? 0),
+              repurchaseWallet: Number(user.repurchaseWallet ?? 0),
             }
           : undefined
       }),
@@ -66,6 +70,10 @@ declare module '@adonisjs/inertia/types' {
       state: IndianStatesEnum
       activatedAt: string
       createdAt: string
+      walletBalance: number
+      incomeWallet: number
+      rewardWallet: number
+      repurchaseWallet: number
     }
   }
 }

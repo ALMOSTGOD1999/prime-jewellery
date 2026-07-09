@@ -47,6 +47,7 @@ export default class WalletController {
           id: user.id,
           name: user.name,
           walletBalance: Number(user.walletBalance ?? 0),
+          incomeWallet: Number(user.incomeWallet ?? 0),
         },
       })
     }

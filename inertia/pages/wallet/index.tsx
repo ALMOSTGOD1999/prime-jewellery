@@ -44,6 +44,7 @@ interface WalletPageProps {
     id: number
     name: string
     walletBalance: number
+    incomeWallet?: number
     email?: string
     phone?: string
   }
@@ -192,18 +193,25 @@ function UserWalletView({
               <HugeiconsIcon icon={InformationCircleIcon} className="h-4 w-4 text-amber-600" />
               <AlertTitle className="text-amber-800">Month-end payout pending</AlertTitle>
               <AlertDescription className="text-amber-700">
-                Your income, transactions, and Cashback will be visible after the admin processes the
-                month-end payout.
+                Your income, transactions, and Cashback will be visible after the admin processes
+                the month-end payout.
               </AlertDescription>
             </Alert>
           )}
 
           {/* Balance + Actions */}
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-xl border border-border bg-card p-4">
               <p className="text-sm text-muted-foreground">Available Wallet Balance</p>
               <p className="text-2xl font-bold text-primary">
                 ₹{Number(user.walletBalance).toLocaleString('en-IN')}
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-border bg-card p-4">
+              <p className="text-sm text-muted-foreground">Income Wallet</p>
+              <p className="text-2xl font-bold text-emerald">
+                ₹{Number(user.incomeWallet ?? 0).toLocaleString('en-IN')}
               </p>
             </div>
 

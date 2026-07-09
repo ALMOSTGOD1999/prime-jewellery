@@ -9,11 +9,14 @@ import WalletService from '#services/wallet_service'
 import { WithdrawlStatusEnum, WithdrawlTypeEnum } from '#enums/withdrawl'
 
 const INCOME_WALLET_PERCENT = 70
-const GOLD_WALLET_PERCENT = 30
+const REPURCHASE_WALLET_PERCENT = 20
+const ADMIN_CHARGE_PERCENT = 10
 
 export default class InvestmentService {
   static incomeWalletPercent = INCOME_WALLET_PERCENT
-  static goldWalletPercent = GOLD_WALLET_PERCENT
+  static repurchaseWalletPercent = REPURCHASE_WALLET_PERCENT
+  static adminChargePercent = ADMIN_CHARGE_PERCENT
+  static goldWalletPercent = REPURCHASE_WALLET_PERCENT
 
   static roundMoney(value: number) {
     return Math.round((value + Number.EPSILON) * 100) / 100
@@ -39,12 +42,14 @@ export default class InvestmentService {
 
     const returnAmount = this.roundMoney((investmentAmount * monthlyReturnPercent) / 100)
     const incomeAmount = this.roundMoney((returnAmount * INCOME_WALLET_PERCENT) / 100)
-    const goldAmount = this.roundMoney(returnAmount - incomeAmount)
+    const repurchaseAmount = this.roundMoney((returnAmount * REPURCHASE_WALLET_PERCENT) / 100)
+    const adminCharge = this.roundMoney(returnAmount - incomeAmount - repurchaseAmount)
 
     return {
       returnAmount,
       incomeAmount,
-      goldAmount,
+      repurchaseAmount,
+      adminCharge,
       monthlyReturnPercent,
     }
   }
@@ -151,7 +156,7 @@ export default class InvestmentService {
         totalWithdrawn,
         availableIncome: Math.max(0, this.roundMoney(totalIncome - totalWithdrawn)),
         incomeWalletPercent: INCOME_WALLET_PERCENT,
-        goldWalletPercent: GOLD_WALLET_PERCENT,
+        goldWalletPercent: REPURCHASE_WALLET_PERCENT,
       },
     }
   }
@@ -216,7 +221,7 @@ export default class InvestmentService {
       const rate = Number(investment.monthlyReturnRate) || 3
       const returnAmount = this.roundMoney((Number(investment.amount) * rate) / 100)
       const incomeAmount = this.roundMoney((returnAmount * INCOME_WALLET_PERCENT) / 100)
-      const goldAmount = this.roundMoney(returnAmount - incomeAmount)
+      const repurchaseAmount = this.roundMoney((returnAmount * REPURCHASE_WALLET_PERCENT) / 100)
 
       await InvestmentReturnDistribution.create({
         investmentId: investment.id,
@@ -225,7 +230,7 @@ export default class InvestmentService {
         investmentAmount: investment.amount,
         returnAmount,
         incomeAmount,
-        goldAmount,
+        goldAmount: repurchaseAmount,
         goldTransactionId: null,
         incomeWalletTransactionId: null,
         paidOutAt: null,

@@ -155,6 +155,7 @@ export default class WalletService {
         email: user.email,
         phone: user.phone,
         walletBalance: Number(user.walletBalance ?? 0),
+        incomeWallet: Number(user.incomeWallet ?? 0),
       },
       transactions: {
         meta: transactions.getMeta(),
