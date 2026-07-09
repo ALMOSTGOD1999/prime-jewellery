@@ -1,5 +1,6 @@
 import { BaseCommand, args, flags } from '@adonisjs/core/ace'
 import type { CommandOptions } from '@adonisjs/core/types/ace'
+import { DateTime } from 'luxon'
 import User from '#models/user'
 import { UserRoleEnum, UserGenderEnum } from '#enums/user'
 
@@ -56,8 +57,12 @@ export default class MakeUser extends BaseCommand {
         gender: gender,
         role: role,
         password: password,
+        activatedAt: role === UserRoleEnum.ADMIN ? DateTime.now() : null,
       })
       this.logger.success(`User created successfully! ID: ${user.id}`)
+      if (role === UserRoleEnum.ADMIN) {
+        this.logger.info('Admin account is auto-activated.')
+      }
     } catch (error) {
       this.logger.error(`Failed to create user: ${error.message}`)
     }
