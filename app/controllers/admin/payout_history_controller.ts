@@ -10,58 +10,42 @@ export default class AdminPayoutHistoryController {
     const limit = 50
     const offset = (page - 1) * limit
 
-    // Get available months (from transactions and snapshots)
+    // Convert "2026-06" to "June 2026" for remark matching
+    const monthName = DateTime.fromISO(month + '-01').toFormat('LLLL yyyy')
+
+    // Available months from snapshots (accurate month tracking)
     const months = await db.rawQuery(
-      `SELECT DISTINCT to_char(created_at, 'YYYY-MM') as month
-       FROM transactions
-       WHERE remark ILIKE '%working income%' OR remark ILIKE '%investment return%'
-       UNION
-       SELECT DISTINCT to_char(month, 'YYYY-MM') as month
+      `SELECT DISTINCT to_char(month, 'YYYY-MM') as month
        FROM monthly_income_snapshots
        WHERE paid_out_at IS NOT NULL
        ORDER BY month DESC`
     )
 
-    // Get payout transactions for selected month
+    // Transactions matching the month name in remark
     const txns = await db.rawQuery(
       `SELECT t.id, t.user_id, u.name as user_name, t.amount, t.type, t.remark, t.created_at
-       FROM transactions t
-       LEFT JOIN users u ON t.user_id = u.id
-       WHERE (
-         (t.remark ILIKE '%working income for ' || ? || '%')
-         OR (t.remark ILIKE '%investment return for ' || ? || '%')
-         OR (t.remark ILIKE '%REVERSAL%' || ? || '%')
-       )
-       ORDER BY t.created_at DESC
-       LIMIT ? OFFSET ?`,
-      [month, month, month, limit, offset]
+       FROM transactions t LEFT JOIN users u ON t.user_id = u.id
+       WHERE (t.remark ILIKE '%' || ? || '%')
+         AND (t.remark ILIKE '%working income%' OR t.remark ILIKE '%investment return%' OR t.remark ILIKE '%REVERSAL%Duplicate%')
+       ORDER BY t.created_at DESC LIMIT ? OFFSET ?`,
+      [monthName, limit, offset]
     )
 
-    // Count total
     const countResult = await db.rawQuery(
       `SELECT count(*)::int as total FROM transactions
-       WHERE (
-         (remark ILIKE '%working income for ' || ? || '%')
-         OR (remark ILIKE '%investment return for ' || ? || '%')
-         OR (remark ILIKE '%REVERSAL%' || ? || '%')
-       )`,
-      [month, month, month]
+       WHERE (remark ILIKE '%' || ? || '%')
+         AND (remark ILIKE '%working income%' OR remark ILIKE '%investment return%' OR remark ILIKE '%REVERSAL%Duplicate%')`,
+      [monthName]
     )
 
-    // Summary for selected month
     const summary = await db.rawQuery(
-      `SELECT
-         count(*)::int as total_txns,
-         count(DISTINCT user_id)::int as unique_users,
+      `SELECT count(*)::int as total_txns, count(DISTINCT user_id)::int as unique_users,
          coalesce(sum(amount) FILTER (WHERE type = 'wallet_credit'), 0)::float as total_credited,
          coalesce(sum(amount) FILTER (WHERE type = 'wallet_debit'), 0)::float as total_reversed
        FROM transactions
-       WHERE (
-         (remark ILIKE '%working income for ' || ? || '%')
-         OR (remark ILIKE '%investment return for ' || ? || '%')
-         OR (remark ILIKE '%REVERSAL%' || ? || '%')
-       )`,
-      [month, month, month]
+       WHERE (remark ILIKE '%' || ? || '%')
+         AND (remark ILIKE '%working income%' OR remark ILIKE '%investment return%' OR remark ILIKE '%REVERSAL%Duplicate%')`,
+      [monthName]
     )
 
     const totalRecords = countResult.rows[0].total
