@@ -46,6 +46,7 @@ interface WalletPageProps {
     walletBalance: number
     incomeWallet?: number
     repurchaseWallet?: number
+    workingWallet?: number
     email?: string
     phone?: string
   }
@@ -135,7 +136,14 @@ function UserWalletView({
   isActivated,
   isPayoutReleased,
 }: {
-  user: { id: number; name: string; walletBalance: number }
+  user: {
+    id: number
+    name: string
+    walletBalance: number
+    incomeWallet?: number
+    repurchaseWallet?: number
+    workingWallet?: number
+  }
   transactions: { data: any[]; meta: any }
   isActivated: boolean
   isPayoutReleased: boolean
@@ -201,7 +209,7 @@ function UserWalletView({
           )}
 
           {/* Balance + Actions */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
             <div className="rounded-xl border border-border bg-card p-4">
               <p className="text-sm text-muted-foreground">Available Wallet Balance</p>
               <p className="text-2xl font-bold text-primary">
@@ -220,6 +228,13 @@ function UserWalletView({
               <p className="text-sm text-muted-foreground">Repurchase Wallet</p>
               <p className="text-2xl font-bold text-purple-600">
                 ₹{Number((user as any).repurchaseWallet ?? 0).toLocaleString('en-IN')}
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-border bg-card p-4">
+              <p className="text-sm text-muted-foreground">Working Wallet</p>
+              <p className="text-2xl font-bold text-purple">
+                ₹{Number(user.workingWallet ?? 0).toLocaleString('en-IN')}
               </p>
             </div>
 

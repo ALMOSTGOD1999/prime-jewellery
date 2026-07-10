@@ -4,6 +4,7 @@ import { filterValidator, paginationValidator } from '#validators/common_validat
 import WalletService from '#services/wallet_service'
 import UserService from '#services/user_service'
 import PayoutService from '#services/payout_service'
+import db from '@adonisjs/lucid/services/db'
 
 const addBalanceValidator = vine.compile(
   vine.object({
@@ -61,6 +62,19 @@ export default class WalletController {
       sortOrder,
     })
 
+    // Compute total working income from transactions (net: credits - debits)
+    const workingRes = await db.rawQuery(
+      `SELECT coalesce(sum(
+         CASE
+           WHEN type = 'wallet_credit' THEN amount
+           WHEN type = 'wallet_debit' THEN -amount
+           ELSE 0
+         END
+       ), 0)::float as total
+       FROM transactions WHERE user_id = ? AND remark ILIKE '%working income%'`,
+      [user.id]
+    )
+
     const isPayoutReleased = await PayoutService.isPayoutReleased()
     const visibleCutoffEnd = await PayoutService.getVisibleCutoffEndOfMonth()
 
@@ -83,7 +97,7 @@ export default class WalletController {
 
     return inertia.render('wallet/index', {
       isAdmin: false,
-      user: userData,
+      user: { ...userData, workingWallet: Number(workingRes.rows[0]?.total ?? 0) },
       transactions: visibleTransactions,
       activationAmount: 1000,
       isActivated: !!user.activatedAt,

@@ -25,9 +25,16 @@ export default class DashboardController {
     const metrics = await RewardService.getDashboardMetrics(user)
     const isPayoutReleased = await PayoutService.isPayoutReleased()
 
-    // Compute total working income from transactions
+    // Compute total working income from transactions (net: credits - debits)
     const workingRes = await db.rawQuery(
-      `SELECT coalesce(sum(amount), 0)::float as total FROM transactions WHERE user_id = ? AND type = 'wallet_credit' AND remark ILIKE '%working income%'`,
+      `SELECT coalesce(sum(
+         CASE
+           WHEN type = 'wallet_credit' THEN amount
+           WHEN type = 'wallet_debit' THEN -amount
+           ELSE 0
+         END
+       ), 0)::float as total
+       FROM transactions WHERE user_id = ? AND remark ILIKE '%working income%'`,
       [user.id]
     )
 
