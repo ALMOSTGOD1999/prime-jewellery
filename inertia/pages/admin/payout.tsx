@@ -225,6 +225,20 @@ export default function AdminPayoutPage({
               </AlertDescription>
             </Alert>
           )}
+
+          <Card>
+            <CardContent className="py-4 flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                View every payout transaction with amounts per user.
+              </p>
+              <a
+                href="/admin/payout/history"
+                className="text-sm text-primary hover:underline font-medium"
+              >
+                View Payout History →
+              </a>
+            </CardContent>
+          </Card>
         </Main>
       </AppLayout>
     </>

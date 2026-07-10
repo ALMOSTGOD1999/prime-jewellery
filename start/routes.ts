@@ -398,6 +398,8 @@ router
 
     ////// Month-end Payout
     const AdminPayoutController = () => import('#controllers/admin/payout_controller')
+    const AdminPayoutHistoryController = () =>
+      import('#controllers/admin/payout_history_controller')
     router
       .group(() => {
         router.get('/', [AdminPayoutController, 'index']).as('page')
@@ -408,6 +410,7 @@ router
           .post('/working-wallet', [AdminPayoutController, 'workingWalletPayout'])
           .as('working.wallet')
         router.post('/reset', [AdminPayoutController, 'reset']).as('reset')
+        router.get('/history', [AdminPayoutHistoryController, 'index']).as('history')
       })
       .prefix('payout')
       .as('payout')
