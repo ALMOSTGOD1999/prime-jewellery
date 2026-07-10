@@ -7,6 +7,7 @@ import User from '#models/user'
 import Purchase from '#models/purchase'
 import Transaction from '#models/transaction'
 import WalletService from '#services/wallet_service'
+import RewardService from '#services/reward_service'
 import { WithdrawlTypeEnum } from '#enums/withdrawl'
 import { TransactionTypeEnum } from '#enums/transaction'
 import InvestmentService from '#services/investment_service'
@@ -115,7 +116,6 @@ export default class PayoutService {
 
   static async snapshotMonthlyIncomes(month: DateTime) {
     const period = month.startOf('month')
-    const periodEnd = period.endOf('month')
 
     const users = await User.query().where('role', 'user').whereNotNull('activated_at')
 
@@ -128,29 +128,7 @@ export default class PayoutService {
         .first()
       if (existing) continue
 
-      const purchaseRes = await Purchase.query()
-        .where('user_id', user.id)
-        .whereNotNull('approved_at')
-        .whereNull('cancelled_at')
-        .whereBetween('approved_at', [period.toSQL()!, periodEnd.toSQL()!])
-        .sum('amount as total')
-        .first()
-      const purchaseAmount = Number(purchaseRes?.$extras?.total || 0)
-
-      const children = await user.related('children').query().whereNotNull('activated_at')
-      let sponsorIncome = 0
-      for (const child of children) {
-        const childPurchases = await Purchase.query()
-          .where('user_id', child.id)
-          .whereNotNull('approved_at')
-          .whereNull('cancelled_at')
-          .whereBetween('approved_at', [period.toSQL()!, periodEnd.toSQL()!])
-          .sum('amount as total')
-          .first()
-        sponsorIncome += Number(childPurchases?.$extras?.total || 0)
-      }
-
-      const grossAmount = purchaseAmount + sponsorIncome
+      const grossAmount = await RewardService.getUserMonthlyWorkingIncome(user, period)
 
       if (grossAmount <= 0) continue
 

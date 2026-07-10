@@ -3,6 +3,10 @@ import db from '@adonisjs/lucid/services/db'
 import { DateTime } from 'luxon'
 import User from '#models/user'
 import Transaction from '#models/transaction'
+import PayoutService from '#services/payout_service'
+import RewardService from '#services/reward_service'
+import MonthlyIncomeSnapshot from '#models/monthly_income_snapshot'
+import InvestmentReturnDistribution from '#models/investment_return_distribution'
 
 export default class DebugController {
   async payout({ response, request }: HttpContext) {
@@ -160,6 +164,121 @@ export default class DebugController {
         amount: t.amount,
         remark: t.remark,
       })),
+    })
+  }
+
+  async dryRunPayout({ request, response }: HttpContext) {
+    const monthParam = request.qs().month as string | undefined
+    const month = monthParam
+      ? DateTime.fromISO(monthParam + '-01').startOf('month')
+      : DateTime.now().minus({ months: 1 }).startOf('month')
+    const monthStr = month.toFormat('yyyy-MM')
+
+    // 1. Income Wallet Payout preview
+    const distributions = await InvestmentReturnDistribution.query()
+      .where('period_month', month.toISODate()!)
+      .whereNull('paid_out_at')
+
+    const incomePreview = distributions.map((d) => {
+      const gross = Number(d.returnAmount)
+      return {
+        userId: d.userId,
+        investmentId: d.investmentId,
+        investmentAmount: Number(d.investmentAmount),
+        returnPercent: (Number(d.returnAmount) / Number(d.investmentAmount)) * 100,
+        grossReturn: gross,
+        incomeWallet70: Math.round(gross * PayoutService.INCOME_PERCENT * 100) / 100,
+        repurchaseWallet20: Math.round(gross * PayoutService.REPURCHASE_PERCENT * 100) / 100,
+      }
+    })
+
+    const incomeSummary = {
+      count: incomePreview.length,
+      totalGross: incomePreview.reduce((s, d) => s + d.grossReturn, 0),
+      totalIncome70: incomePreview.reduce((s, d) => s + d.incomeWallet70, 0),
+      totalRepurchase20: incomePreview.reduce((s, d) => s + d.repurchaseWallet20, 0),
+    }
+
+    // 2. Working Wallet Payout preview (uses corrected logic)
+    const users = await User.query().where('role', 'user').whereNotNull('activated_at')
+    const workingPreview: any[] = []
+
+    for (const user of users) {
+      const existing = await MonthlyIncomeSnapshot.query()
+        .where('user_id', user.id)
+        .where('month', month.toISODate()!)
+        .first()
+
+      if (existing && existing.paidOutAt) continue // already paid
+
+      const grossAmount = await RewardService.getUserMonthlyWorkingIncome(user, month)
+      if (grossAmount <= 0) continue
+
+      const incomeWalletAmount = Math.round(grossAmount * PayoutService.INCOME_PERCENT * 100) / 100
+      const repurchaseWalletAmount =
+        Math.round(grossAmount * PayoutService.REPURCHASE_PERCENT * 100) / 100
+
+      // Fetch breakdown sources separately to avoid lint errors on inline await chains
+      const cbRes = await RewardService.getActivationCashbackRewards(user, {
+        limit: 100,
+        asOf: month.endOf('month'),
+      })
+      const spRes = await RewardService.getActivationSponsorRewards(user, {
+        limit: 100,
+        asOf: month.endOf('month'),
+      })
+      const lvRes = await RewardService.getLevelRewards(user, {
+        limit: 1,
+        asOf: month.endOf('month'),
+      })
+      const emRes = await RewardService.getEmiLevelRewards(user, {
+        limit: 1,
+        asOf: month.endOf('month'),
+      })
+
+      const breakdown = {
+        activationCashback: cbRes.data
+          .filter((r: any) => r.date?.startsWith(monthStr))
+          .reduce((s: number, r: any) => s + r.amount, 0),
+        activationSponsor: spRes.data
+          .filter((r: any) => r.date?.startsWith(monthStr))
+          .reduce((s: number, r: any) => s + r.amount, 0),
+        levelIncome: lvRes.data
+          .filter((r: any) => r.date?.startsWith(monthStr))
+          .reduce((s: number, r: any) => s + r.amount, 0),
+        emiLevel: emRes.data
+          .filter((r: any) => r.date?.startsWith(monthStr))
+          .reduce((s: number, r: any) => s + r.amount, 0),
+      }
+
+      workingPreview.push({
+        userId: user.id,
+        name: user.name,
+        grossAmount,
+        incomeWallet70: incomeWalletAmount,
+        repurchaseWallet20: repurchaseWalletAmount,
+        breakdown,
+      })
+    }
+
+    const workingSummary = {
+      count: workingPreview.length,
+      totalGross: workingPreview.reduce((s, d) => s + d.grossAmount, 0),
+      totalIncome70: workingPreview.reduce((s, d) => s + d.incomeWallet70, 0),
+      totalRepurchase20: workingPreview.reduce((s, d) => s + d.repurchaseWallet20, 0),
+    }
+
+    return response.json({
+      month: monthStr,
+      incomeWalletPayout: {
+        summary: incomeSummary,
+        preview: incomePreview.slice(0, 20), // limit output
+      },
+      workingWalletPayout: {
+        summary: workingSummary,
+        preview: workingPreview.slice(0, 20),
+      },
+      note: 'This is a dry run. No wallets were credited.',
     })
   }
 }

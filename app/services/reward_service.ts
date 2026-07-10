@@ -16,9 +16,10 @@ export default class RewardService {
       limit?: number
       sortBy?: string
       sortOrder?: 'asc' | 'desc'
+      asOf?: DateTime
     } = {}
   ) {
-    const { page = 1, limit = 10, sortBy = 'date', sortOrder = 'desc' } = filters
+    const { page = 1, limit = 10, sortBy = 'date', sortOrder = 'desc', asOf } = filters
 
     if (!user.activatedAt) {
       return {
@@ -47,12 +48,12 @@ export default class RewardService {
     const monthlyAmount = totalCashback / 2 // 50 per month
 
     const activatedAt = DateTime.fromJSDate(new Date(user.activatedAt.toString()))
-    const now = DateTime.now()
+    const asOfDate = asOf || DateTime.now()
     const rewards: any[] = []
 
     // Month 1: 5% (50)
     const month1Date = activatedAt.plus({ months: 1 })
-    if (now >= month1Date) {
+    if (asOfDate >= month1Date) {
       rewards.push({
         id: 1,
         date: month1Date.toFormat('yyyy-MM-dd HH:mm:ss'),
@@ -63,7 +64,7 @@ export default class RewardService {
 
     // Month 2: 5% (50)
     const month2Date = activatedAt.plus({ months: 2 })
-    if (now >= month2Date) {
+    if (asOfDate >= month2Date) {
       rewards.push({
         id: 2,
         date: month2Date.toFormat('yyyy-MM-dd HH:mm:ss'),
@@ -130,15 +131,17 @@ export default class RewardService {
       sortBy?: string
       sortOrder?: 'asc' | 'desc'
       search?: string
+      asOf?: DateTime
     } = {}
   ) {
-    const { page = 1, limit = 10, sortBy = 'date', sortOrder = 'desc', search = '' } = filters
+    const { page = 1, limit = 10, sortBy = 'date', sortOrder = 'desc', search = '', asOf } = filters
 
     // Get direct children who are activated
     const directChildren = await user
       .related('children')
       .query()
       .whereNotNull('activated_at')
+      .if(asOf, (q) => q.where('activated_at', '<=', asOf!.toSQL()!))
       .if(search, (query) => {
         query.where('name', 'ILIKE', `%${search}%`)
       })
@@ -218,9 +221,10 @@ export default class RewardService {
       sortBy?: string
       sortOrder?: 'asc' | 'desc'
       search?: string
+      asOf?: DateTime
     } = {}
   ) {
-    const { page = 1, limit = 10, sortBy = 'date', sortOrder = 'desc', search = '' } = filters
+    const { page = 1, limit = 10, sortBy = 'date', sortOrder = 'desc', search = '', asOf } = filters
 
     // 1. Get direct children count to determine eligibility depth
     const directChildrenCountRes = await user.related('children').query().count('* as total')
@@ -236,6 +240,10 @@ export default class RewardService {
     else if (directCount >= 1) maxDepth = 3
 
     // 2. Fetch activated descendants using CTE (up to maxDepth)
+    const asOfCondition = asOf ? 'AND activated_at <= ?' : ''
+    const params: any[] = [user.id, maxDepth]
+    if (asOf) params.push(asOf.toSQL()!)
+
     const descendants = await db.rawQuery(
       `
       WITH RECURSIVE descendants AS (
@@ -251,8 +259,9 @@ export default class RewardService {
       SELECT * FROM descendants
       WHERE activated_at IS NOT NULL
       ${search ? "AND name ILIKE '%" + search.replace(/'/g, "''") + "%'" : ''}
+      ${asOfCondition}
       `,
-      [user.id, maxDepth]
+      params
     )
 
     if (descendants.rows.length === 0) {
@@ -284,11 +293,11 @@ export default class RewardService {
     const rewards: any[] = []
     let totalEligible = 0
     let totalWithdrawable = 0
-    const now = DateTime.now()
+    const asOfDate = asOf || DateTime.now()
 
     for (const member of descendants.rows) {
       const activatedAt = DateTime.fromJSDate(member.activated_at)
-      const monthsElapsed = now.diff(activatedAt, 'months').months
+      const monthsElapsed = asOfDate.diff(activatedAt, 'months').months
 
       // Percentage Logic
       const depth = member.depth
@@ -568,9 +577,10 @@ export default class RewardService {
       limit?: number
       sortBy?: string
       sortOrder?: 'asc' | 'desc'
+      asOf?: DateTime
     } = {}
   ) {
-    const { page = 1, limit = 10, sortBy = 'date', sortOrder = 'desc' } = filters
+    const { page = 1, limit = 10, sortBy = 'date', sortOrder = 'desc', asOf } = filters
 
     // 1. Get direct children count
     const directChildren = await user.related('children').query().count('* as total')
@@ -691,7 +701,7 @@ export default class RewardService {
       const startDate = DateTime.fromJSDate(
         new Date(validPurchases[0].approvedAt!.toString())
       ).startOf('day')
-      const endDate = DateTime.now().setZone(env.get('TZ')).startOf('day')
+      const endDate = (asOf || DateTime.now().setZone(env.get('TZ'))).startOf('day')
 
       for (let date = startDate; date <= endDate; date = date.plus({ days: 1 })) {
         // Calculate cumulative purchase amount until the current date
@@ -937,9 +947,10 @@ export default class RewardService {
       limit?: number
       sortBy?: string
       sortOrder?: 'asc' | 'desc'
+      asOf?: DateTime
     } = {}
   ) {
-    const { page = 1, limit = 10, sortBy = 'date', sortOrder = 'desc' } = filters
+    const { page = 1, limit = 10, sortBy = 'date', sortOrder = 'desc', asOf } = filters
 
     // 1. Get direct children count
     const directChildren = await user.related('children').query().count('* as total')
@@ -1058,7 +1069,7 @@ export default class RewardService {
       const startDate = DateTime.fromJSDate(new Date(userTransactions[0].approved_at)).startOf(
         'day'
       )
-      const endDate = DateTime.now().setZone(env.get('TZ')).startOf('day')
+      const endDate = (asOf || DateTime.now().setZone(env.get('TZ'))).startOf('day')
 
       for (let date = startDate; date <= endDate; date = date.plus({ days: 1 })) {
         // Calculate cumulative EMI amount paid until current date
@@ -1097,7 +1108,7 @@ export default class RewardService {
 
     // Calculate Stats
     const totalRewards = rewards.reduce((sum, r) => sum + r.amount, 0)
-    const currentMonth = DateTime.now().setZone(env.get('TZ')).toFormat('yyyy-MM')
+    const currentMonth = (asOf || DateTime.now().setZone(env.get('TZ'))).toFormat('yyyy-MM')
     const thisMonthRewards = rewards
       .filter((r) => r.date.startsWith(currentMonth))
       .reduce((sum, r) => sum + r.amount, 0)
@@ -1596,6 +1607,76 @@ export default class RewardService {
         })
         .filter((item) => item !== null),
     }
+  }
+
+  /**
+   * Compute total working-wallet-eligible income earned by a user during a specific month.
+   * Excludes monthly investment return (handled separately by income-wallet payout).
+   */
+  static async getUserMonthlyWorkingIncome(user: User, month: DateTime): Promise<number> {
+    const monthStr = month.toFormat('yyyy-MM')
+    const monthStart = month.startOf('month')
+    const monthEnd = month.endOf('month')
+
+    let total = 0
+
+    // 1. Activation Cashback
+    const activationCashback = await this.getActivationCashbackRewards(user, {
+      limit: 100,
+      asOf: monthEnd,
+    })
+    const cashbackInMonth = activationCashback.data
+      .filter((r: any) => r.date?.startsWith(monthStr))
+      .reduce((sum: number, r: any) => sum + r.amount, 0)
+    total += cashbackInMonth
+
+    // 2. Activation Sponsor
+    const activationSponsor = await this.getActivationSponsorRewards(user, {
+      limit: 100,
+      asOf: monthEnd,
+    })
+    const sponsorInMonth = activationSponsor.data
+      .filter((r: any) => r.date?.startsWith(monthStr))
+      .reduce((sum: number, r: any) => sum + r.amount, 0)
+    total += sponsorInMonth
+
+    // 3. Activation Level — incremental amount earned during this month
+    const activationLevelEnd = await this.getActivationLevelRewards(user, {
+      limit: 1,
+      asOf: monthEnd,
+    })
+    const eligibleAtEnd = activationLevelEnd.stats.totalEligible
+
+    const activationLevelStart = await this.getActivationLevelRewards(user, {
+      limit: 1,
+      asOf: monthStart.minus({ days: 1 }),
+    })
+    const eligibleAtStart = activationLevelStart.stats.totalEligible
+    total += Math.max(0, eligibleAtEnd - eligibleAtStart)
+
+    // 4. Level Income (purchase-based)
+    const levelRewards = await this.getLevelRewards(user, { limit: 1, asOf: monthEnd })
+    const levelInMonth = levelRewards.data
+      .filter((r: any) => r.date?.startsWith(monthStr))
+      .reduce((sum: number, r: any) => sum + r.amount, 0)
+    total += levelInMonth
+
+    // 5. EMI Level Income
+    const emiRewards = await this.getEmiLevelRewards(user, { limit: 1, asOf: monthEnd })
+    const emiInMonth = emiRewards.data
+      .filter((r: any) => r.date?.startsWith(monthStr))
+      .reduce((sum: number, r: any) => sum + r.amount, 0)
+    total += emiInMonth
+
+    // 6. Salary (performance incentive) — count when created
+    const salaries = await user
+      .related('salaries')
+      .query()
+      .whereBetween('created_at', [monthStart.toSQL()!, monthEnd.toSQL()!])
+    const salaryInMonth = salaries.reduce((sum, s) => sum + (s.info?.reward || 0), 0)
+    total += salaryInMonth
+
+    return Math.round(total * 100) / 100
   }
 
   static getAchievementInfo(powerAmount: number, weakerAmount: number) {
