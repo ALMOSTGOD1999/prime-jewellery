@@ -34,12 +34,10 @@ export default class CalculateSalaries extends BaseCommand {
     for (const user of users) {
       try {
         // 1. Calculate Lifetime Power and Weaker
-        const { power, weaker } = await RewardService.getPowerAndWeaker(user, endDate)
+        const { power, weaker, legAmounts } = await RewardService.getPowerAndWeaker(user, endDate)
         const total = power + weaker
 
-        // 2. Determine Eligible Designation based on standard criteria
-        // We pass the raw lifetime amounts. getSalaryInfo checks against standard criteria.
-        const eligibleInfo = RewardService.getSalaryInfo(power, weaker)
+        const eligibleInfo = RewardService.getSalaryInfo(legAmounts || [])
 
         if (!eligibleInfo) {
           continue

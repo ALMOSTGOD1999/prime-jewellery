@@ -26,7 +26,7 @@ export default class Salary extends compose(BaseModel, withID(), withTimestamps(
 
   @computed()
   get info() {
-    return RewardService.getSalaryInfo(this.power, this.weaker)
+    return RewardService.getSalaryInfo([this.power, this.weaker])
   }
 
   @belongsTo(() => User)

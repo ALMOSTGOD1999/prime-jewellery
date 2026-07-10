@@ -117,8 +117,8 @@ export default function SalaryRewards({
 
   return (
     <AppLayout>
-      <Head title="Salary Rewards" />
-      <Header>Salary Rewards</Header>
+      <Head title="Performance Incentive" />
+      <Header>Performance Incentive</Header>
       <Main className="space-y-4">
         {!isPayoutReleased && (
           <Alert className="border-amber-200 bg-amber-50/50">
@@ -156,7 +156,7 @@ export default function SalaryRewards({
           <WithdrawalModal
             maxAmount={rewards.stats.availableBalance}
             type="salary"
-            label="Salary Reward"
+            label="Performance Incentive"
             enabled={isEnabled}
             disabledMessage={disabledMessage}
           />

@@ -3,7 +3,7 @@ import { DateTime } from 'luxon'
 import env from '#start/env'
 import db from '@adonisjs/lucid/services/db'
 import Purchase from '#models/purchase'
-import { SALARY_CONFIG } from '#enums/salary'
+import { checkMatchingRatio, getPerformanceIncentiveRank } from '#enums/performance_incentive'
 import { ACHIEVEMENT_REWARD_CONFIG } from '#enums/achievement'
 
 export default class RewardService {
@@ -512,74 +512,37 @@ export default class RewardService {
       sortOrder?: 'asc' | 'desc'
     } = {}
   ) {
-    const { page = 1, limit = 10, sortBy = 'date', sortOrder = 'desc' } = filters
+    const { page = 1, limit = 10, sortOrder = 'desc' } = filters
 
-    const purchases = await user
-      .related('purchases')
-      .query()
-      .whereNotNull('approvedAt')
-      .orderBy('approvedAt', 'asc')
+    // Cashback = monthly 3% investment return (full amount, before wallet split)
+    const distributions = await db
+      .from('investment_return_distributions')
+      .where('user_id', user.id)
+      .orderBy('period_month', sortOrder === 'asc' ? 'asc' : 'desc')
 
-    if (purchases.length === 0) {
-      return {
-        meta: {
-          total: 0,
-          per_page: limit,
-          current_page: page,
-          last_page: 1,
-          first_page: 1,
-          first_page_url: '/?page=1',
-          last_page_url: '/?page=1',
-          next_page_url: null,
-          previous_page_url: null,
-        },
-        data: [],
-        stats: {
-          totalRewards: 0,
-          thisMonthRewards: 0,
-        },
-      }
-    }
-
-    const rewardsMap = this.calculateDailyCashbackRewards(purchases)
-    const rewards = Array.from(rewardsMap.entries()).map(([date, amount]) => ({
-      date,
-      amount,
+    const rewards = distributions.map((d: any) => ({
+      date: d.period_month,
+      amount: Number(d.return_amount),
     }))
 
-    // Sorting
-    rewards.sort((a, b) => {
-      if (sortBy === 'date') {
-        return sortOrder === 'asc' ? a.date.localeCompare(b.date) : b.date.localeCompare(a.date)
-      } else if (sortBy === 'amount') {
-        return sortOrder === 'asc' ? a.amount - b.amount : b.amount - a.amount
-      }
-      return 0
-    })
-
-    // Calculate Stats
     const totalRewards = rewards.reduce((sum, r) => sum + r.amount, 0)
     const currentMonth = DateTime.now().setZone(env.get('TZ')).toFormat('yyyy-MM')
     const thisMonthRewards = rewards
-      .filter((r) => r.date.startsWith(currentMonth))
-      .reduce((sum, r) => sum + r.amount, 0)
+      .filter((r: any) => r.date?.startsWith(currentMonth))
+      .reduce((sum: number, r: any) => sum + r.amount, 0)
 
-    // Pagination
     const total = rewards.length
     const startIndex = (page - 1) * limit
-    const endIndex = startIndex + limit
-    const paginatedRewards = rewards.slice(startIndex, endIndex)
+    const paginatedRewards = rewards.slice(startIndex, startIndex + limit)
     const lastPage = Math.ceil(total / limit)
 
-    // Fetch total withdrawn for cashback
     const withdrawnRes = await db
       .from('withdrawls')
       .where('user_id', user.id)
       .where('type', 'cashback')
       .whereIn('status', ['pending', 'approved'])
       .sum('amount as total')
-
-    const totalWithdrawn = Number(withdrawnRes[0].total) || 0
+    const totalWithdrawn = Number(withdrawnRes[0]?.total || 0)
 
     return {
       meta: {
@@ -588,87 +551,14 @@ export default class RewardService {
         current_page: page,
         last_page: lastPage,
         first_page: 1,
-        first_page_url: `/?page=1`,
+        first_page_url: '/?page=1',
         last_page_url: `/?page=${lastPage}`,
         next_page_url: page < lastPage ? `/?page=${page + 1}` : null,
         previous_page_url: page > 1 ? `/?page=${page - 1}` : null,
       },
       data: paginatedRewards,
-      stats: {
-        totalRewards: Number(totalRewards.toFixed(2)),
-        thisMonthRewards: Number(thisMonthRewards.toFixed(2)),
-        totalWithdrawn: Number(totalWithdrawn.toFixed(2)),
-      },
+      stats: { totalRewards, thisMonthRewards, totalWithdrawn },
     }
-  }
-
-  private static calculateDailyCashbackRewards(purchases: any[]): Map<string, number> {
-    const validPurchases = purchases.filter((p) => !p.cancelledAt)
-
-    if (validPurchases.length === 0) {
-      return new Map()
-    }
-
-    const startDate = DateTime.fromJSDate(
-      new Date(validPurchases[0].approvedAt!.toString())
-    ).startOf('day')
-    const endDate = DateTime.now().setZone(env.get('TZ')).startOf('day')
-    const rewards = new Map<string, number>()
-    let cumulativeReward = 0
-
-    // Iterate through each day from start date to today
-    for (let date = startDate; date <= endDate; date = date.plus({ days: 1 })) {
-      // Calculate total investment until the current date
-      // For stopped purchases, we only count them if the current date is before or on the stoppedAt date
-      const currentInvestment = validPurchases
-        .filter((p) => {
-          const approvedAt = DateTime.fromJSDate(new Date(p.approvedAt!.toString())).endOf('day')
-          if (approvedAt > date.endOf('day')) return false
-
-          if (p.stoppedAt) {
-            const stoppedAt = DateTime.fromJSDate(new Date(p.stoppedAt!.toString())).endOf('day')
-            if (date.endOf('day') > stoppedAt) return false
-          }
-
-          return true
-        })
-        .reduce((sum, p) => sum + Number(p.amount), 0)
-
-      if (currentInvestment === 0) continue
-
-      // Max reward limit is 70% of the current total investment
-      const limitAmount = currentInvestment * 0.7
-      // Reward rate:
-      // 10k upto 1L: 3%
-      // 1L upto 3L: 3.5%
-      // 3L above: 4%
-      let rate = 0
-      if (currentInvestment > 300000) {
-        rate = 0.04
-      } else if (currentInvestment > 100000) {
-        rate = 0.035
-      } else if (currentInvestment >= 10000) {
-        rate = 0.03
-      }
-
-      let dailyReward = (currentInvestment * rate * 12) / 365
-
-      // Check if adding this daily reward exceeds the limit
-      if (cumulativeReward + dailyReward > limitAmount) {
-        dailyReward = Math.max(0, limitAmount - cumulativeReward)
-      }
-
-      if (dailyReward > 0) {
-        rewards.set(date.toISODate()!, Number(dailyReward.toFixed(2)))
-        cumulativeReward += dailyReward
-      } else if (cumulativeReward >= limitAmount) {
-        // If we hit the limit, we might stop or continue with 0.
-        // The requirement says "till 70% to the total approved purchases".
-        // If investment increases later, limit increases, so we should continue checking.
-        rewards.set(date.toISODate()!, 0)
-      }
-    }
-    return rewards
   }
 
   static async getLevelRewards(
@@ -1399,31 +1289,25 @@ export default class RewardService {
     }
   }
 
-  static getSalaryInfo(powerAmount: number, weakerAmount: number) {
-    const totalAmount = powerAmount + weakerAmount
+  /**
+   * Performance Incentive using 60:40 matching ratio across genealogy legs.
+   */
+  static getSalaryInfo(legAmounts: number[]) {
+    const ratio = checkMatchingRatio(legAmounts)
+    if (!ratio.matched) return null
 
-    // 1. Create a reversed copy of the list (Highest Criteria -> Lowest Criteria)
-    const descendingLevels = Object.values(SALARY_CONFIG)
-      .sort((a, b) => a.criteria - b.criteria)
-      .reverse()
+    const rank = getPerformanceIncentiveRank(ratio.total)
+    if (!rank) return null
 
-    // 2. Iterate down through the levels
-    for (const level of descendingLevels) {
-      const C = level.criteria
-
-      // The Conditions
-      const meetsTotal = totalAmount >= C
-      const meetsPower = powerAmount >= C * 0.6
-      const meetsWeaker = weakerAmount >= C * 0.4
-
-      // 3. Return immediately if all conditions pass
-      if (meetsTotal && meetsPower && meetsWeaker) {
-        return { ...level, extra: totalAmount - C }
-      }
+    return {
+      designation: rank.designation,
+      reward: rank.reward,
+      criteria: rank.criteria,
+      totalBusiness: ratio.total,
+      topLeg: ratio.topLeg,
+      otherLegs: ratio.otherLegs,
+      matched: true,
     }
-
-    // 4. Return null if no criteria matches (e.g., total is too low for even the first level)
-    return null
   }
 
   static async getPowerAndWeaker(user: User, endDate?: DateTime) {
@@ -1479,10 +1363,9 @@ export default class RewardService {
     childrenVolumes.sort((a, b) => b - a)
 
     const power = childrenVolumes.length > 0 ? childrenVolumes[0] : 0
-    // Sum of all other legs is weaker
     const weaker = childrenVolumes.slice(1).reduce((sum, val) => sum + val, 0)
 
-    return { power, weaker }
+    return { power, weaker, legAmounts: childrenVolumes }
   }
 
   static async getSalaryStats(user: User) {
@@ -1497,13 +1380,7 @@ export default class RewardService {
 
     for (const salary of salaries) {
       if (!salary.info) continue
-
-      const amount =
-        salary.info.monthlyIncentive +
-        (salary.info.houseFund || 0) +
-        salary.info.travelAllowance +
-        (salary.info.carFund || 0)
-
+      const amount = salary.info.reward
       totalAllTime += amount
 
       const createdAt = salary.createdAt.setZone(env.get('TZ'))
@@ -1620,7 +1497,11 @@ export default class RewardService {
 
     // 4. Power & Weaker (Lifetime up to now)
     // We use the helper to get stats for all legs
-    const { power: powerToday, weaker: weakerToday } = await this.getPowerAndWeaker(user)
+    const {
+      power: powerToday,
+      weaker: weakerToday,
+      legAmounts,
+    } = await this.getPowerAndWeaker(user)
 
     return {
       myDirects,
@@ -1632,7 +1513,7 @@ export default class RewardService {
       teamBusinessMonth,
       powerToday,
       weakerToday,
-      designation: this.getSalaryInfo(powerToday, weakerToday)?.designation || 'N/A',
+      designation: this.getSalaryInfo(legAmounts || [])?.designation || 'N/A',
     }
   }
 
@@ -1675,13 +1556,7 @@ export default class RewardService {
     const totalAllTimeReward = allSalaries.reduce((sum, a) => {
       const info = a.info
       if (!info) return sum
-      return (
-        sum +
-        (info.monthlyIncentive || 0) +
-        (info.houseFund || 0) +
-        (info.travelAllowance || 0) +
-        (info.carFund || 0)
-      )
+      return sum + (info.reward || 0)
     }, 0)
 
     return {
@@ -1705,24 +1580,16 @@ export default class RewardService {
           const info = a.info
           if (!info) return null
 
-          const totalReward =
-            (info.monthlyIncentive || 0) +
-            (info.houseFund || 0) +
-            (info.travelAllowance || 0) +
-            (info.carFund || 0)
-
           return {
             id: a.id,
             date: a.createdAt.toFormat('dd MMMM yyyy'),
-            totalReward,
-            breakdown: {
-              monthlyIncentive: info.monthlyIncentive,
-              houseFund: info.houseFund,
-              travelAllowance: info.travelAllowance,
-              carFund: info.carFund,
-            },
+            totalReward: info.reward,
             designation: info.designation,
-            carryingForward: (info as any).extra || 0,
+            criteria: info.criteria,
+            topLeg: info.topLeg,
+            otherLegs: info.otherLegs,
+            totalBusiness: info.totalBusiness,
+            matched: info.matched,
             power: a.power,
             weaker: a.weaker,
           }
