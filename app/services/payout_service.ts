@@ -228,7 +228,7 @@ export default class PayoutService {
       const incomeAmount = Math.round(gross * this.INCOME_PERCENT * 100) / 100
       const repurchaseAmount = Math.round(gross * this.REPURCHASE_PERCENT * 100) / 100
 
-      const repurchaseTransaction = await WalletService.creditWallet(
+      const repurchaseTransaction = await WalletService.creditRepurchaseWallet(
         distribution.userId,
         repurchaseAmount,
         adminId,
@@ -302,7 +302,7 @@ export default class PayoutService {
         `Income wallet (70%) from working income for ${period.toFormat('LLLL yyyy')}`
       )
       if (repurchaseAmount > 0) {
-        await WalletService.creditWallet(
+        await WalletService.creditRepurchaseWallet(
           snapshot.userId,
           repurchaseAmount,
           adminId,

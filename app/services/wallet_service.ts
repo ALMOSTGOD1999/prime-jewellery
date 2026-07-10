@@ -31,6 +31,30 @@ export default class WalletService {
     })
   }
 
+  static async creditRepurchaseWallet(
+    userId: number,
+    amount: number,
+    adminId: number,
+    remark?: string
+  ) {
+    return db.transaction(async (trx) => {
+      const user = await User.query({ client: trx }).where('id', userId).firstOrFail()
+      const transaction = await Transaction.create(
+        {
+          userId,
+          type: TransactionTypeEnum.WALLET_CREDIT,
+          amount,
+          remark: remark || `Repurchase credited by admin #${adminId}`,
+          approvedAt: DateTime.now(),
+        },
+        { client: trx }
+      )
+      user.repurchaseWallet = Number(user.repurchaseWallet ?? 0) + amount
+      await user.save()
+      return transaction
+    })
+  }
+
   /**
    * Debit a user's wallet balance and create an audit transaction.
    */
@@ -156,6 +180,7 @@ export default class WalletService {
         phone: user.phone,
         walletBalance: Number(user.walletBalance ?? 0),
         incomeWallet: Number(user.incomeWallet ?? 0),
+        repurchaseWallet: Number(user.repurchaseWallet ?? 0),
       },
       transactions: {
         meta: transactions.getMeta(),

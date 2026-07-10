@@ -20,8 +20,13 @@ interface Props {
     total: number
     totalPages: number
     data: Array<{
-      id: string; user_id: number; user_name: string | null
-      amount: string; type: string; remark: string; created_at: string
+      id: string
+      user_id: number
+      user_name: string | null
+      amount: string
+      type: string
+      remark: string
+      created_at: string
     }>
   }
 }
@@ -31,7 +36,12 @@ function f(amount: number) {
 }
 
 function d(dateStr: string) {
-  return new Date(dateStr).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+  return new Date(dateStr).toLocaleString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
 export default function PayoutHistory({ months, selectedMonth, summary, transactions }: Props) {
@@ -77,10 +87,14 @@ export default function PayoutHistory({ months, selectedMonth, summary, transact
 
           {/* Table */}
           <Card>
-            <CardHeader><CardTitle>All Transactions — {selectedMonth}</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle>All Transactions — {selectedMonth}</CardTitle>
+            </CardHeader>
             <CardContent>
               {transactions.data.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">No payout data for this month.</p>
+                <p className="text-sm text-muted-foreground text-center py-8">
+                  No payout data for this month.
+                </p>
               ) : (
                 <>
                   <div className="overflow-x-auto">
@@ -98,21 +112,33 @@ export default function PayoutHistory({ months, selectedMonth, summary, transact
                       <tbody>
                         {transactions.data.map((txn) => {
                           const rev = txn.remark?.includes('REVERSAL')
-                          const inc = txn.remark?.toLowerCase().includes('income')
+                          const inc = txn.remark?.toLowerCase().includes('income wallet')
                           return (
-                            <tr key={txn.id} className={`border-b last:border-0 hover:bg-muted/30 ${rev ? 'bg-red-50/30' : ''}`}>
+                            <tr
+                              key={txn.id}
+                              className={`border-b last:border-0 hover:bg-muted/30 ${rev ? 'bg-red-50/30' : ''}`}
+                            >
                               <td className="py-2 pr-3 font-mono text-xs">{txn.user_id}</td>
                               <td className="py-2 pr-3">{txn.user_name || '—'}</td>
-                              <td className={`py-2 pr-3 font-medium ${rev ? 'text-red-600' : 'text-emerald-600'}`}>
-                                {rev ? '−' : ''}{f(Number(txn.amount))}
+                              <td
+                                className={`py-2 pr-3 font-medium ${rev ? 'text-red-600' : 'text-emerald-600'}`}
+                              >
+                                {rev ? '−' : ''}
+                                {f(Number(txn.amount))}
                               </td>
                               <td className="py-2 pr-3">
-                                <Badge variant={rev ? 'destructive' : inc ? 'default' : 'secondary'}>
+                                <Badge
+                                  variant={rev ? 'destructive' : inc ? 'default' : 'secondary'}
+                                >
                                   {rev ? 'REVERSAL' : inc ? 'Income' : 'Repurchase'}
                                 </Badge>
                               </td>
-                              <td className="py-2 pr-3 text-xs text-muted-foreground max-w-[250px] truncate">{txn.remark}</td>
-                              <td className="py-2 pr-3 text-muted-foreground whitespace-nowrap text-xs">{d(txn.created_at)}</td>
+                              <td className="py-2 pr-3 text-xs text-muted-foreground max-w-[250px] truncate">
+                                {txn.remark}
+                              </td>
+                              <td className="py-2 pr-3 text-muted-foreground whitespace-nowrap text-xs">
+                                {d(txn.created_at)}
+                              </td>
                             </tr>
                           )
                         })}
@@ -123,14 +149,25 @@ export default function PayoutHistory({ months, selectedMonth, summary, transact
                   {transactions.totalPages > 1 && (
                     <div className="flex items-center justify-between mt-4 pt-4 border-t">
                       <span className="text-sm text-muted-foreground">
-                        Page {transactions.page} of {transactions.totalPages} ({transactions.total} total)
+                        Page {transactions.page} of {transactions.totalPages} ({transactions.total}{' '}
+                        total)
                       </span>
                       <div className="flex gap-2">
                         {transactions.page > 1 && (
-                          <a href={`?month=${selectedMonth}&page=${transactions.page - 1}`} className="text-sm text-primary hover:underline">Previous</a>
+                          <a
+                            href={`?month=${selectedMonth}&page=${transactions.page - 1}`}
+                            className="text-sm text-primary hover:underline"
+                          >
+                            Previous
+                          </a>
                         )}
                         {transactions.page < transactions.totalPages && (
-                          <a href={`?month=${selectedMonth}&page=${transactions.page + 1}`} className="text-sm text-primary hover:underline">Next</a>
+                          <a
+                            href={`?month=${selectedMonth}&page=${transactions.page + 1}`}
+                            className="text-sm text-primary hover:underline"
+                          >
+                            Next
+                          </a>
                         )}
                       </div>
                     </div>
