@@ -36,6 +36,7 @@ interface DashboardProps {
   userId: number
   isPayoutReleased: boolean
   incomeWallet: number
+  workingWallet: number
 }
 
 export default function DashboardPage({
@@ -44,6 +45,7 @@ export default function DashboardPage({
   userId,
   isPayoutReleased,
   incomeWallet,
+  workingWallet,
 }: DashboardProps) {
   const user = useUser()!
 
@@ -125,6 +127,16 @@ export default function DashboardPage({
       border: 'border-emerald/20',
       iconBg: 'bg-emerald/10 text-emerald',
       valueColor: 'text-emerald',
+    },
+    {
+      title: 'Working Wallet',
+      value: formatCurrency(workingWallet || 0),
+      subtitle: 'Total Working Income',
+      icon: Wallet01Icon,
+      gradient: 'from-purple/20 via-purple/5 to-transparent',
+      border: 'border-purple/20',
+      iconBg: 'bg-purple/10 text-purple',
+      valueColor: 'text-purple',
     },
     {
       title: 'Gold Rate (22K/1g)',
