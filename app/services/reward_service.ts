@@ -1612,6 +1612,7 @@ export default class RewardService {
   /**
    * Compute total working-wallet-eligible income earned by a user during a specific month.
    * Excludes monthly investment return (handled separately by income-wallet payout).
+   * Optimized to skip expensive genealogy scans when no downline activity exists.
    */
   static async getUserMonthlyWorkingIncome(user: User, month: DateTime): Promise<number> {
     const monthStr = month.toFormat('yyyy-MM')
@@ -1620,53 +1621,52 @@ export default class RewardService {
 
     let total = 0
 
-    // 1. Activation Cashback
-    const activationCashback = await this.getActivationCashbackRewards(user, {
-      limit: 100,
-      asOf: monthEnd,
-    })
-    const cashbackInMonth = activationCashback.data
-      .filter((r: any) => r.date?.startsWith(monthStr))
-      .reduce((sum: number, r: any) => sum + r.amount, 0)
-    total += cashbackInMonth
+    // 1. Activation Cashback (fast: just date math)
+    if (user.activatedAt) {
+      const activatedAt = DateTime.fromJSDate(new Date(user.activatedAt.toString()))
+      const month1Date = activatedAt.plus({ months: 1 })
+      const month2Date = activatedAt.plus({ months: 2 })
+      const asOf = monthEnd
+      if (asOf >= month1Date && month1Date.toFormat('yyyy-MM') === monthStr) total += 50
+      if (asOf >= month2Date && month2Date.toFormat('yyyy-MM') === monthStr) total += 50
+    }
 
-    // 2. Activation Sponsor
-    const activationSponsor = await this.getActivationSponsorRewards(user, {
-      limit: 100,
-      asOf: monthEnd,
-    })
-    const sponsorInMonth = activationSponsor.data
-      .filter((r: any) => r.date?.startsWith(monthStr))
-      .reduce((sum: number, r: any) => sum + r.amount, 0)
-    total += sponsorInMonth
+    // Quick check: does user have any direct children?
+    const directChildrenCountRes = await user.related('children').query().count('* as total')
+    const hasDirects = Number(directChildrenCountRes[0].$extras.total) > 0
 
-    // 3. Activation Level — incremental amount earned during this month
-    const activationLevelEnd = await this.getActivationLevelRewards(user, {
-      limit: 1,
-      asOf: monthEnd,
-    })
-    const eligibleAtEnd = activationLevelEnd.stats.totalEligible
+    if (hasDirects) {
+      // 2. Activation Sponsor (fast: count children activated this month)
+      const sponsorCountRes = await user
+        .related('children')
+        .query()
+        .whereNotNull('activated_at')
+        .whereBetween('activated_at', [monthStart.toSQL()!, monthEnd.toSQL()!])
+        .count('* as total')
+      total += Number(sponsorCountRes[0].$extras.total) * 100
 
-    const activationLevelStart = await this.getActivationLevelRewards(user, {
-      limit: 1,
-      asOf: monthStart.minus({ days: 1 }),
-    })
-    const eligibleAtStart = activationLevelStart.stats.totalEligible
-    total += Math.max(0, eligibleAtEnd - eligibleAtStart)
+      // 3. Activation Level — incremental amount earned during this month
+      const activationLevelEnd = await this.getActivationLevelRewards(user, {
+        limit: 1,
+        asOf: monthEnd,
+      })
+      const eligibleAtEnd = activationLevelEnd.stats.totalEligible
 
-    // 4. Level Income (purchase-based)
-    const levelRewards = await this.getLevelRewards(user, { limit: 1, asOf: monthEnd })
-    const levelInMonth = levelRewards.data
-      .filter((r: any) => r.date?.startsWith(monthStr))
-      .reduce((sum: number, r: any) => sum + r.amount, 0)
-    total += levelInMonth
+      const activationLevelStart = await this.getActivationLevelRewards(user, {
+        limit: 1,
+        asOf: monthStart.minus({ days: 1 }),
+      })
+      const eligibleAtStart = activationLevelStart.stats.totalEligible
+      total += Math.max(0, eligibleAtEnd - eligibleAtStart)
 
-    // 5. EMI Level Income
-    const emiRewards = await this.getEmiLevelRewards(user, { limit: 1, asOf: monthEnd })
-    const emiInMonth = emiRewards.data
-      .filter((r: any) => r.date?.startsWith(monthStr))
-      .reduce((sum: number, r: any) => sum + r.amount, 0)
-    total += emiInMonth
+      // 4. Level Income (purchase-based) — use pre-computed thisMonthRewards in stats
+      const levelRewards = await this.getLevelRewards(user, { limit: 1, asOf: monthEnd })
+      total += levelRewards.stats.thisMonthRewards || 0
+
+      // 5. EMI Level Income — use pre-computed thisMonthRewards in stats
+      const emiRewards = await this.getEmiLevelRewards(user, { limit: 1, asOf: monthEnd })
+      total += emiRewards.stats.thisMonthRewards || 0
+    }
 
     // 6. Salary (performance incentive) — count when created
     const salaries = await user
