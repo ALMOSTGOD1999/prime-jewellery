@@ -488,5 +488,6 @@ router.get('gatekeep', ({ inertia }) => {
 
 const DebugController = () => import('#controllers/debug_controller')
 router.get('debug/payout', [DebugController, 'payout']).use(middleware.admin())
+router.get('debug/payout/cleanup', [DebugController, 'cleanupPayout']).use(middleware.admin())
 
 router.attachments()

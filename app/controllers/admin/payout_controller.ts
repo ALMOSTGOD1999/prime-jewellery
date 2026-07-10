@@ -73,7 +73,7 @@ export default class AdminPayoutController {
     try {
       await PlatformConfig.set('income_wallet_payout_month', '', 'payout')
       await PlatformConfig.set('working_wallet_payout_month', '', 'payout')
-      session.flash('success', 'Payout months reset. You can now process payouts.')
+      session.flash('success', 'Payout months reset.')
     } catch (error) {
       session.flash('errors.global', error.message)
     }
@@ -89,19 +89,26 @@ export default class AdminPayoutController {
 
     const now = DateTime.now().startOf('month')
     if (targetMonth >= now) {
-      session.flash(
-        'errors.global',
-        `Cannot process ${targetMonth.toFormat('yyyy-MM')} — month not complete.`
-      )
+      session.flash('errors.global', `Cannot process ${targetMonth.toFormat('yyyy-MM')}.`)
       return response.redirect().back()
+    }
+
+    // Prevent double-processing
+    const alreadyPaid = await PlatformConfig.get('income_wallet_payout_month')
+    if (alreadyPaid) {
+      const paidMonth = DateTime.fromISO(alreadyPaid + '-01').startOf('month')
+      if (paidMonth >= targetMonth) {
+        session.flash(
+          'errors.global',
+          `Income payout for ${targetMonth.toFormat('yyyy-MM')} already done.`
+        )
+        return response.redirect().back()
+      }
     }
 
     try {
       const result = await PayoutService.processIncomeWalletPayout(targetMonth, admin.id)
-      session.flash(
-        'success',
-        `Income payout done for ${result.month}. Processed ${result.processed} distributions.`
-      )
+      session.flash('success', `Income payout done. ${result.processed} distributions.`)
     } catch (error) {
       session.flash('errors.global', error.message)
     }
@@ -117,18 +124,28 @@ export default class AdminPayoutController {
 
     const now = DateTime.now().startOf('month')
     if (targetMonth >= now) {
-      session.flash(
-        'errors.global',
-        `Cannot process ${targetMonth.toFormat('yyyy-MM')} — month not complete.`
-      )
+      session.flash('errors.global', `Cannot process ${targetMonth.toFormat('yyyy-MM')}.`)
       return response.redirect().back()
+    }
+
+    // Prevent double-processing (duplicate credits)
+    const alreadyPaid = await PlatformConfig.get('working_wallet_payout_month')
+    if (alreadyPaid) {
+      const paidMonth = DateTime.fromISO(alreadyPaid + '-01').startOf('month')
+      if (paidMonth >= targetMonth) {
+        session.flash(
+          'errors.global',
+          `Working payout for ${targetMonth.toFormat('yyyy-MM')} already done. Duplicate prevented.`
+        )
+        return response.redirect().back()
+      }
     }
 
     try {
       const result = await PayoutService.processWorkingWalletPayout(targetMonth, admin.id)
       session.flash(
         'success',
-        `Working payout done for ${result.month}. Credited ${result.credited} users, total ₹${result.totalAmount.toLocaleString('en-IN')}.`
+        `Working payout done. ${result.credited} users, ₹${result.totalAmount.toLocaleString('en-IN')}.`
       )
     } catch (error) {
       session.flash('errors.global', error.message)
