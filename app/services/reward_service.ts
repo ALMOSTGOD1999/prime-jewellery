@@ -136,11 +136,16 @@ export default class RewardService {
   ) {
     const { page = 1, limit = 10, sortBy = 'date', sortOrder = 'desc', search = '', asOf } = filters
 
-    // Get direct children who are activated
+    // Get direct children who are activated AFTER the parent
+    const parentActivatedAt = user.activatedAt
+      ? DateTime.fromJSDate(new Date(user.activatedAt.toString())).toSQL()!
+      : null
+
     const directChildren = await user
       .related('children')
       .query()
       .whereNotNull('activated_at')
+      .if(parentActivatedAt, (q) => q.where('activated_at', '>=', parentActivatedAt!))
       .if(asOf, (q) => q.where('activated_at', '<=', asOf!.toSQL()!))
       .if(search, (query) => {
         query.where('name', 'ILIKE', `%${search}%`)
@@ -240,8 +245,14 @@ export default class RewardService {
     else if (directCount >= 1) maxDepth = 3
 
     // 2. Fetch activated descendants using CTE (up to maxDepth)
+    // Only count descendants activated AFTER the parent
+    const parentActivatedAt = user.activatedAt
+      ? DateTime.fromJSDate(new Date(user.activatedAt.toString())).toSQL()!
+      : null
     const asOfCondition = asOf ? 'AND activated_at <= ?' : ''
+    const parentCondition = parentActivatedAt ? 'AND activated_at >= ?' : ''
     const params: any[] = [user.id, maxDepth]
+    if (parentActivatedAt) params.push(parentActivatedAt)
     if (asOf) params.push(asOf.toSQL()!)
 
     const descendants = await db.rawQuery(
@@ -259,6 +270,7 @@ export default class RewardService {
       SELECT * FROM descendants
       WHERE activated_at IS NOT NULL
       ${search ? "AND name ILIKE '%" + search.replace(/'/g, "''") + "%'" : ''}
+      ${parentCondition}
       ${asOfCondition}
       `,
       params
@@ -698,9 +710,13 @@ export default class RewardService {
       const validPurchases = userPurchases.filter((p) => !p.cancelledAt)
       if (validPurchases.length === 0) continue
 
-      const startDate = DateTime.fromJSDate(
+      const firstPurchaseDate = DateTime.fromJSDate(
         new Date(validPurchases[0].approvedAt!.toString())
       ).startOf('day')
+      const userActivatedAt = user.activatedAt
+        ? DateTime.fromJSDate(new Date(user.activatedAt.toString())).startOf('day')
+        : firstPurchaseDate
+      const startDate = firstPurchaseDate > userActivatedAt ? firstPurchaseDate : userActivatedAt
       const endDate = (asOf || DateTime.now().setZone(env.get('TZ'))).startOf('day')
 
       for (let date = startDate; date <= endDate; date = date.plus({ days: 1 })) {
@@ -1066,9 +1082,13 @@ export default class RewardService {
       // Calculate cumulative EMI amount over time
       if (userTransactions.length === 0) continue
 
-      const startDate = DateTime.fromJSDate(new Date(userTransactions[0].approved_at)).startOf(
+      const firstEmiDate = DateTime.fromJSDate(new Date(userTransactions[0].approved_at)).startOf(
         'day'
       )
+      const userActivatedAt = user.activatedAt
+        ? DateTime.fromJSDate(new Date(user.activatedAt.toString())).startOf('day')
+        : firstEmiDate
+      const startDate = firstEmiDate > userActivatedAt ? firstEmiDate : userActivatedAt
       const endDate = (asOf || DateTime.now().setZone(env.get('TZ'))).startOf('day')
 
       for (let date = startDate; date <= endDate; date = date.plus({ days: 1 })) {
