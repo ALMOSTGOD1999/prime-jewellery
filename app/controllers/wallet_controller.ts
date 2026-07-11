@@ -62,7 +62,20 @@ export default class WalletController {
       sortOrder,
     })
 
-    // Compute total working income from transactions (net: credits - debits)
+    // Compute investment return ONLY
+    const investmentReturnRes = await db.rawQuery(
+      `SELECT coalesce(sum(
+         CASE
+           WHEN type = 'wallet_credit' THEN amount
+           WHEN type = 'wallet_debit' THEN -amount
+           ELSE 0
+         END
+       ), 0)::float as total
+       FROM transactions WHERE user_id = ? AND remark ILIKE '%investment return%'`,
+      [user.id]
+    )
+
+    // Compute total working income (net: credits - debits, both portions)
     const workingRes = await db.rawQuery(
       `SELECT coalesce(sum(
          CASE
@@ -97,7 +110,11 @@ export default class WalletController {
 
     return inertia.render('wallet/index', {
       isAdmin: false,
-      user: { ...userData, workingWallet: Number(workingRes.rows[0]?.total ?? 0) },
+      user: {
+        ...userData,
+        incomeWallet: Number(investmentReturnRes.rows[0]?.total ?? 0),
+        workingWallet: Number(workingRes.rows[0]?.total ?? 0),
+      },
       transactions: visibleTransactions,
       activationAmount: 1000,
       isActivated: !!user.activatedAt,
