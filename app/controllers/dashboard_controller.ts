@@ -38,6 +38,19 @@ export default class DashboardController {
       [user.id]
     )
 
+    // Compute repurchase wallet (20% portion from both investment return + working income)
+    const repurchaseRes = await db.rawQuery(
+      `SELECT coalesce(sum(
+         CASE
+           WHEN type = 'wallet_credit' THEN amount
+           WHEN type = 'wallet_debit' THEN -amount
+           ELSE 0
+         END
+       ), 0)::float as total
+       FROM transactions WHERE user_id = ? AND remark ILIKE '%repurchase wallet%'`,
+      [user.id]
+    )
+
     // Compute total working income (net: credits - debits, both income + repurchase portions)
     const workingRes = await db.rawQuery(
       `SELECT coalesce(sum(
@@ -57,6 +70,7 @@ export default class DashboardController {
       userId: user.id,
       isPayoutReleased,
       incomeWallet: Number(investmentReturnRes.rows[0]?.total ?? 0),
+      repurchaseWallet: Number(repurchaseRes.rows[0]?.total ?? 0),
       workingWallet: Number(workingRes.rows[0]?.total ?? 0),
     })
   }

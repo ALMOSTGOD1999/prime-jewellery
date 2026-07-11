@@ -36,6 +36,7 @@ interface DashboardProps {
   userId: number
   isPayoutReleased: boolean
   incomeWallet: number
+  repurchaseWallet: number
   workingWallet: number
 }
 
@@ -45,6 +46,7 @@ export default function DashboardPage({
   userId,
   isPayoutReleased,
   incomeWallet,
+  repurchaseWallet,
   workingWallet,
 }: DashboardProps) {
   const user = useUser()!
@@ -121,7 +123,7 @@ export default function DashboardPage({
     {
       title: 'Income Wallet',
       value: formatCurrency(incomeWallet || 0),
-      subtitle: 'Total Income Balance',
+      subtitle: '70% of monthly investment return',
       icon: Wallet01Icon,
       gradient: 'from-emerald/20 via-emerald/5 to-transparent',
       border: 'border-emerald/20',
@@ -129,9 +131,19 @@ export default function DashboardPage({
       valueColor: 'text-emerald',
     },
     {
+      title: 'Repurchase Wallet',
+      value: formatCurrency(repurchaseWallet || 0),
+      subtitle: '20% of monthly investment return',
+      icon: Wallet01Icon,
+      gradient: 'from-violet/20 via-violet/5 to-transparent',
+      border: 'border-violet/20',
+      iconBg: 'bg-violet/10 text-violet',
+      valueColor: 'text-violet',
+    },
+    {
       title: 'Working Wallet',
       value: formatCurrency(workingWallet || 0),
-      subtitle: 'Total Working Income',
+      subtitle: 'Total commission income',
       icon: Wallet01Icon,
       gradient: 'from-purple/20 via-purple/5 to-transparent',
       border: 'border-purple/20',
