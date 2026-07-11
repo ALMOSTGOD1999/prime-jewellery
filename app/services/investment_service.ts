@@ -219,7 +219,18 @@ export default class InvestmentService {
       }
 
       const rate = Number(investment.monthlyReturnRate) || 3
-      const returnAmount = this.roundMoney((Number(investment.amount) * rate) / 100)
+      const investmentAmount = Number(investment.amount)
+
+      // Prorate return based on days active in the month
+      const startedAt = DateTime.fromJSDate(new Date(investment.startedAt.toString())).startOf(
+        'day'
+      )
+      const daysInMonth = period.daysInMonth!
+      const startDay = startedAt.month === period.month ? startedAt.day : 1
+      const activeDays = daysInMonth - startDay + 1
+      const prorateFactor = activeDays / daysInMonth
+
+      const returnAmount = this.roundMoney((investmentAmount * rate * prorateFactor) / 100)
       const incomeAmount = this.roundMoney((returnAmount * INCOME_WALLET_PERCENT) / 100)
       const repurchaseAmount = this.roundMoney((returnAmount * REPURCHASE_WALLET_PERCENT) / 100)
 
