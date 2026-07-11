@@ -62,7 +62,7 @@ export default class WalletController {
       sortOrder,
     })
 
-    // Compute investment return ONLY
+    // Income Wallet = ONLY 70% portion from INVESTMENT RETURN
     const investmentReturnRes = await db.rawQuery(
       `SELECT coalesce(sum(
          CASE
@@ -71,11 +71,11 @@ export default class WalletController {
            ELSE 0
          END
        ), 0)::float as total
-       FROM transactions WHERE user_id = ? AND remark ILIKE '%investment return%'`,
+       FROM transactions WHERE user_id = ? AND remark ILIKE '%investment return%' AND remark ILIKE '%income wallet%'`,
       [user.id]
     )
 
-    // Compute total working income (net: credits - debits, both portions)
+    // Working Wallet = ONLY 70% portion from WORKING INCOME
     const workingRes = await db.rawQuery(
       `SELECT coalesce(sum(
          CASE
@@ -84,7 +84,7 @@ export default class WalletController {
            ELSE 0
          END
        ), 0)::float as total
-       FROM transactions WHERE user_id = ? AND remark ILIKE '%working income%'`,
+       FROM transactions WHERE user_id = ? AND remark ILIKE '%working income%' AND remark ILIKE '%income wallet%'`,
       [user.id]
     )
 
@@ -108,11 +108,25 @@ export default class WalletController {
       }
     }
 
+    // Repurchase = all repurchase transactions (20% from both investment + working)
+    const repurchaseRes = await db.rawQuery(
+      `SELECT coalesce(sum(
+         CASE
+           WHEN type = 'wallet_credit' THEN amount
+           WHEN type = 'wallet_debit' THEN -amount
+           ELSE 0
+         END
+       ), 0)::float as total
+       FROM transactions WHERE user_id = ? AND remark ILIKE '%repurchase wallet%'`,
+      [user.id]
+    )
+
     return inertia.render('wallet/index', {
       isAdmin: false,
       user: {
         ...userData,
         incomeWallet: Number(investmentReturnRes.rows[0]?.total ?? 0),
+        repurchaseWallet: Number(repurchaseRes.rows[0]?.total ?? 0),
         workingWallet: Number(workingRes.rows[0]?.total ?? 0),
       },
       transactions: visibleTransactions,

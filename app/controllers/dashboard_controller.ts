@@ -25,7 +25,7 @@ export default class DashboardController {
     const metrics = await RewardService.getDashboardMetrics(user)
     const isPayoutReleased = await PayoutService.isPayoutReleased()
 
-    // Compute investment return ONLY (from investment_return distributions payout)
+    // Income Wallet = ONLY 70% portion from INVESTMENT RETURN (monthly 3% cashback)
     const investmentReturnRes = await db.rawQuery(
       `SELECT coalesce(sum(
          CASE
@@ -34,11 +34,11 @@ export default class DashboardController {
            ELSE 0
          END
        ), 0)::float as total
-       FROM transactions WHERE user_id = ? AND remark ILIKE '%investment return%'`,
+       FROM transactions WHERE user_id = ? AND remark ILIKE '%investment return%' AND remark ILIKE '%income wallet%'`,
       [user.id]
     )
 
-    // Compute repurchase wallet (20% portion from both investment return + working income)
+    // Repurchase Wallet = 20% portion from BOTH investment return + working income
     const repurchaseRes = await db.rawQuery(
       `SELECT coalesce(sum(
          CASE
@@ -51,7 +51,7 @@ export default class DashboardController {
       [user.id]
     )
 
-    // Compute total working income (net: credits - debits, both income + repurchase portions)
+    // Working Wallet = ONLY 70% portion from WORKING INCOME (commissions)
     const workingRes = await db.rawQuery(
       `SELECT coalesce(sum(
          CASE
@@ -60,7 +60,7 @@ export default class DashboardController {
            ELSE 0
          END
        ), 0)::float as total
-       FROM transactions WHERE user_id = ? AND remark ILIKE '%working income%'`,
+       FROM transactions WHERE user_id = ? AND remark ILIKE '%working income%' AND remark ILIKE '%income wallet%'`,
       [user.id]
     )
 
