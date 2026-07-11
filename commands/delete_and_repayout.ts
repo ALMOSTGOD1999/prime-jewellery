@@ -30,7 +30,7 @@ export default class DeleteAndRepayout extends BaseCommand {
 
     this.logger.info(`Existing snapshots: ${snapCount.rows[0].total}`)
     this.logger.info(`Existing working transactions: ${txnCount.rows[0].total}`)
-    this.logger.info(`Income wallet config: ${incomeConfig || 'unset'}`)
+    this.logger.info(`Cashback wallet config: ${incomeConfig || 'unset'}`)
     this.logger.info(`Working wallet config: ${workingConfig || 'unset'}`)
 
     // 2. Delete old snapshots

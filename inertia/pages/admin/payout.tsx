@@ -125,7 +125,7 @@ export default function AdminPayoutPage({
           </Alert>
 
           <div className="grid gap-6 md:grid-cols-2">
-            {/* Income Wallet Payout */}
+            {/* Cashback Wallet Payout */}
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-3">
@@ -133,8 +133,10 @@ export default function AdminPayoutPage({
                     <HugeiconsIcon icon={PiggyBankIcon} className="h-5 w-5 text-blue-600" />
                   </div>
                   <div>
-                    <CardTitle>Income Wallet Payout</CardTitle>
-                    <CardDescription>Cashback only — 70% income + 30% gold wallet</CardDescription>
+                    <CardTitle>Cashback Wallet Payout</CardTitle>
+                    <CardDescription>
+                      Cashback only — 70% cashback + 30% gold wallet
+                    </CardDescription>
                   </div>
                 </div>
               </CardHeader>
@@ -163,7 +165,7 @@ export default function AdminPayoutPage({
                   >
                     {incomeForm.processing
                       ? 'Processing...'
-                      : `Payout Income Wallet for ${nextIncomeMonth}`}
+                      : `Payout Cashback Wallet for ${nextIncomeMonth}`}
                   </Button>
                 )}
               </CardContent>

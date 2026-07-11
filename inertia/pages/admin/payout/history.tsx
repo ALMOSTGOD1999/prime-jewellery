@@ -112,7 +112,9 @@ export default function PayoutHistory({ months, selectedMonth, summary, transact
                       <tbody>
                         {transactions.data.map((txn) => {
                           const rev = txn.remark?.includes('REVERSAL')
-                          const inc = txn.remark?.toLowerCase().includes('income wallet')
+                          const inc =
+                            txn.remark?.toLowerCase().includes('cashback wallet') ||
+                            txn.remark?.toLowerCase().includes('income wallet')
                           return (
                             <tr
                               key={txn.id}

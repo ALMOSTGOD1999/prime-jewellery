@@ -62,7 +62,7 @@ export default class WalletController {
       sortOrder,
     })
 
-    // Income Wallet = ONLY 70% portion from INVESTMENT RETURN
+    // Cashback Wallet = ONLY 70% portion from INVESTMENT RETURN
     const investmentReturnRes = await db.rawQuery(
       `SELECT coalesce(sum(
          CASE
@@ -71,7 +71,7 @@ export default class WalletController {
            ELSE 0
          END
        ), 0)::float as total
-       FROM transactions WHERE user_id = ? AND remark ILIKE '%investment return%' AND remark ILIKE '%income wallet%'`,
+       FROM transactions WHERE user_id = ? AND remark ILIKE '%investment return%' AND (remark ILIKE '%cashback wallet%' OR remark ILIKE '%income wallet%')`,
       [user.id]
     )
 
@@ -84,7 +84,7 @@ export default class WalletController {
            ELSE 0
          END
        ), 0)::float as total
-       FROM transactions WHERE user_id = ? AND remark ILIKE '%working income%' AND remark ILIKE '%income wallet%'`,
+       FROM transactions WHERE user_id = ? AND remark ILIKE '%working income%' AND (remark ILIKE '%cashback wallet%' OR remark ILIKE '%income wallet%')`,
       [user.id]
     )
 

@@ -218,7 +218,7 @@ function UserWalletView({
             </div>
 
             <div className="rounded-xl border border-border bg-card p-4">
-              <p className="text-sm text-muted-foreground">Income Wallet</p>
+              <p className="text-sm text-muted-foreground">Cashback Wallet</p>
               <p className="text-2xl font-bold text-emerald">
                 ₹{Number(user.incomeWallet ?? 0).toLocaleString('en-IN')}
               </p>

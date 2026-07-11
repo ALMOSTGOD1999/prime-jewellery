@@ -165,7 +165,7 @@ export default class InvestmentService {
     const { stats } = await this.getDashboard(user, { page: 1, limit: 1 })
 
     if (amount > stats.availableIncome) {
-      throw new Error('Insufficient income wallet balance')
+      throw new Error('Insufficient cashback wallet balance')
     }
 
     const bank = await user.related('bank').query().first()

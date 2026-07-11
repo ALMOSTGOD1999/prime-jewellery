@@ -1631,7 +1631,7 @@ export default class RewardService {
 
   /**
    * Compute total working-wallet-eligible income earned by a user during a specific month.
-   * Excludes monthly investment return (handled separately by income-wallet payout).
+   * Excludes monthly investment return (handled separately by cashback-wallet payout).
    * Optimized to skip expensive genealogy scans when no downline activity exists.
    */
   static async getUserMonthlyWorkingIncome(user: User, month: DateTime): Promise<number> {

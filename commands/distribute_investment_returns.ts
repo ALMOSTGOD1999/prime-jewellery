@@ -9,7 +9,8 @@ import env from '#start/env'
 @schedule((s) => s.timezone(env.get('TZ')).monthlyOn(1, '00:05'))
 export default class DistributeInvestmentReturns extends BaseCommand {
   static commandName = 'investments:distribute-returns'
-  static description = 'Distribute monthly investment returns: 70% income wallet and 30% gold wallet'
+  static description =
+    'Distribute monthly investment returns: 70% cashback wallet and 30% gold wallet'
 
   static options: CommandOptions = { startApp: true }
 

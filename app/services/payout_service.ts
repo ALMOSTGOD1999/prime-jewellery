@@ -216,7 +216,7 @@ export default class PayoutService {
         distribution.userId,
         incomeAmount,
         adminId,
-        `Income wallet (70%) from investment return for ${period.toFormat('LLLL yyyy')}`
+        `Cashback wallet (70%) from investment return for ${period.toFormat('LLLL yyyy')}`
       )
 
       distribution.goldTransactionId = repurchaseTransaction.id
@@ -230,8 +230,8 @@ export default class PayoutService {
       'income_wallet_payout_month',
       period.toFormat('yyyy-MM'),
       'payout',
-      'Income Wallet Payout Month',
-      'Last month for which income wallet payout was processed'
+      'Cashback Wallet Payout Month',
+      'Last month for which cashback wallet payout was processed'
     )
 
     return { processed, month: period.toISODate()! }
@@ -277,7 +277,7 @@ export default class PayoutService {
         snapshot.userId,
         incomeAmount,
         adminId,
-        `Income wallet (70%) from working income for ${period.toFormat('LLLL yyyy')}`
+        `Cashback wallet (70%) from working income for ${period.toFormat('LLLL yyyy')}`
       )
       if (repurchaseAmount > 0) {
         await WalletService.creditRepurchaseWallet(

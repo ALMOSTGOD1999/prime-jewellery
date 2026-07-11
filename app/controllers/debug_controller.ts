@@ -113,7 +113,9 @@ export default class DebugController {
     const toReverse: typeof allTxns = []
 
     for (const txn of allTxns) {
-      const isIncome = txn.remark?.toLowerCase().includes('income wallet (70%)')
+      const isIncome =
+        txn.remark?.toLowerCase().includes('cashback wallet (70%)') ||
+        txn.remark?.toLowerCase().includes('income wallet (70%)')
       const walletType = isIncome ? 'income' : 'repurchase'
       const key = `${txn.userId}-${walletType}`
       if (seen.has(key)) {
@@ -129,7 +131,9 @@ export default class DebugController {
     for (const txn of toReverse) {
       const user = await User.find(txn.userId)
       if (!user) continue
-      const isIncome = txn.remark?.toLowerCase().includes('income wallet (70%)')
+      const isIncome =
+        txn.remark?.toLowerCase().includes('cashback wallet (70%)') ||
+        txn.remark?.toLowerCase().includes('income wallet (70%)')
       const amount = Number(txn.amount)
 
       await db.transaction(async (trx) => {
@@ -174,7 +178,7 @@ export default class DebugController {
       : DateTime.now().minus({ months: 1 }).startOf('month')
     const monthStr = month.toFormat('yyyy-MM')
 
-    // 1. Income Wallet Payout preview
+    // 1. Cashback Wallet Payout preview
     const distributions = await InvestmentReturnDistribution.query()
       .where('period_month', month.toISODate()!)
       .whereNull('paid_out_at')

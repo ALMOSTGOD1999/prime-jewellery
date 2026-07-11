@@ -121,7 +121,7 @@ export default function DashboardPage({
       valueColor: 'text-sky',
     },
     {
-      title: 'Income Wallet',
+      title: 'Cashback Wallet',
       value: formatCurrency(incomeWallet || 0),
       subtitle: '70% of monthly investment return',
       icon: Wallet01Icon,

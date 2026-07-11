@@ -123,7 +123,7 @@ export default function InvestmentsPage({
             </Card>
             <Card>
               <CardHeader>
-                <CardDescription>Income Wallet</CardDescription>
+                <CardDescription>Cashback Wallet</CardDescription>
                 <CardTitle className="text-2xl">{formatCurrency(stats.availableIncome)}</CardTitle>
               </CardHeader>
             </Card>
@@ -141,7 +141,7 @@ export default function InvestmentsPage({
                 <CardTitle>Create Investment</CardTitle>
                 <CardDescription>
                   Monthly return is {stats.monthlyReturnPercent}%. {stats.incomeWalletPercent}% goes
-                  to Income Wallet and {stats.goldWalletPercent}% goes to Gold Wallet.
+                  to Cashback Wallet and {stats.goldWalletPercent}% goes to Gold Wallet.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -177,7 +177,7 @@ export default function InvestmentsPage({
                       <strong>{formatCurrency(previewReturn)}</strong>
                     </div>
                     <div className="flex justify-between text-green-600">
-                      <span>Income Wallet ({stats.incomeWalletPercent}%)</span>
+                      <span>Cashback Wallet ({stats.incomeWalletPercent}%)</span>
                       <strong>{formatCurrency(previewIncome)}</strong>
                     </div>
                     <div className="flex justify-between text-yellow-600">
@@ -194,15 +194,15 @@ export default function InvestmentsPage({
 
             <Card>
               <CardHeader>
-                <CardTitle>Withdraw Income Wallet</CardTitle>
+                <CardTitle>Withdraw Cashback Wallet</CardTitle>
                 <CardDescription>
-                  Income Wallet balance can be withdrawn to your approved bank account.
+                  Cashback Wallet balance can be withdrawn to your approved bank account.
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={submitWithdrawal} className="space-y-4">
                   <div className="rounded-lg border bg-muted/30 p-4">
-                    <p className="text-sm text-muted-foreground">Available Income Wallet</p>
+                    <p className="text-sm text-muted-foreground">Available Cashback Wallet</p>
                     <p className="text-2xl font-bold">{formatCurrency(stats.availableIncome)}</p>
                     <p className="text-xs text-muted-foreground">
                       Pending and approved withdrawals are deducted from this balance.
@@ -306,7 +306,7 @@ export default function InvestmentsPage({
                       <th className="py-2 pr-4">Period</th>
                       <th className="py-2 pr-4">Investment</th>
                       <th className="py-2 pr-4">Return</th>
-                      <th className="py-2 pr-4">Income Wallet</th>
+                      <th className="py-2 pr-4">Cashback Wallet</th>
                       <th className="py-2 pr-4">Gold Wallet</th>
                     </tr>
                   </thead>
