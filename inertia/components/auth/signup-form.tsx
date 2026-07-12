@@ -17,8 +17,8 @@ export function SignupForm({
 }: React.ComponentProps<'form'> & { refCode?: string; leg?: string }) {
   const qs = useSearchParams()
 
-  // Determine the prefix based on leg
-  const prefix = leg === 'right' ? 'PJR' : 'PJL'
+  // All users use the same PJ prefix
+  const prefix = 'PJ'
   const initialRef = refCode ? `${prefix}${refCode}` : qs.ref ? `${prefix}${qs.ref}` : ''
 
   const form = useForm({
@@ -79,7 +79,7 @@ export function SignupForm({
               form.setData('referralCode', e.target.value)
               updateUrlRef(e.target.value)
             }}
-            placeholder="PJL1234567 or PJR1234567"
+            placeholder="PJ1234567"
             disabled={!!refCode}
             readOnly={!!refCode}
           />

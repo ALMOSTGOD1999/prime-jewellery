@@ -1,6 +1,5 @@
 import User from '#models/user'
 import type { HttpContext } from '@adonisjs/core/http'
-import { DateTime } from 'luxon'
 import { updateBankValidator } from '#validators/bank_validator'
 import { updateKycValidator } from '#validators/kyc_validator'
 import { filterValidator, paginationValidator } from '#validators/common_validator'
@@ -49,6 +48,7 @@ export default class AdminUsersController {
           phone: u.phone,
           avatar: u.avatar,
           role: u.role,
+          status: u.status ?? 'active',
           activatedAt: u.activatedAt,
           createdAt: u.createdAt,
           parent: u.parent
@@ -63,8 +63,35 @@ export default class AdminUsersController {
     })
   }
 
-  async store({ request, response, session, auth }: HttpContext) {
-    const admin = auth.getUserOrFail()
+  async lookupUsers({ request, response }: HttpContext) {
+    const search = (request.qs().search as string) || ''
+    const query = User.query()
+      .whereNot('role', 'admin')
+      .select('id', 'name', 'email', 'phone', 'status', 'activatedAt')
+      .limit(50)
+    if (search) {
+      query.where((builder) => {
+        builder
+          .whereILike('name', `%${search}%`)
+          .orWhereILike('email', `%${search}%`)
+          .orWhereILike('phone', `%${search}%`)
+          .orWhere('id', Number.isInteger(Number(search)) ? Number(search) : -1)
+      })
+    }
+    const users = await query
+    return response.json({
+      users: users.map((u) => ({
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        phone: u.phone,
+        status: u.status,
+        activatedAt: u.activatedAt,
+      })),
+    })
+  }
+
+  async store({ request, response, session }: HttpContext) {
     const data = await request.validateUsing(adminCreateUserValidator)
 
     let parentId: number | null = null
@@ -79,27 +106,18 @@ export default class AdminUsersController {
       }
     }
 
-    // Auto-assign role and auto-activate
-    const user = await User.create({
+    // Create user (NOT auto-activated — admin must activate separately)
+    await User.create({
       name: data.name,
       email: data.email,
       phone: data.phone,
       password: data.password,
       parentId,
       role: (data.role as any) || 'user',
-      activatedAt: DateTime.now(),
+      status: 'active',
     })
 
-    // Create transaction record for admin-created & auto-activated user
-    await user.related('transactions').create({
-      utr: `ADMIN-CREATE-${DateTime.now().toFormat('yyyyMMddHHmmss')}-${user.id}`,
-      amount: 0,
-      type: 'activation' as any,
-      approvedAt: DateTime.now(),
-      remark: `Created and activated by admin #${admin.id}`,
-    })
-
-    session.flash('success', 'User created and activated successfully')
+    session.flash('success', 'User created successfully. Activate from the Activation page.')
     return response.redirect().back()
   }
 
@@ -200,6 +218,38 @@ export default class AdminUsersController {
     return response.redirect().back()
   }
 
+  async inactivate({ params, session, response }: HttpContext) {
+    const user = await User.findOrFail(params.id)
+    user.status = 'inactive'
+    await user.save()
+    session.flash('success', `${user.name} has been inactivated. All income generation stopped.`)
+    return response.redirect().back()
+  }
+
+  async reactivate({ params, session, response }: HttpContext) {
+    const user = await User.findOrFail(params.id)
+    user.status = 'active'
+    await user.save()
+    session.flash('success', `${user.name} has been reactivated.`)
+    return response.redirect().back()
+  }
+
+  async block({ params, session, response }: HttpContext) {
+    const user = await User.findOrFail(params.id)
+    user.status = 'blocked'
+    await user.save()
+    session.flash('success', `${user.name} has been blocked. They cannot access their account.`)
+    return response.redirect().back()
+  }
+
+  async unblock({ params, session, response }: HttpContext) {
+    const user = await User.findOrFail(params.id)
+    user.status = 'active'
+    await user.save()
+    session.flash('success', `${user.name} has been unblocked.`)
+    return response.redirect().back()
+  }
+
   async tree({ params, inertia }: HttpContext) {
     const user = await User.findOrFail(params.id)
     const rootUser = await UserService.getTreeRoot(user)
@@ -214,7 +264,7 @@ export default class AdminUsersController {
    */
   async lookup({ params, response }: HttpContext) {
     const rawId = String(params.id)
-    // Strip prefix (PJL = left, PJR = right)
+    // Strip prefix (e.g. PJ000135 → 000135)
     const cleanId = rawId.replace(/^[a-zA-Z]+/i, '')
     const userId = Number(cleanId)
     if (!userId) {

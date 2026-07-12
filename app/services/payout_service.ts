@@ -117,7 +117,10 @@ export default class PayoutService {
   static async snapshotMonthlyIncomes(month: DateTime) {
     const period = month.startOf('month')
 
-    const users = await User.query().where('role', 'user').whereNotNull('activated_at')
+    const users = await User.query()
+      .where('role', 'user')
+      .whereNotNull('activated_at')
+      .where('status', 'active')
 
     let created = 0
 
@@ -202,6 +205,14 @@ export default class PayoutService {
     let processed = 0
 
     for (const distribution of distributions) {
+      // Skip inactive users — mark as paid but don't credit
+      const user = await User.find(distribution.userId)
+      if (!user || user.status === 'inactive') {
+        distribution.paidOutAt = DateTime.now()
+        await distribution.save()
+        continue
+      }
+
       const gross = Number(distribution.returnAmount)
       const incomeAmount = Math.round(gross * this.INCOME_PERCENT * 100) / 100
       const repurchaseAmount = Math.round(gross * this.REPURCHASE_PERCENT * 100) / 100
@@ -269,6 +280,14 @@ export default class PayoutService {
     let totalAmount = 0
 
     for (const snapshot of snapshots) {
+      // Skip inactive users — mark as paid but don't credit
+      const snapUser = await User.find(snapshot.userId)
+      if (!snapUser || snapUser.status === 'inactive') {
+        snapshot.paidOutAt = DateTime.now()
+        await snapshot.save()
+        continue
+      }
+
       const gross = Number(snapshot.grossAmount)
       const incomeAmount = Math.round(gross * this.INCOME_PERCENT * 100) / 100
       const repurchaseAmount = Math.round(gross * this.REPURCHASE_PERCENT * 100) / 100

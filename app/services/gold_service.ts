@@ -3,6 +3,7 @@ import { DateTime } from 'luxon'
 
 import User from '#models/user'
 import Purchase from '#models/purchase'
+import PlatformConfig from '#models/platform_config'
 import WalletService from '#services/wallet_service'
 import logger from '@adonisjs/core/services/logger'
 import CalculateAchievement from '#jobs/calculate_achievement'
@@ -377,6 +378,12 @@ export default class GoldService {
   }
 
   static async getLiveGoldPrice() {
+    // Check for manual override first
+    const manualOverride = await PlatformConfig.get('gold_rate_manual_override')
+    if (manualOverride && manualOverride.trim() !== '') {
+      return manualOverride.trim()
+    }
+
     try {
       const response = await fetch('https://www.angelone.in/gold-rates-today/gold-rate-in-kolkata')
       const html = await response.text()

@@ -55,6 +55,13 @@ export default class AuthController {
       }
 
       const user = await User.verifyCredentials(userId.toString(), password)
+
+      // Check if user is blocked
+      if (user.status === 'blocked') {
+        session.flash('errors.auth', 'Your account is blocked by Admin')
+        return response.redirect().toRoute('auth.login.page')
+      }
+
       await this.authenticate(ctx, user)
       const next = request.qs().next as string
       if (next) {

@@ -105,7 +105,7 @@ export default class MembersController {
     const currentUser = auth.getUserOrFail()
     const rawId = String(params.id)
 
-    // Strip prefix (PJL = left, PJR = right)
+    // Strip PJ prefix
     const cleanId = rawId.replace(/^[a-zA-Z]+/i, '')
     const userId = Number(cleanId)
 

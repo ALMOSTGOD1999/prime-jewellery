@@ -37,18 +37,8 @@ export function numberToWords(amount: number | string) {
 }
 
 export function formatUserId(id: number | string, roleOrLeg?: string | null, leg?: string | null) {
-  const idStr = id.toString()
+  // Pad the ID to 6 digits with leading zeros (e.g. 135 → "000135")
+  const idStr = String(id).padStart(6, '0')
 
-  // Determine the leg: use `leg` param if provided, otherwise check if roleOrLeg is a leg value
-  const userLeg = leg ?? (roleOrLeg === 'left' || roleOrLeg === 'right' ? roleOrLeg : null)
-
-  if (userLeg === 'right') {
-    return `PJR${idStr}`
-  }
-  if (userLeg === 'left') {
-    return `PJL${idStr}`
-  }
-
-  // No leg info — return plain ID
-  return idStr
+  return `PJ${idStr}`
 }

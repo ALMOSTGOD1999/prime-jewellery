@@ -205,6 +205,16 @@ export const getAppNav = (user: ReturnType<typeof useUser>, stats: AdminSidebarS
         url: '/admin/config/gold-billing',
         icon: Icon(RupeeCircleIcon),
       },
+      {
+        title: 'Inactivation',
+        url: '/admin/inactivation',
+        icon: Icon(SecurityCheckIcon),
+      },
+      {
+        title: 'Blocking',
+        url: '/admin/blocking',
+        icon: Icon(SecurityCheckIcon),
+      },
     ]
 
     sidebarLinks.push({

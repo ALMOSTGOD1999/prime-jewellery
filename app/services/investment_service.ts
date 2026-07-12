@@ -196,6 +196,13 @@ export default class InvestmentService {
     let maxReturnReached = 0
 
     for (const investment of investments) {
+      // Skip investments belonging to inactive users
+      const invUser = await User.find(investment.userId)
+      if (!invUser || invUser.status === 'inactive') {
+        skipped += 1
+        continue
+      }
+
       // Check if investment has reached max return cap
       const reachedMax = await this.hasReachedMaxReturn(investment)
       if (reachedMax) {

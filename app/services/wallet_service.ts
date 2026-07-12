@@ -211,10 +211,10 @@ export default class WalletService {
   /**
    * Search for users by ID, name, email, or phone for wallet transfers
    * Returns user info including name for verification
-   * Supports PJR/PJL prefixed IDs by stripping the prefix before searching.
+   * Supports PJ-prefixed IDs by stripping the prefix before searching.
    */
   static async searchUsersForTransfer(searchTerm: string, excludeUserId?: number) {
-    // Strip PJR/PJL prefix from search term for ID-based search
+    // Strip PJ prefix from search term for ID-based search
     const cleanForId = searchTerm.replace(/^[a-zA-Z]+/i, '')
 
     const query = User.query()
@@ -244,8 +244,8 @@ export default class WalletService {
   }
 
   /**
-   * Lookup a single user by their formatted ID (e.g. "PJR7638545" or "PJL7638545").
-   * Strips the PJR/PJL prefix and returns the user's basic details.
+   * Lookup a single user by their formatted ID (e.g. "PJ7638545").
+   * Strips the PJ prefix and returns the user's basic details.
    * Throws an error if the user is not found.
    */
   static async lookupUserByFormattedId(formattedId: string) {

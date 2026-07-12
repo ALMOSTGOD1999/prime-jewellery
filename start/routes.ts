@@ -212,6 +212,7 @@ router
       .group(() => {
         router.get('/', [AdminUsersController, 'index']).as('page')
         router.post('/', [AdminUsersController, 'store']).as('store')
+        router.get('/lookup-users', [AdminUsersController, 'lookupUsers']).as('lookup.users')
         router.get('/:id', [AdminUsersController, 'show']).as('show')
         router.patch('/:id', [AdminUsersController, 'updateProfile']).as('update')
         router.post('/:id/bank', [AdminUsersController, 'updateBank']).as('bank.update')
@@ -221,6 +222,10 @@ router
           .as('password.update')
         router.post('/:id/impersonate', [AdminUsersController, 'impersonate']).as('impersonate')
         router.post('/:id/activate', [AdminUsersController, 'activate']).as('activate')
+        router.post('/:id/inactivate', [AdminUsersController, 'inactivate']).as('inactivate')
+        router.post('/:id/reactivate', [AdminUsersController, 'reactivate']).as('reactivate')
+        router.post('/:id/block', [AdminUsersController, 'block']).as('block')
+        router.post('/:id/unblock', [AdminUsersController, 'unblock']).as('unblock')
         router.get('/:id/tree', [AdminUsersController, 'tree']).as('tree')
         router.get('/:id/lookup', [AdminUsersController, 'lookup']).as('lookup')
       })
@@ -395,6 +400,20 @@ router
     router
       .post('/config/gold-billing/update', [AdminConfigController, 'updateGoldBilling'])
       .as('config.gold.billing.update')
+
+    ////// Inactivation
+    router
+      .get('/inactivation', ({ inertia }) => {
+        return inertia.render('admin/inactivation')
+      })
+      .as('inactivation')
+
+    ////// Blocking
+    router
+      .get('/blocking', ({ inertia }) => {
+        return inertia.render('admin/blocking')
+      })
+      .as('blocking')
 
     ////// Month-end Payout
     const AdminPayoutController = () => import('#controllers/admin/payout_controller')

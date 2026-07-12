@@ -183,7 +183,7 @@ export function SendMoneyDialog({ walletBalance }: SendMoneyDialogProps) {
         <DialogHeader>
           <DialogTitle>Send Money</DialogTitle>
           <DialogDescription>
-            Send money from your wallet to another user. Enter their User ID (e.g., PJR7638545) or
+            Send money from your wallet to another user. Enter their User ID (e.g., PJ7638545) or
             name to search.
           </DialogDescription>
         </DialogHeader>
@@ -213,7 +213,7 @@ export function SendMoneyDialog({ walletBalance }: SendMoneyDialogProps) {
               <Label>Search User</Label>
               <div className="relative">
                 <Input
-                  placeholder="Search by User ID (PJR7638545) or name..."
+                  placeholder="Search by User ID (PJ7638545) or name..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pr-10"
@@ -243,7 +243,7 @@ export function SendMoneyDialog({ walletBalance }: SendMoneyDialogProps) {
                       <div>
                         <p className="text-sm font-medium">{user.name}</p>
                         <p className="text-xs text-muted-foreground">
-                          ID: PJR{user.id} {user.phone ? `· ${user.phone}` : ''}
+                          ID: PJ{user.id} {user.phone ? `· ${user.phone}` : ''}
                         </p>
                       </div>
                       <Badge variant="secondary" className="text-xs">
@@ -268,7 +268,7 @@ export function SendMoneyDialog({ walletBalance }: SendMoneyDialogProps) {
                     <p className="text-sm font-medium">
                       Sending to: <span className="text-primary">{selectedUser.name}</span>
                     </p>
-                    <p className="text-xs text-muted-foreground">User ID: PJR{selectedUser.id}</p>
+                    <p className="text-xs text-muted-foreground">User ID: PJ{selectedUser.id}</p>
                   </div>
                   <Button
                     variant="ghost"
