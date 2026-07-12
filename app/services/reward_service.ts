@@ -598,32 +598,31 @@ export default class RewardService {
     const directChildren = await user.related('children').query().count('* as total')
     const directCount = Number(directChildren[0].$extras.total)
 
-    // 2. Determine max depth based on direct count (max 20 levels)
-    let maxDepth = 1 // Level 1 always available
+    // 2. Determine max depth based on active direct count
+    // 1 direct → level 2, 2 → level 4, 3 → level 8, 4 → level 12, 5+ → level 20
+    let maxDepth = 0
     if (directCount >= 5) maxDepth = 20
-    else if (directCount >= 4) maxDepth = 15
-    else if (directCount >= 3) maxDepth = 10
-    else if (directCount >= 2) maxDepth = 5
-    else if (directCount >= 1) maxDepth = 3
+    else if (directCount >= 4) maxDepth = 12
+    else if (directCount >= 3) maxDepth = 8
+    else if (directCount >= 2) maxDepth = 4
+    else if (directCount >= 1) maxDepth = 2
 
-    const emptyResponse = {
-      meta: {
-        total: 0,
-        per_page: limit,
-        current_page: page,
-        last_page: 1,
-        first_page: 1,
-        first_page_url: '/?page=1',
-        last_page_url: '/?page=1',
-        next_page_url: null,
-        previous_page_url: null,
-      },
-      data: [],
-      stats: {
-        totalRewards: 0,
-        thisMonthRewards: 0,
-        totalWithdrawn: 0,
-      },
+    if (maxDepth === 0) {
+      return {
+        meta: {
+          total: 0,
+          per_page: limit,
+          current_page: page,
+          last_page: 1,
+          first_page: 1,
+          first_page_url: '/?page=1',
+          last_page_url: '/?page=1',
+          next_page_url: null,
+          previous_page_url: null,
+        },
+        data: [],
+        stats: { totalRewards: 0, thisMonthRewards: 0, totalWithdrawn: 0 },
+      }
     }
 
     // 3. Fetch descendants using CTE (up to 20 levels)
@@ -645,7 +644,21 @@ export default class RewardService {
     )
 
     if (descendants.rows.length === 0) {
-      return emptyResponse
+      return {
+        meta: {
+          total: 0,
+          per_page: limit,
+          current_page: page,
+          last_page: 1,
+          first_page: 1,
+          first_page_url: '/?page=1',
+          last_page_url: '/?page=1',
+          next_page_url: null,
+          previous_page_url: null,
+        },
+        data: [],
+        stats: { totalRewards: 0, thisMonthRewards: 0, totalWithdrawn: 0 },
+      }
     }
 
     const descendantIds = descendants.rows.map((r: any) => r.id)
@@ -660,7 +673,21 @@ export default class RewardService {
       .orderBy('approvedAt', 'asc')
 
     if (purchases.length === 0) {
-      return emptyResponse
+      return {
+        meta: {
+          total: 0,
+          per_page: limit,
+          current_page: page,
+          last_page: 1,
+          first_page: 1,
+          first_page_url: '/?page=1',
+          last_page_url: '/?page=1',
+          next_page_url: null,
+          previous_page_url: null,
+        },
+        data: [],
+        stats: { totalRewards: 0, thisMonthRewards: 0, totalWithdrawn: 0 },
+      }
     }
 
     // Group purchases by user
@@ -670,37 +697,28 @@ export default class RewardService {
       purchasesByUser.get(p.userId)!.push(p)
     }
 
-    // 5. Calculate rewards with new logic:
-    // Level 1: 1.5% (no team req)
-    // Level 2: 1% (1 direct req)
-    // Level 3: 0.5% (1 direct req)
-    // Level 4: 0.3% (2 direct req)
-    // Level 5: 0.25% (2 direct req)
-    // Level 6-10: 0.15% (3 direct req)
-    // Level 11-15: 0.10% (4 direct req)
-    // Level 16-20: 0.05% (5 direct req)
+    // 5. Calculate level income based on depth and direct count
+    // L1: 1% (1+ direct), L2: 0.5% (1+), L3: 0.20% (2+), L4-7: 0.15% (2+), L8-11: 0.10% (3+), L12-19: 0.05% (4+), L20: 0.10% (5+)
     const levelRewardsMap = new Map<string, number>()
 
     for (const [userId, userPurchases] of purchasesByUser.entries()) {
       const depth = descendantDepths.get(userId)!
       let percentage = 0
 
-      if (depth === 1) {
-        percentage = 0.015
-      } else if (depth === 2 && directCount >= 1) {
+      if (depth === 1 && directCount >= 1) {
         percentage = 0.01
-      } else if (depth === 3 && directCount >= 1) {
+      } else if (depth === 2 && directCount >= 1) {
         percentage = 0.005
-      } else if (depth === 4 && directCount >= 2) {
-        percentage = 0.003
-      } else if (depth === 5 && directCount >= 2) {
-        percentage = 0.0025
-      } else if (depth >= 6 && depth <= 10 && directCount >= 3) {
+      } else if (depth === 3 && directCount >= 2) {
+        percentage = 0.002
+      } else if (depth >= 4 && depth <= 7 && directCount >= 2) {
         percentage = 0.0015
-      } else if (depth >= 11 && depth <= 15 && directCount >= 4) {
+      } else if (depth >= 8 && depth <= 11 && directCount >= 3) {
         percentage = 0.001
-      } else if (depth >= 16 && depth <= 20 && directCount >= 5) {
+      } else if (depth >= 12 && depth <= 19 && directCount >= 4) {
         percentage = 0.0005
+      } else if (depth === 20 && directCount >= 5) {
+        percentage = 0.001
       }
 
       if (percentage === 0) continue
@@ -975,30 +993,26 @@ export default class RewardService {
     // 2. Determine max depth based on direct count (max 20 levels)
     let maxDepth = 1
     if (directCount >= 5) maxDepth = 20
-    else if (directCount >= 4) maxDepth = 15
-    else if (directCount >= 3) maxDepth = 10
-    else if (directCount >= 2) maxDepth = 5
-    else if (directCount >= 1) maxDepth = 3
-
-    const emptyResponse = {
-      meta: {
-        total: 0,
-        per_page: limit,
-        current_page: page,
-        last_page: 1,
-        first_page: 1,
-        first_page_url: '/?page=1',
-        last_page_url: '/?page=1',
-        next_page_url: null,
-        previous_page_url: null,
-      },
-      data: [],
-      stats: {
-        totalRewards: 0,
-        thisMonthRewards: 0,
-        totalWithdrawn: 0,
-      },
-    }
+    else if (directCount >= 4) maxDepth = 12
+    else if (directCount >= 3) maxDepth = 8
+    else if (directCount >= 2) maxDepth = 4
+    else if (directCount >= 1) maxDepth = 2
+    else
+      return {
+        meta: {
+          total: 0,
+          per_page: limit,
+          current_page: page,
+          last_page: 1,
+          first_page: 1,
+          first_page_url: '/?page=1',
+          last_page_url: '/?page=1',
+          next_page_url: null,
+          previous_page_url: null,
+        },
+        data: [],
+        stats: { totalRewards: 0, thisMonthRewards: 0, totalWithdrawn: 0 },
+      }
 
     // 3. Fetch descendants using CTE (up to 20 levels)
     const descendants = await db.rawQuery(
@@ -1019,7 +1033,21 @@ export default class RewardService {
     )
 
     if (descendants.rows.length === 0) {
-      return emptyResponse
+      return {
+        meta: {
+          total: 0,
+          per_page: limit,
+          current_page: page,
+          last_page: 1,
+          first_page: 1,
+          first_page_url: '/?page=1',
+          last_page_url: '/?page=1',
+          next_page_url: null,
+          previous_page_url: null,
+        },
+        data: [],
+        stats: { totalRewards: 0, thisMonthRewards: 0, totalWithdrawn: 0 },
+      }
     }
 
     const descendantIds = descendants.rows.map((r: any) => r.id)
@@ -1042,7 +1070,21 @@ export default class RewardService {
     )
 
     if (emiTransactions.rows.length === 0) {
-      return emptyResponse
+      return {
+        meta: {
+          total: 0,
+          per_page: limit,
+          current_page: page,
+          last_page: 1,
+          first_page: 1,
+          first_page_url: '/?page=1',
+          last_page_url: '/?page=1',
+          next_page_url: null,
+          previous_page_url: null,
+        },
+        data: [],
+        stats: { totalRewards: 0, thisMonthRewards: 0, totalWithdrawn: 0 },
+      }
     }
 
     // Group transactions by user
