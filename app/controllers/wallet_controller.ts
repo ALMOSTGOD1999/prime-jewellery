@@ -84,7 +84,7 @@ export default class WalletController {
            ELSE 0
          END
        ), 0)::float as total
-       FROM transactions WHERE user_id = ? AND remark ILIKE '%working income%' AND (remark ILIKE '%cashback wallet%' OR remark ILIKE '%income wallet%')`,
+       FROM transactions WHERE user_id = ? AND remark ILIKE '%working income%' AND (remark ILIKE '%cashback wallet%' OR remark ILIKE '%income wallet%' OR remark ILIKE '%working wallet%')`,
       [user.id]
     )
 
