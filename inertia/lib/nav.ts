@@ -100,6 +100,7 @@ export const getAppNav = (user: ReturnType<typeof useUser>, stats: AdminSidebarS
           { title: 'Cashback', url: '/rewards/cashback' },
           { title: 'Reward & Award', url: '/rewards/reward-award' },
           { title: 'Performance Incentive', url: '/rewards/salaries' },
+          { title: 'Level Income', url: '/rewards/level-income' },
           { title: 'Achievements', url: '/reward/achievement', icon: Icon(ChampionIcon) },
           { title: 'Withdrawals', url: '/rewards/withdrawal' },
         ],

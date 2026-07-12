@@ -389,4 +389,33 @@ export default class RewardsController {
   async rewardAwardPage({ inertia }: HttpContext) {
     return inertia.render('rewards/reward-award')
   }
+
+  async levelIncomePage({ auth, inertia, request }: HttpContext) {
+    const user = auth.getUserOrFail()
+    const { page = 1, limit = 10 } = await paginationValidator.validate(request.qs())
+    const isPayoutReleased = await PayoutService.isPayoutReleased()
+
+    const levelIncome = isPayoutReleased
+      ? await RewardService.getLevelRewards(user, { page, limit })
+      : {
+          meta: {
+            total: 0,
+            per_page: limit,
+            current_page: page,
+            last_page: 1,
+            first_page: 1,
+            first_page_url: '/?page=1',
+            last_page_url: '/?page=1',
+            next_page_url: null,
+            previous_page_url: null,
+          },
+          data: [],
+          stats: { totalRewards: 0, thisMonthRewards: 0, totalWithdrawn: 0 },
+        }
+
+    return inertia.render('rewards/level-income', {
+      levelIncome,
+      isPayoutReleased,
+    })
+  }
 }

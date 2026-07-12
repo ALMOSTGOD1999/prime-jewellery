@@ -174,6 +174,7 @@ router
     router.get('activation', [RewardsController, 'activationPage']).as('activation.page')
     router.get('cashback', [RewardsController, 'cashbackPage']).as('cashback.page')
     router.get('salaries', [RewardsController, 'salaryPage']).as('salary.page')
+    router.get('level-income', [RewardsController, 'levelIncomePage']).as('level.income.page')
     router.get('reward-award', [RewardsController, 'rewardAwardPage']).as('reward.award.page')
     router.get('withdrawal', [WithdrawalsController, 'index']).as('withdrawal.page')
 
