@@ -43,14 +43,7 @@ interface SalaryRewardsProps {
       id: number
       date: string
       totalReward: number
-      breakdown: {
-        monthlyIncentive: number
-        houseFund: number | null
-        travelAllowance: number
-        carFund: number | null
-      }
       designation: string
-      carryingForward: number
       power: number
       weaker: number
     }>
@@ -199,14 +192,13 @@ export default function SalaryRewards({
                 <TableHead>Month Year</TableHead>
                 <TableHead>Total Reward</TableHead>
                 <TableHead>Designation</TableHead>
-                <TableHead>Carrying Forward</TableHead>
                 <TableHead>Power / Weaker</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {rewards.data.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center">
+                  <TableCell colSpan={4} className="h-24 text-center">
                     No results.
                   </TableCell>
                 </TableRow>
@@ -226,38 +218,32 @@ export default function SalaryRewards({
                               className="h-4 w-4 text-muted-foreground hover:text-primary cursor-pointer"
                             />
                           </PopoverTrigger>
-                          <PopoverContent className="w-80">
+                          <PopoverContent className="w-72">
                             <div className="space-y-2">
-                              <h4 className="font-medium leading-none">Reward Breakdown</h4>
+                              <h4 className="font-medium leading-none">Reward Details</h4>
                               <div className="grid gap-2 text-sm">
                                 <div className="grid grid-cols-2 items-center gap-4">
-                                  <span>Monthly Incentive:</span>
-                                  <span className="text-right font-medium">
-                                    {formatCurrency(row.breakdown.monthlyIncentive)}
-                                  </span>
+                                  <span>Designation:</span>
+                                  <span className="text-right font-medium">{row.designation}</span>
                                 </div>
-                                {row.breakdown.houseFund !== null && (
-                                  <div className="grid grid-cols-2 items-center gap-4">
-                                    <span>House Fund:</span>
-                                    <span className="text-right font-medium">
-                                      {formatCurrency(row.breakdown.houseFund)}
-                                    </span>
-                                  </div>
-                                )}
                                 <div className="grid grid-cols-2 items-center gap-4">
-                                  <span>Travel Allowance:</span>
+                                  <span>Performance Incentive:</span>
                                   <span className="text-right font-medium">
-                                    {formatCurrency(row.breakdown.travelAllowance)}
+                                    {formatCurrency(row.totalReward)}
                                   </span>
                                 </div>
-                                {row.breakdown.carFund !== null && (
-                                  <div className="grid grid-cols-2 items-center gap-4">
-                                    <span>Car Fund:</span>
-                                    <span className="text-right font-medium">
-                                      {formatCurrency(row.breakdown.carFund)}
-                                    </span>
-                                  </div>
-                                )}
+                                <div className="grid grid-cols-2 items-center gap-4">
+                                  <span>Power Leg:</span>
+                                  <span className="text-right font-medium">
+                                    {formatCurrency(row.power)}
+                                  </span>
+                                </div>
+                                <div className="grid grid-cols-2 items-center gap-4">
+                                  <span>Other Legs:</span>
+                                  <span className="text-right font-medium">
+                                    {formatCurrency(row.weaker)}
+                                  </span>
+                                </div>
                               </div>
                             </div>
                           </PopoverContent>
@@ -269,7 +255,6 @@ export default function SalaryRewards({
                         {row.designation}
                       </span>
                     </TableCell>
-                    <TableCell>{formatCurrency(row.carryingForward)}</TableCell>
                     <TableCell>
                       <div className="flex flex-col text-xs">
                         <span className="text-yellow-600 font-medium">

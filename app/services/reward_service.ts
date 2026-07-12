@@ -1616,13 +1616,6 @@ export default class RewardService {
             date: a.createdAt.toFormat('dd MMMM yyyy'),
             totalReward: info.reward,
             designation: info.designation,
-            breakdown: {
-              monthlyIncentive: info.reward,
-              houseFund: null,
-              travelAllowance: 0,
-              carFund: null,
-            },
-            carryingForward: 0,
             criteria: info.criteria,
             topLeg: info.topLeg,
             otherLegs: info.otherLegs,
