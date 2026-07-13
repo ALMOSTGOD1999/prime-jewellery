@@ -782,9 +782,9 @@ export default class RewardService {
 
     // Calculate Stats
     const totalRewards = rewards.reduce((sum, r) => sum + r.amount, 0)
-    const currentMonth = DateTime.now().setZone(env.get('TZ')).toFormat('yyyy-MM')
+    const targetMonth = (asOf || DateTime.now().setZone(env.get('TZ'))).toFormat('yyyy-MM')
     const thisMonthRewards = rewards
-      .filter((r) => r.date.startsWith(currentMonth))
+      .filter((r) => r.date.startsWith(targetMonth))
       .reduce((sum, r) => sum + r.amount, 0)
 
     // Pagination
