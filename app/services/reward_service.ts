@@ -42,10 +42,10 @@ export default class RewardService {
       }
     }
 
-    const ACTIVATION_AMOUNT = 1000
+    const ACTIVATION_AMOUNT = Number(user.activationAmount) || 1000
     const CASHBACK_PERCENTAGE = 0.1 // 10%
-    const totalCashback = ACTIVATION_AMOUNT * CASHBACK_PERCENTAGE // 100
-    const monthlyAmount = totalCashback / 2 // 50 per month
+    const totalCashback = ACTIVATION_AMOUNT * CASHBACK_PERCENTAGE
+    const monthlyAmount = totalCashback / 2
 
     const activatedAt = DateTime.fromJSDate(new Date(user.activatedAt.toString()))
     const asOfDate = asOf || DateTime.now()
@@ -151,9 +151,9 @@ export default class RewardService {
         query.where('name', 'ILIKE', `%${search}%`)
       })
 
-    const ACTIVATION_AMOUNT = 1000
+    const ACTIVATION_AMOUNT = Number(user.activationAmount) || 1000
     const SPONSOR_PERCENTAGE = 0.1 // 10%
-    const rewardPerChild = ACTIVATION_AMOUNT * SPONSOR_PERCENTAGE // 100
+    const rewardPerChild = ACTIVATION_AMOUNT * SPONSOR_PERCENTAGE
 
     const rewards = directChildren.map((child) => ({
       _userId: child.id,
@@ -299,7 +299,7 @@ export default class RewardService {
       }
     }
 
-    const ACTIVATION_AMOUNT = 1000
+    const ACTIVATION_AMOUNT = Number(user.activationAmount) || 1000
 
     // 3. Calculate Rewards based on activated_at
     const rewards: any[] = []
@@ -488,7 +488,7 @@ export default class RewardService {
       return { totalRewards: 0, totalGoldWallet: 0, totalWithdrawal: 0 }
     }
 
-    const ACTIVATION_AMOUNT = 1000
+    const ACTIVATION_AMOUNT = Number(user.activationAmount) || 1000
 
     // 3. Calculate Total Rewards based on activated_at
     let totalRewards = 0
@@ -1677,11 +1677,6 @@ export default class RewardService {
    * Optimized to skip expensive genealogy scans when no downline activity exists.
    */
   static async getUserMonthlyWorkingIncome(user: User, month: DateTime): Promise<number> {
-    // ₹0 activation users never generate any income
-    if (Number(user.activationAmount ?? 0) === 0 && user.activatedAt) {
-      return 0
-    }
-
     const monthStr = month.toFormat('yyyy-MM')
     const monthStart = month.startOf('month')
     const monthEnd = month.endOf('month')
@@ -1690,12 +1685,16 @@ export default class RewardService {
 
     // 1. Activation Cashback (fast: just date math)
     if (user.activatedAt) {
+      const actAmt = Number(user.activationAmount) || 1000
+      const monthlyCashback = (actAmt * 0.1) / 2 // 5% per month for 2 months
       const activatedAt = DateTime.fromJSDate(new Date(user.activatedAt.toString()))
       const month1Date = activatedAt.plus({ months: 1 })
       const month2Date = activatedAt.plus({ months: 2 })
       const asOf = monthEnd
-      if (asOf >= month1Date && month1Date.toFormat('yyyy-MM') === monthStr) total += 50
-      if (asOf >= month2Date && month2Date.toFormat('yyyy-MM') === monthStr) total += 50
+      if (asOf >= month1Date && month1Date.toFormat('yyyy-MM') === monthStr)
+        total += monthlyCashback
+      if (asOf >= month2Date && month2Date.toFormat('yyyy-MM') === monthStr)
+        total += monthlyCashback
     }
 
     // Quick check: does user have any direct children?
@@ -1710,7 +1709,8 @@ export default class RewardService {
         .whereNotNull('activated_at')
         .whereBetween('activated_at', [monthStart.toSQL()!, monthEnd.toSQL()!])
         .count('* as total')
-      total += Number(sponsorCountRes[0].$extras.total) * 100
+      total +=
+        Number(sponsorCountRes[0].$extras.total) * ((Number(user.activationAmount) || 1000) * 0.1)
 
       // 3. Activation Level — incremental amount earned during this month
       const activationLevelEnd = await this.getActivationLevelRewards(user, {

@@ -410,7 +410,7 @@ export default class UserService {
     }
 
     user.activatedAt = DateTime.now()
-    user.activationAmount = amount ?? 0
+    user.activationAmount = amount ?? 1000
     await user.save()
 
     // Create activation transaction record for audit trail
