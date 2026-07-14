@@ -259,6 +259,27 @@ export default class PayoutService {
       )
     }
 
+    // Double-guard: check if already paid (prevents race condition)
+    const alreadyPaid = await PlatformConfig.get('working_wallet_payout_month')
+    if (alreadyPaid) {
+      const paidMonth = DateTime.fromISO(alreadyPaid + '-01').startOf('month')
+      if (paidMonth >= period) {
+        throw new Error(`Working payout for ${period.toFormat('yyyy-MM')} already done.`)
+      }
+    }
+
+    // Check if any snapshots already paid for this month
+    const paidCount = await MonthlyIncomeSnapshot.query()
+      .where('month', period.toISODate()!)
+      .whereNotNull('paid_out_at')
+      .count('* as total')
+      .first()
+    if (Number(paidCount?.$extras?.total || 0) > 0) {
+      throw new Error(
+        `Working payout for ${period.toFormat('yyyy-MM')} already done (snapshots paid).`
+      )
+    }
+
     try {
       await this.snapshotMonthlyIncomes(period)
     } catch (error) {
