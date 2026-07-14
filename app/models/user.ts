@@ -144,8 +144,8 @@ export default class User extends compose(BaseModel, AuthFinder, withTimestamps(
   }
 
   private static async generateUniqueId(role: UserRoleEnum): Promise<number> {
-    let min = 1_000_000
-    let max = 9_000_000
+    let min = 100_000
+    let max = 999_999
 
     if (role === UserRoleEnum.FRANCHISE) {
       min = 100_000
