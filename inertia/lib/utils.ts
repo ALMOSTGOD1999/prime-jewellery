@@ -41,7 +41,7 @@ export function formatUserId(
   _roleOrLeg?: string | null,
   _leg?: string | null
 ) {
-  // Always 6 digits with leading zeros (e.g. 135 → "000135", 7638545 → "638545")
-  const idStr = String(id).padStart(6, '0').slice(-6)
+  // Always pad to 6 digits minimum, don't truncate (e.g. 135 → "000135", 7638545 → "7638545")
+  const idStr = String(id).padStart(6, '0')
   return `PJ${idStr}`
 }
