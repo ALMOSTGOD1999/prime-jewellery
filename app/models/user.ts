@@ -59,6 +59,9 @@ export default class User extends compose(BaseModel, AuthFinder, withTimestamps(
   declare status: string
 
   @column()
+  declare activationAmount: number
+
+  @column()
   declare parentId: number | null
 
   @column()

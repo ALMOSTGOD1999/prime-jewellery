@@ -1,6 +1,7 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import PayoutService from '#services/payout_service'
 import PlatformConfig from '#models/platform_config'
+import db from '@adonisjs/lucid/services/db'
 import { DateTime } from 'luxon'
 
 export default class AdminPayoutController {
@@ -150,6 +151,24 @@ export default class AdminPayoutController {
     } catch (error) {
       session.flash('errors.global', error.message)
     }
+    return response.redirect().back()
+  }
+
+  async withdrawAllIncome({ auth, session, response }: HttpContext) {
+    await auth.getUserOrFail()
+    await db.rawQuery(
+      `UPDATE withdrawls SET status = 'approved', approved_at = NOW() WHERE type = 'investment_income' AND status = 'pending'`
+    )
+    session.flash('success', 'All pending income wallet withdrawals approved.')
+    return response.redirect().back()
+  }
+
+  async withdrawAllWorking({ auth, session, response }: HttpContext) {
+    await auth.getUserOrFail()
+    await db.rawQuery(
+      `UPDATE withdrawls SET status = 'approved', approved_at = NOW() WHERE type != 'investment_income' AND status = 'pending'`
+    )
+    session.flash('success', 'All pending working wallet withdrawals approved.')
     return response.redirect().back()
   }
 }

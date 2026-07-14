@@ -36,9 +36,12 @@ export function numberToWords(amount: number | string) {
   }).convert(Number(amount))
 }
 
-export function formatUserId(id: number | string, roleOrLeg?: string | null, leg?: string | null) {
-  // Pad the ID to 6 digits with leading zeros (e.g. 135 → "000135")
-  const idStr = String(id).padStart(6, '0')
-
+export function formatUserId(
+  id: number | string,
+  _roleOrLeg?: string | null,
+  _leg?: string | null
+) {
+  // Always 6 digits with leading zeros (e.g. 135 → "000135", 7638545 → "638545")
+  const idStr = String(id).padStart(6, '0').slice(-6)
   return `PJ${idStr}`
 }

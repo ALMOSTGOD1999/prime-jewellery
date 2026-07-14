@@ -44,6 +44,8 @@ export default function AdminPayoutPage({
   const incomeForm = useForm({ month: nextIncomeMonth })
   const workingForm = useForm({ month: nextWorkingMonth })
   const resetForm = useForm({})
+  const withdrawIncomeForm = useForm({})
+  const withdrawWorkingForm = useForm({})
 
   const handleIncomePayout = () => incomeForm.post('/admin/payout/income-wallet')
   const handleWorkingPayout = () => workingForm.post('/admin/payout/working-wallet')
@@ -241,6 +243,46 @@ export default function AdminPayoutPage({
               </a>
             </CardContent>
           </Card>
+
+          {/* Withdraw for All */}
+          <div className="grid gap-6 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Withdraw All — Income Wallet</CardTitle>
+                <CardDescription>
+                  Approve all pending investment income withdrawals at once.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button
+                  onClick={() => withdrawIncomeForm.post('/admin/payout/withdraw-all-income')}
+                  disabled={withdrawIncomeForm.processing}
+                  className="w-full"
+                  variant="destructive"
+                >
+                  {withdrawIncomeForm.processing ? 'Processing...' : 'Withdraw All Income Wallet'}
+                </Button>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Withdraw All — Working Wallet</CardTitle>
+                <CardDescription>
+                  Approve all pending working wallet withdrawals at once.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button
+                  onClick={() => withdrawWorkingForm.post('/admin/payout/withdraw-all-working')}
+                  disabled={withdrawWorkingForm.processing}
+                  className="w-full"
+                  variant="destructive"
+                >
+                  {withdrawWorkingForm.processing ? 'Processing...' : 'Withdraw All Working Wallet'}
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
         </Main>
       </AppLayout>
     </>

@@ -430,6 +430,12 @@ router
           .post('/working-wallet', [AdminPayoutController, 'workingWalletPayout'])
           .as('working.wallet')
         router.post('/reset', [AdminPayoutController, 'reset']).as('reset')
+        router
+          .post('/withdraw-all-income', [AdminPayoutController, 'withdrawAllIncome'])
+          .as('withdrawAll.income')
+        router
+          .post('/withdraw-all-working', [AdminPayoutController, 'withdrawAllWorking'])
+          .as('withdrawAll.working')
         router.get('/history', [AdminPayoutHistoryController, 'index']).as('history')
       })
       .prefix('payout')

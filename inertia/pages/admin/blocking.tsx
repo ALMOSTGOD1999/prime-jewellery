@@ -1,4 +1,4 @@
-import { Head } from '@inertiajs/react'
+import { Head, router } from '@inertiajs/react'
 import AppLayout from '~/components/app/layout'
 import { Header } from '~/components/app/header'
 import { Main } from '~/components/app/main'
@@ -42,26 +42,24 @@ export default function AdminBlockingPage() {
     fetchUsers()
   }, [])
 
-  const handleBlock = async (userId: number) => {
-    try {
-      const res = await fetch(`/admin/users/${userId}/block`, { method: 'POST' })
-      if (res.ok) {
-        fetchUsers()
+  const handleBlock = (userId: number) => {
+    router.post(
+      `/admin/users/${userId}/block`,
+      {},
+      {
+        onSuccess: () => fetchUsers(),
       }
-    } catch (e) {
-      console.error(e)
-    }
+    )
   }
 
-  const handleUnblock = async (userId: number) => {
-    try {
-      const res = await fetch(`/admin/users/${userId}/unblock`, { method: 'POST' })
-      if (res.ok) {
-        fetchUsers()
+  const handleUnblock = (userId: number) => {
+    router.post(
+      `/admin/users/${userId}/unblock`,
+      {},
+      {
+        onSuccess: () => fetchUsers(),
       }
-    } catch (e) {
-      console.error(e)
-    }
+    )
   }
 
   return (
@@ -111,9 +109,7 @@ export default function AdminBlockingPage() {
                         <td className="p-3 text-sm text-muted-foreground">{user.email}</td>
                         <td className="p-3 text-sm text-muted-foreground">{user.phone}</td>
                         <td className="p-3">
-                          <Badge
-                            variant={user.status === 'blocked' ? 'destructive' : 'default'}
-                          >
+                          <Badge variant={user.status === 'blocked' ? 'destructive' : 'default'}>
                             {user.status}
                           </Badge>
                         </td>

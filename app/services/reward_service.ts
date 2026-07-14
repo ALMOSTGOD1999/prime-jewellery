@@ -1677,6 +1677,11 @@ export default class RewardService {
    * Optimized to skip expensive genealogy scans when no downline activity exists.
    */
   static async getUserMonthlyWorkingIncome(user: User, month: DateTime): Promise<number> {
+    // ₹0 activation users never generate any income
+    if (Number(user.activationAmount ?? 0) === 0 && user.activatedAt) {
+      return 0
+    }
+
     const monthStr = month.toFormat('yyyy-MM')
     const monthStart = month.startOf('month')
     const monthEnd = month.endOf('month')

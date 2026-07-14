@@ -1,11 +1,10 @@
-import { Head, usePage } from '@inertiajs/react'
+import { Head, router } from '@inertiajs/react'
 import AppLayout from '~/components/app/layout'
 import { Header } from '~/components/app/header'
 import { Main } from '~/components/app/main'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
 import { Badge } from '~/components/ui/badge'
-import { router } from '@inertiajs/react'
 import { useState, useEffect } from 'react'
 import { formatUserId } from '~/lib/utils'
 
@@ -43,26 +42,24 @@ export default function AdminInactivationPage() {
     fetchUsers()
   }, [])
 
-  const handleInactivate = async (userId: number) => {
-    try {
-      const res = await fetch(`/admin/users/${userId}/inactivate`, { method: 'POST' })
-      if (res.ok) {
-        fetchUsers()
+  const handleInactivate = (userId: number) => {
+    router.post(
+      `/admin/users/${userId}/inactivate`,
+      {},
+      {
+        onSuccess: () => fetchUsers(),
       }
-    } catch (e) {
-      console.error(e)
-    }
+    )
   }
 
-  const handleReactivate = async (userId: number) => {
-    try {
-      const res = await fetch(`/admin/users/${userId}/reactivate`, { method: 'POST' })
-      if (res.ok) {
-        fetchUsers()
+  const handleReactivate = (userId: number) => {
+    router.post(
+      `/admin/users/${userId}/reactivate`,
+      {},
+      {
+        onSuccess: () => fetchUsers(),
       }
-    } catch (e) {
-      console.error(e)
-    }
+    )
   }
 
   return (
@@ -111,9 +108,7 @@ export default function AdminInactivationPage() {
                         <td className="p-3 text-sm text-muted-foreground">{user.email}</td>
                         <td className="p-3 text-sm text-muted-foreground">{user.phone}</td>
                         <td className="p-3">
-                          <Badge
-                            variant={user.status === 'active' ? 'default' : 'destructive'}
-                          >
+                          <Badge variant={user.status === 'active' ? 'default' : 'destructive'}>
                             {user.status}
                           </Badge>
                         </td>
