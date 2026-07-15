@@ -55,6 +55,30 @@ export default class WalletService {
     })
   }
 
+  static async creditWorkingWallet(
+    userId: number,
+    amount: number,
+    adminId: number,
+    remark?: string
+  ) {
+    return db.transaction(async (trx) => {
+      const user = await User.query({ client: trx }).where('id', userId).firstOrFail()
+      const transaction = await Transaction.create(
+        {
+          userId,
+          type: TransactionTypeEnum.WALLET_CREDIT,
+          amount,
+          remark: remark || `Working income credited by admin #${adminId}`,
+          approvedAt: DateTime.now(),
+        },
+        { client: trx }
+      )
+      user.workingWallet = Number(user.workingWallet ?? 0) + amount
+      await user.save()
+      return transaction
+    })
+  }
+
   /**
    * Debit a user's wallet balance and create an audit transaction.
    */
@@ -109,6 +133,9 @@ export default class WalletService {
         'email',
         'phone',
         'wallet_balance',
+        'income_wallet',
+        'repurchase_wallet',
+        'working_wallet',
         'created_at',
         'activated_at',
         'role'
@@ -137,6 +164,9 @@ export default class WalletService {
           email: u.email,
           phone: u.phone,
           walletBalance: Number(u.walletBalance ?? 0),
+          incomeWallet: Number(u.incomeWallet ?? 0),
+          repurchaseWallet: Number(u.repurchaseWallet ?? 0),
+          workingWallet: Number(u.workingWallet ?? 0),
           activatedAt: u.activatedAt,
           role: u.role,
           createdAt: u.createdAt,
@@ -181,6 +211,7 @@ export default class WalletService {
         walletBalance: Number(user.walletBalance ?? 0),
         incomeWallet: Number(user.incomeWallet ?? 0),
         repurchaseWallet: Number(user.repurchaseWallet ?? 0),
+        workingWallet: Number(user.workingWallet ?? 0),
       },
       transactions: {
         meta: transactions.getMeta(),

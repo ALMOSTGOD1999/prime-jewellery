@@ -75,18 +75,8 @@ export default class WalletController {
       [user.id]
     )
 
-    // Working Wallet = ONLY 70% portion from WORKING INCOME
-    const workingRes = await db.rawQuery(
-      `SELECT coalesce(sum(
-         CASE
-           WHEN type = 'wallet_credit' THEN amount
-           WHEN type = 'wallet_debit' THEN -amount
-           ELSE 0
-         END
-       ), 0)::float as total
-       FROM transactions WHERE user_id = ? AND remark ILIKE '%working income%' AND (remark ILIKE '%cashback wallet%' OR remark ILIKE '%income wallet%' OR remark ILIKE '%working wallet%')`,
-      [user.id]
-    )
+    // Working Wallet is now stored directly on the user model as a separate column.
+    // No need to compute from transactions anymore.
 
     const isPayoutReleased = await PayoutService.isPayoutReleased()
     const visibleCutoffEnd = await PayoutService.getVisibleCutoffEndOfMonth()
@@ -127,7 +117,7 @@ export default class WalletController {
         ...userData,
         incomeWallet: Number(investmentReturnRes.rows[0]?.total ?? 0),
         repurchaseWallet: Number(repurchaseRes.rows[0]?.total ?? 0),
-        workingWallet: Number(workingRes.rows[0]?.total ?? 0),
+        workingWallet: Number(userData.workingWallet ?? 0),
       },
       transactions: visibleTransactions,
       activationAmount: 1000,

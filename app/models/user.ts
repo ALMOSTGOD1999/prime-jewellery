@@ -92,6 +92,9 @@ export default class User extends compose(BaseModel, AuthFinder, withTimestamps(
   declare repurchaseWallet: number
 
   @column()
+  declare workingWallet: number
+
+  @column()
   declare totalInvested: number
 
   @hasMany(() => User, {

@@ -313,7 +313,7 @@ export default class PayoutService {
       const incomeAmount = Math.round(gross * this.INCOME_PERCENT * 100) / 100
       const repurchaseAmount = Math.round(gross * this.REPURCHASE_PERCENT * 100) / 100
 
-      await WalletService.creditWallet(
+      await WalletService.creditWorkingWallet(
         snapshot.userId,
         incomeAmount,
         adminId,
