@@ -155,7 +155,7 @@ export default class User extends compose(BaseModel, AuthFinder, withTimestamps(
       max = 900_000
     }
 
-    const id = Math.floor(min + Math.random() * max)
+    const id = Math.floor(min + Math.random() * (max - min + 1))
     const exist = await this.find(id)
     if (exist) {
       return this.generateUniqueId(role)

@@ -1,14 +1,12 @@
 import { Head, useForm } from '@inertiajs/react'
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
   Search01Icon,
   Loading01Icon,
-  CheckmarkCircle01Icon,
   ShoppingBag03Icon,
   Wallet01Icon,
   Cancel01Icon,
-  Coins01Icon,
 } from '@hugeicons/core-free-icons'
 
 import AppLayout from '~/components/app/layout'
@@ -29,34 +27,38 @@ interface SearchResult {
   walletBalance: number
 }
 
-const GOLD_PACKAGES = {
-  TIER_1: {
-    min: 10000,
-    max: 499000,
-    label: 'Package 1',
-    monthlyReward: 2,
-    cashbackWallet: 70,
-    repurchaseWallet: 30,
-    maxReturn: 100,
-  },
-  TIER_2: {
-    min: 500000,
-    max: Infinity,
-    label: 'Package 2',
-    monthlyReward: 3,
-    cashbackWallet: 70,
-    repurchaseWallet: 30,
-    maxReturn: 100,
-  },
+interface GoldPackage {
+  name: string
+  minAmount: number
+  maxAmount: number | null
+  monthlyReward: number
+  maxReturn: number
 }
 
-function getGoldPackage(amount: number) {
-  if (amount >= GOLD_PACKAGES.TIER_2.min) return { ...GOLD_PACKAGES.TIER_2 }
-  if (amount >= GOLD_PACKAGES.TIER_1.min) return { ...GOLD_PACKAGES.TIER_1 }
+// Default fallback slabs matching business rules
+const DEFAULT_PACKAGES: GoldPackage[] = [
+  { name: 'Silver', minAmount: 10000, maxAmount: 199999, monthlyReward: 3, maxReturn: 100 },
+  { name: 'Gold', minAmount: 200000, maxAmount: 499999, monthlyReward: 3.5, maxReturn: 100 },
+  { name: 'Platinum', minAmount: 500000, maxAmount: null, monthlyReward: 4, maxReturn: 100 },
+]
+
+function findPackage(packages: GoldPackage[], amount: number): GoldPackage | null {
+  // Slabs are sorted by minAmount asc; find first slab where minAmount <= amount
+  // AND (maxAmount is null or amount <= maxAmount)
+  const sorted = [...packages].sort((a, b) => b.minAmount - a.minAmount)
+  for (const pkg of sorted) {
+    if (amount >= pkg.minAmount && (pkg.maxAmount === null || amount <= pkg.maxAmount)) {
+      return pkg
+    }
+  }
   return null
 }
 
-export default function AdminPurchasePage() {
+export default function AdminPurchasePage({ goldPackages }: { goldPackages?: GoldPackage[] }) {
+  const packages = useMemo(() => {
+    if (goldPackages && goldPackages.length > 0) return goldPackages
+    return DEFAULT_PACKAGES
+  }, [goldPackages])
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
   const [searching, setSearching] = useState(false)
@@ -68,7 +70,7 @@ export default function AdminPurchasePage() {
 
   const selectedAmount = Number(purchaseForm.data.amount)
   const goldPackage =
-    selectedUser && selectedAmount >= 10000 ? getGoldPackage(selectedAmount) : null
+    selectedUser && selectedAmount >= 10000 ? findPackage(packages, selectedAmount) : null
 
   const performSearch = useCallback(async (query: string) => {
     if (!query.trim()) {
@@ -238,7 +240,7 @@ export default function AdminPurchasePage() {
                   {goldPackage && (
                     <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-2">
                       <div className="flex items-center justify-between">
-                        <Badge variant="default">{goldPackage.label}</Badge>
+                        <Badge variant="default">{goldPackage.name}</Badge>
                         <span className="text-xs text-muted-foreground">
                           ₹{formatCurrency(selectedAmount)}
                         </span>
@@ -254,11 +256,11 @@ export default function AdminPurchasePage() {
                         </div>
                         <div>
                           <p className="text-muted-foreground text-xs">Cashback Wallet</p>
-                          <p className="font-semibold">{goldPackage.cashbackWallet}%</p>
+                          <p className="font-semibold">70%</p>
                         </div>
                         <div>
                           <p className="text-muted-foreground text-xs">Repurchase Wallet</p>
-                          <p className="font-semibold">{goldPackage.repurchaseWallet}%</p>
+                          <p className="font-semibold">20%</p>
                         </div>
                       </div>
                     </div>

@@ -324,7 +324,22 @@ router
       .as('settings')
 
     ////// User Purchase (admin makes purchase on behalf of user)
-    router.get('/purchase', ({ inertia }) => inertia.render('admin/purchase')).as('purchase.page')
+    router
+      .get('/purchase', async ({ inertia }) => {
+        const investmentPackageModule = await import('#models/investment_package')
+        const InvestmentPackage = investmentPackageModule.default
+        const packages = await InvestmentPackage.getActivePackages()
+        return inertia.render('admin/purchase', {
+          goldPackages: packages.map((p) => ({
+            name: p.name,
+            minAmount: Number(p.minAmount),
+            maxAmount: p.maxAmount ? Number(p.maxAmount) : null,
+            monthlyReward: Number(p.monthlyReturnPercent),
+            maxReturn: Number(p.maxReturnPercent),
+          })),
+        })
+      })
+      .as('purchase.page')
     router.post('/users/:id/purchase', [AdminUsersController, 'makePurchase']).as('users.purchase')
 
     ////// Purchase Invoice Download (admin downloads any purchase invoice)

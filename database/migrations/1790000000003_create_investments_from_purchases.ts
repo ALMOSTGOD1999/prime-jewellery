@@ -9,21 +9,30 @@ export default class extends BaseSchema {
     if (!existingPackages) {
       await db.table('investment_packages').insert([
         {
-          name: 'Package 1',
+          name: 'Silver Plan',
           min_amount: 10000,
-          max_amount: 499000,
+          max_amount: 199999,
           monthly_return_percent: 3,
           max_return_percent: 100,
           sort_order: 1,
           is_active: true,
         },
         {
-          name: 'Package 2',
+          name: 'Gold Plan',
+          min_amount: 200000,
+          max_amount: 499999,
+          monthly_return_percent: 3.5,
+          max_return_percent: 100,
+          sort_order: 2,
+          is_active: true,
+        },
+        {
+          name: 'Platinum Plan',
           min_amount: 500000,
           max_amount: null,
           monthly_return_percent: 4,
           max_return_percent: 100,
-          sort_order: 2,
+          sort_order: 3,
           is_active: true,
         },
       ])
