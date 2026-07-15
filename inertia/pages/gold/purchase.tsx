@@ -90,6 +90,7 @@ export default function PurchasePage({
     investment: 0,
     jewelleryValue: 0,
     makingCharges: 0,
+    makingChargePercent: 0,
     gstAmount: 0,
     additionalCharges: 0,
     packageAmount: 0,
@@ -107,6 +108,7 @@ export default function PurchasePage({
         investment: 0,
         jewelleryValue: 0,
         makingCharges: 0,
+        makingChargePercent: 0,
         gstAmount: 0,
         additionalCharges: 0,
         packageAmount: 0,
@@ -125,14 +127,19 @@ export default function PurchasePage({
     // Gold Value = Weight × Rate
     const goldValue = rate * weight
 
-    // Investment = Gold Value ÷ (jewelleryValuePercent / 100)
+    // Investment (Total Package) = Gold Value ÷ (jewelleryValuePercent / 100)
     const investment = goldValue / (billingRates.jewelleryValuePercent / 100)
 
-    // All charges calculated on Gold Value only
-    const makingCharges = (goldValue * billingRates.makingChargePercent) / 100
+    // GST & Additional are calculated on Gold Value only
     const gstAmount = (goldValue * billingRates.gstPercent) / 100
     const additionalCharges = (goldValue * billingRates.additionalChargePercent) / 100
-    const packageAmount = goldValue + makingCharges + gstAmount + additionalCharges
+
+    // Making Charge is the remainder so that Total = Investment
+    const makingCharges = investment - goldValue - gstAmount - additionalCharges
+    const makingChargePercent = goldValue > 0 ? (makingCharges / goldValue) * 100 : 0
+
+    // Total Package = Investment (they are now the same)
+    const packageAmount = investment
 
     const r = (n: number) => Math.round(n * 100) / 100
 
@@ -142,6 +149,7 @@ export default function PurchasePage({
       investment: r(investment),
       jewelleryValue: r(goldValue),
       makingCharges: r(makingCharges),
+      makingChargePercent: r(makingChargePercent),
       gstAmount: r(gstAmount),
       additionalCharges: r(additionalCharges),
       packageAmount: r(packageAmount),
@@ -223,6 +231,7 @@ export default function PurchasePage({
           investment: 0,
           jewelleryValue: 0,
           makingCharges: 0,
+          makingChargePercent: 0,
           gstAmount: 0,
           additionalCharges: 0,
           packageAmount: 0,
@@ -430,7 +439,7 @@ export default function PurchasePage({
                     {/* Making Charge */}
                     <div className="flex items-center justify-between py-2 border-b border-border/50">
                       <span className="text-sm text-muted-foreground">
-                        Making Charge ({billingRates.makingChargePercent}%)
+                        Making Charge ({calculation.makingChargePercent}%)
                       </span>
                       <span className="text-sm font-mono">
                         ₹{formatCurrency(calculation.makingCharges)}
@@ -439,9 +448,7 @@ export default function PurchasePage({
 
                     {/* GST */}
                     <div className="flex items-center justify-between py-2 border-b border-border/50">
-                      <span className="text-sm text-muted-foreground">
-                        GST ({billingRates.gstPercent}%)
-                      </span>
+                      <span className="text-sm text-muted-foreground">GST</span>
                       <span className="text-sm font-mono">
                         ₹{formatCurrency(calculation.gstAmount)}
                       </span>
@@ -449,9 +456,7 @@ export default function PurchasePage({
 
                     {/* Additional Charge */}
                     <div className="flex items-center justify-between py-2 border-b border-border/50">
-                      <span className="text-sm text-muted-foreground">
-                        Additional Charge ({billingRates.additionalChargePercent}%)
-                      </span>
+                      <span className="text-sm text-muted-foreground">Additional Charge</span>
                       <span className="text-sm font-mono">
                         ₹{formatCurrency(calculation.additionalCharges)}
                       </span>

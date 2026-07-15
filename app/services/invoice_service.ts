@@ -49,14 +49,23 @@ interface InvoiceData {
 export default class InvoiceService {
   private static async getGoldBreakup() {
     const rates = await GoldBillingConfig.getRates()
-    const gstHalf = rates.gstPercent / 2 / 100
+    const goldRatio = rates.jewelleryValuePercent / 100
+    const gstRatio = rates.gstPercent / 100
+    const additionalRatio = rates.additionalChargePercent / 100
+
+    // New formula: derived making charge so that total = investment
+    const makingRatio = 1 - goldRatio - goldRatio * gstRatio - goldRatio * additionalRatio
+    const makingDisplay = goldRatio > 0 ? Math.round((makingRatio / goldRatio) * 10000) / 100 : 0
+
+    const gstHalf = (goldRatio * gstRatio) / 2
+
     return {
-      gold: rates.jewelleryValuePercent / 100,
+      gold: goldRatio,
       cgst: gstHalf,
       sgst: gstHalf,
-      additional: rates.additionalChargePercent / 100,
-      making: rates.makingChargePercent / 100,
-      makingDisplay: rates.makingChargePercent,
+      additional: goldRatio * additionalRatio,
+      making: makingRatio,
+      makingDisplay,
       gstDisplay: rates.gstPercent,
       additionalDisplay: rates.additionalChargePercent,
       jewelleryDisplay: rates.jewelleryValuePercent,

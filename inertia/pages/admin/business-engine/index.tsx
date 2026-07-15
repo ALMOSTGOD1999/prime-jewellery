@@ -327,7 +327,7 @@ export default function BusinessEngineIndex(props: Props) {
                     name="gold_making_charge_percent"
                     value={goldPost.data.gold_making_charge_percent ?? '37.85'}
                     onChange={updateGold}
-                    hint="Default: 37.85%"
+                    hint="Auto-derived from Jewellery %, GST % and Additional %"
                   />
                   <ConfigField
                     label="GST %"

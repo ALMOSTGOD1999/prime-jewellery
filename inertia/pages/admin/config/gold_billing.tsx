@@ -89,9 +89,9 @@ export default function GoldBillingConfigPage({ configs }: GoldBillingPageProps)
             <AlertTitle className="text-amber-800">How calculations work</AlertTitle>
             <AlertDescription className="text-amber-700">
               When a user enters gold weight, the system computes: Gold Price = Weight × Rate,
-              Making Charges = Gold Price × Making Charge %, GST = (Gold Price + Making) × GST %,
-              Hallmark = Weight × Hallmark Charge, Additional = (Gold Price + Making) × Additional
-              %, Package Amount = Sum of all.
+              Investment = Gold Price ÷ Jewellery Value %, GST = Gold Price × GST %, Additional =
+              Gold Price × Additional %, Making Charge = Investment − Gold Price − GST − Additional
+              (auto-derived), Package Amount = Investment.
             </AlertDescription>
           </Alert>
 
