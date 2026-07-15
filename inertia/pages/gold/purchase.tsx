@@ -438,9 +438,7 @@ export default function PurchasePage({
 
                     {/* Making Charge */}
                     <div className="flex items-center justify-between py-2 border-b border-border/50">
-                      <span className="text-sm text-muted-foreground">
-                        Making Charge ({calculation.makingChargePercent}%)
-                      </span>
+                      <span className="text-sm text-muted-foreground">Making Charge</span>
                       <span className="text-sm font-mono">
                         ₹{formatCurrency(calculation.makingCharges)}
                       </span>
@@ -464,9 +462,7 @@ export default function PurchasePage({
 
                     {/* Jewellery Value */}
                     <div className="flex items-center justify-between py-2 border-b border-border/50">
-                      <span className="text-sm text-muted-foreground">
-                        Gold Jewellery Value ({billingRates.jewelleryValuePercent}% of investment)
-                      </span>
+                      <span className="text-sm text-muted-foreground">Gold Jewellery Value</span>
                       <span className="text-sm font-mono font-semibold text-amber-600">
                         ₹{formatCurrency(calculation.jewelleryValue)}
                       </span>
