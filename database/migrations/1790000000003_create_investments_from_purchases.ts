@@ -49,7 +49,7 @@ export default class extends BaseSchema {
     const slabs = await db
       .from('investment_packages')
       .where('is_active', true)
-      .orderBy('min_amount', 'asc')
+      .orderBy('min_amount', 'desc')
 
     for (const row of userPurchases.rows) {
       const userId = row.user_id
