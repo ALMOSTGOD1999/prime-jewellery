@@ -32,7 +32,6 @@ export function CreateUserDialog({ isOpen, onOpenChange }: CreateUserDialogProps
     email: '',
     phone: '',
     password: '',
-    confirmPassword: '',
     parentId: '',
     role: 'user',
   })
@@ -178,18 +177,6 @@ export function CreateUserDialog({ isOpen, onOpenChange }: CreateUserDialogProps
               />
               {errors.password && (
                 <span className="text-xs text-destructive">{errors.password}</span>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
-              <PasswordInput
-                id="confirmPassword"
-                value={data.confirmPassword}
-                onChange={(e) => setData('confirmPassword', e.target.value)}
-              />
-              {errors.confirmPassword && (
-                <span className="text-xs text-destructive">{errors.confirmPassword}</span>
               )}
             </div>
 

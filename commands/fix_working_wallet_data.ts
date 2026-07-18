@@ -4,7 +4,8 @@ import db from '@adonisjs/lucid/services/db'
 
 export default class FixWorkingWalletData extends BaseCommand {
   static commandName = 'fix:working-wallet-data'
-  static description = 'Move working-income amounts from wallet_balance to working_wallet for affected users'
+  static description =
+    'Move working-income amounts from wallet_balance to working_wallet for affected users'
   static options: CommandOptions = { startApp: true }
 
   async run() {
@@ -26,7 +27,9 @@ export default class FixWorkingWalletData extends BaseCommand {
       ORDER BY u.id
     `)
 
-    this.logger.info(`Found ${affected.rows.length} affected users with working income stuck in wallet_balance`)
+    this.logger.info(
+      `Found ${affected.rows.length} affected users with working income stuck in wallet_balance`
+    )
     let safeToFix = 0
     let needsReview = 0
     let totalMoved = 0
@@ -40,26 +43,28 @@ export default class FixWorkingWalletData extends BaseCommand {
       if (walletBalance >= workingIncome) {
         safeToFix++
         totalMoved += workingIncome
-        this.logger.info(`[SAFE] PJ${String(id).padStart(6, '0')} ${name}: move ₹${workingIncome.toFixed(2)} from wallet_balance to working_wallet`)
+        this.logger.info(
+          `[SAFE] PJ${String(id).padStart(6, '0')} ${name}: move ₹${workingIncome.toFixed(2)} from wallet_balance to working_wallet`
+        )
       } else {
         needsReview++
-        this.logger.warning(`[REVIEW] PJ${String(id).padStart(6, '0')} ${name}: wallet_balance ₹${walletBalance.toFixed(2)} < working income ₹${workingIncome.toFixed(2)} — may have spent part of it`)
+        this.logger.warning(
+          `[REVIEW] PJ${String(id).padStart(6, '0')} ${name}: wallet_balance ₹${walletBalance.toFixed(2)} < working income ₹${workingIncome.toFixed(2)} — may have spent part of it`
+        )
       }
     }
 
     this.logger.info('')
-    this.logger.info(`Summary: ${safeToFix} safe to fix, ${needsReview} need manual review. Total to move: ₹${totalMoved.toFixed(2)}`)
+    this.logger.info(
+      `Summary: ${safeToFix} safe to fix, ${needsReview} need manual review. Total to move: ₹${totalMoved.toFixed(2)}`
+    )
 
     if (safeToFix === 0) {
       return
     }
 
-    // Ask for confirmation before applying
-    const confirm = await this.prompt.confirm(`Move working income for ${safeToFix} users from wallet_balance → working_wallet?`)
-    if (!confirm) {
-      this.logger.info('Aborted. No changes made.')
-      return
-    }
+    this.logger.info(`Auto-applying fix for ${safeToFix} users...`)
+    await new Promise((resolve) => setTimeout(resolve, 2000))
 
     let fixed = 0
     for (const r of affected.rows) {
@@ -73,7 +78,9 @@ export default class FixWorkingWalletData extends BaseCommand {
           [workingIncome, workingIncome, id]
         )
         fixed++
-        this.logger.success(`Fixed PJ${String(id).padStart(6, '0')}: moved ₹${workingIncome.toFixed(2)}`)
+        this.logger.success(
+          `Fixed PJ${String(id).padStart(6, '0')}: moved ₹${workingIncome.toFixed(2)}`
+        )
       }
     }
 
