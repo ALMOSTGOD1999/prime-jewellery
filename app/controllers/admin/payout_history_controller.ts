@@ -84,14 +84,14 @@ export default class AdminPayoutHistoryController {
 
     const monthName = DateTime.fromISO(month + '-01').toFormat('LLLL yyyy')
 
-    // Build wallet filter clause
+    // Build wallet filter clause (exclude repurchase wallet transactions)
     let walletFilter = ''
     if (wallet === 'income') {
-      walletFilter = `AND (t.remark ILIKE '%investment return%')`
+      walletFilter = `AND (t.remark ILIKE '%investment return%') AND NOT (t.remark ILIKE '%repurchase%')`
     } else if (wallet === 'working') {
-      walletFilter = `AND (t.remark ILIKE '%working income%')`
+      walletFilter = `AND (t.remark ILIKE '%working income%') AND NOT (t.remark ILIKE '%repurchase%')`
     } else {
-      walletFilter = `AND (t.remark ILIKE '%working income%' OR t.remark ILIKE '%investment return%' OR t.remark ILIKE '%REVERSAL%Duplicate%')`
+      walletFilter = `AND (t.remark ILIKE '%working income%' OR t.remark ILIKE '%investment return%' OR t.remark ILIKE '%REVERSAL%Duplicate%') AND NOT (t.remark ILIKE '%repurchase%')`
     }
 
     // Fetch all transactions with bank details
@@ -172,9 +172,7 @@ export default class AdminPayoutHistoryController {
           ? 'Income Wallet'
           : row.remark?.toLowerCase().includes('working wallet')
             ? 'Working Wallet'
-            : row.remark?.toLowerCase().includes('repurchase wallet')
-              ? 'Repurchase Wallet'
-              : 'Other'
+            : 'Other'
 
       return [
         row.id,
@@ -220,9 +218,10 @@ export default class AdminPayoutHistoryController {
     const pdf = PDF.create()
     pdf.setTitle(`Payout History — ${monthName} — ${walletLabel}`)
 
-    const page = pdf.addPage({ size: 'a4' })
-    const { width, height } = page
-    const margin = 30
+    let page = pdf.addPage({ size: 'a4' })
+    const { height } = page
+    const margin = 28
+    const pageBottom = margin + 20
     let yPos = height - margin
 
     const dark = rgb(0.1, 0.1, 0.1)
@@ -231,88 +230,78 @@ export default class AdminPayoutHistoryController {
     const white = rgb(1, 1, 1)
     const creditGreen = rgb(0.1, 0.6, 0.3)
     const debitRed = rgb(0.8, 0.2, 0.2)
-    const borderColor = rgb(0.85, 0.85, 0.85)
+    const rowBgEven = rgb(0.96, 0.96, 0.98)
 
-    // Title
+    // Title block
     page.drawText('Prime Jewellery', {
       x: margin,
       y: yPos,
-      size: 18,
+      size: 16,
       font: 'Helvetica-Bold',
       color: headerBg,
     })
-    yPos -= 24
+    yPos -= 22
     page.drawText(`Payout History — ${monthName}`, {
       x: margin,
       y: yPos,
-      size: 13,
+      size: 12,
       font: 'Helvetica-Bold',
       color: dark,
     })
-    yPos -= 18
+    yPos -= 16
     page.drawText(
-      `Wallet: ${walletLabel.replace('-', ' ')}  |  Records: ${rows.length}  |  Generated: ${DateTime.now().toFormat('dd-MM-yyyy hh:mm a')}`,
+      `Wallet: ${walletLabel.replace(/-/g, ' ')}  |  Records: ${rows.length}  |  Generated: ${DateTime.now().toFormat('dd-MM-yyyy hh:mm a')}`,
       {
         x: margin,
         y: yPos,
-        size: 9,
+        size: 8,
         font: 'Helvetica',
         color: muted,
       }
     )
-    yPos -= 24
+    yPos -= 22
 
-    // Table headers
-    const colWidths = [60, 45, 70, 60, 35, 60, 120, 55]
-    const colHeaders = ['Date', 'User ID', 'Name', 'Amount', 'Type', 'Wallet', 'Remark', 'Bank A/C']
-    const tableWidth = colWidths.reduce((a, b) => a + b, 0) + colWidths.length
+    // Column layout (wider to avoid text overflow / wrapping)
+    const colWidths = [52, 55, 90, 62, 36, 52, 120, 88]
+    const colHeaders = [
+      'Date',
+      'User ID',
+      'Name',
+      'Amount',
+      'Type',
+      'Wallet',
+      'Remark',
+      'Bank Details',
+    ]
+    const tableWidth = colWidths.reduce((a, b) => a + b, 0)
 
-    // Draw header row
-    let xPos = margin
-    page.drawRectangle({ x: margin, y: yPos - 2, width: tableWidth, height: 18, color: headerBg })
-    for (let i = 0; i < colHeaders.length; i++) {
-      page.drawText(colHeaders[i], {
-        x: xPos + 2,
-        y: yPos,
-        size: 7,
-        font: 'Helvetica-Bold',
-        color: white,
-        maxWidth: colWidths[i] - 4,
-      })
-      xPos += colWidths[i]
-    }
-    yPos -= 20
-
-    // Draw rows
-    const rowHeight = 16
-    const rowsPerPage = Math.floor((yPos - margin) / rowHeight)
-    let rowCount = 0
-
-    for (const row of rows) {
-      if (rowCount > 0 && rowCount % rowsPerPage === 0) {
-        // New page
-        const newPage = pdf.addPage({ size: 'a4' })
-        yPos = height - margin
-        xPos = margin
-        newPage.drawRectangle({
-          x: margin,
-          y: yPos - 2,
-          width: tableWidth,
-          height: 18,
-          color: headerBg,
+    const drawHeader = (p: any, y: number) => {
+      let x = margin
+      p.drawRectangle({ x: margin, y: y - 2, width: tableWidth, height: 16, color: headerBg })
+      for (const [i, header] of colHeaders.entries()) {
+        p.drawText(header, {
+          x: x + 2,
+          y: y + 1,
+          size: 7,
+          font: 'Helvetica-Bold',
+          color: white,
         })
-        for (let i = 0; i < colHeaders.length; i++) {
-          newPage.drawText(colHeaders[i], {
-            x: xPos + 2,
-            y: yPos,
-            size: 7,
-            font: 'Helvetica-Bold',
-            color: white,
-            maxWidth: colWidths[i] - 4,
-          })
-          xPos += colWidths[i]
-        }
-        yPos -= 20
+        x += colWidths[i]
+      }
+      return y - 18
+    }
+
+    yPos = drawHeader(page, yPos)
+
+    // Row height: main text (size 7 ~9pt tall) + bank detail (size 6.5 ~8pt tall) + padding = ~22pt per entry
+    const MIN_ROW_SPACE = 36
+
+    for (const [idx, row] of rows.entries()) {
+      // Page break check
+      if (yPos < pageBottom + MIN_ROW_SPACE) {
+        page = pdf.addPage({ size: 'a4' })
+        yPos = height - margin
+        yPos = drawHeader(page, yPos)
       }
 
       const isCredit = row.type === 'wallet_credit'
@@ -321,16 +310,8 @@ export default class AdminPayoutHistoryController {
       const isCashback =
         row.remark?.toLowerCase().includes('cashback wallet') ||
         row.remark?.toLowerCase().includes('income wallet')
-      const isRepurchase = row.remark?.toLowerCase().includes('repurchase wallet')
 
-      const walletType = isCashback
-        ? 'Cashback'
-        : isWorking
-          ? 'Working'
-          : isRepurchase
-            ? 'Repurchase'
-            : 'Other'
-
+      const walletType = isCashback ? 'Cashback' : isWorking ? 'Working' : 'Other'
       const amountColor = isReversal ? debitRed : isCredit ? creditGreen : dark
       const amountPrefix = isReversal ? '−₹' : isCredit ? '+₹' : '₹'
       const typeLabel = isReversal ? 'REVERSAL' : isCredit ? 'Credit' : 'Debit'
@@ -338,90 +319,83 @@ export default class AdminPayoutHistoryController {
         ? DateTime.fromJSDate(new Date(row.created_at)).toFormat('dd/MM/yy')
         : ''
       const userId = `PJ${String(row.user_id).padStart(6, '0')}`
-      const userName = (row.user_name || '').substring(0, 18)
-      const bankInfo = row.bank_account_number
-        ? `${row.bank_name || ''} ...${String(row.bank_account_number).slice(-4)}`
-        : '—'
+      const userName = this.truncate(row.user_name || '—', 22)
+      const remark = this.truncate(row.remark || '—', 28)
+
+      // Compact bank info string for main table column
+      let bankInfo = '—'
+      if (row.bank_account_number) {
+        const last4 = String(row.bank_account_number).slice(-4)
+        bankInfo = `${this.truncate(row.bank_name || 'Bank', 14)} ...${last4}`
+      }
 
       // Alternate row background
-      if (rowCount % 2 === 0) {
+      if (idx % 2 === 0) {
         page.drawRectangle({
           x: margin,
           y: yPos - 2,
           width: tableWidth,
-          height: rowHeight,
-          color: rgb(0.96, 0.96, 0.98),
+          height: MIN_ROW_SPACE - 2,
+          color: rowBgEven,
         })
       }
 
-      xPos = margin
-      const colValues = [
-        dateStr,
-        userId,
-        userName,
-        `${amountPrefix}${Number(row.amount).toLocaleString('en-IN')}`,
-        typeLabel,
-        walletType,
-        (row.remark || '').substring(0, 22),
-        bankInfo,
-      ]
-      const colColors = [
-        muted,
-        dark,
-        dark,
-        amountColor,
-        isReversal ? debitRed : muted,
-        muted,
-        muted,
-        muted,
+      // Draw main row values
+      let x = margin
+      const mainValues = [
+        { text: dateStr, color: muted },
+        { text: userId, color: dark },
+        { text: userName, color: dark },
+        {
+          text: `${amountPrefix}${Number(row.amount).toLocaleString('en-IN')}`,
+          color: amountColor,
+        },
+        { text: typeLabel, color: isReversal ? debitRed : muted },
+        { text: walletType, color: muted },
+        { text: remark, color: muted },
+        { text: bankInfo, color: muted },
       ]
 
-      for (let i = 0; i < colValues.length; i++) {
-        page.drawText(colValues[i], {
-          x: xPos + 2,
+      for (const [i, col] of mainValues.entries()) {
+        page.drawText(col.text, {
+          x: x + 2,
           y: yPos,
           size: 7,
           font: 'Helvetica',
-          color: colColors[i],
-          maxWidth: colWidths[i] - 4,
+          color: col.color,
         })
-        xPos += colWidths[i]
+        x += colWidths[i]
       }
 
-      // Draw full bank details row below for each entry
-      yPos -= 10
+      // Draw full bank details on a second line inside the same row block
+      yPos -= 12
       if (row.bank_name || row.bank_account_number || row.bank_ifsc) {
-        const bankDetail = [
+        const bankParts = [
           row.bank_name,
           row.bank_branch,
           row.bank_holder_name,
-          row.bank_account_number,
-          row.bank_ifsc,
-          row.bank_upi,
-        ]
-          .filter(Boolean)
-          .join(' | ')
-        page.drawText(`    Bank: ${bankDetail || '—'}`, {
+          row.bank_account_number ? `A/C: ${row.bank_account_number}` : null,
+          row.bank_ifsc ? `IFSC: ${row.bank_ifsc}` : null,
+          row.bank_upi ? `UPI: ${row.bank_upi}` : null,
+        ].filter(Boolean)
+
+        const bankLine = bankParts.length > 0 ? bankParts.join('  |  ') : '—'
+        page.drawText(this.truncate(bankLine, 110), {
           x: margin + 4,
           y: yPos,
           size: 6.5,
           font: 'Helvetica',
           color: muted,
-          maxWidth: tableWidth - 8,
         })
-        yPos -= 12
-      } else {
-        yPos -= 4
       }
 
-      rowCount++
+      yPos -= 16
     }
 
-    // Footer
-    const footerY = margin - 10
+    // Footer on last page
     page.drawText(`Prime Jewellery — Payout History Report`, {
       x: margin,
-      y: footerY,
+      y: pageBottom - 10,
       size: 8,
       font: 'Helvetica',
       color: muted,
@@ -434,6 +408,11 @@ export default class AdminPayoutHistoryController {
       `attachment; filename="${month}-${walletLabel.toLowerCase()}-payout-history.pdf"`
     )
     return response.send(Buffer.from(pdfBytes))
+  }
+
+  private truncate(text: string, maxLen: number): string {
+    if (!text) return ''
+    return text.length > maxLen ? text.slice(0, maxLen - 1) + '…' : text
   }
 }
 
