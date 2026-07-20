@@ -56,7 +56,8 @@ export function checkMatchingRatio(legs: number[]): {
   const topLeg = sorted[0]
   const otherLegs = total - topLeg
 
-  const matched = total > 0 && topLeg >= total * 0.6 && otherLegs > 0
+  // True 60:40 ratio: power ≥ 60% of total AND weaker ≥ 40% of total
+  const matched = total > 0 && topLeg >= total * 0.6 && otherLegs >= total * 0.4
   return { matched, topLeg, otherLegs, total }
 }
 

@@ -3,7 +3,7 @@ import { DateTime } from 'luxon'
 import env from '#start/env'
 import db from '@adonisjs/lucid/services/db'
 import Purchase from '#models/purchase'
-import { checkMatchingRatio, getPerformanceIncentiveRank } from '#enums/performance_incentive'
+import { PERFORMANCE_INCENTIVE_CONFIG } from '#enums/performance_incentive'
 import { ACHIEVEMENT_REWARD_CONFIG } from '#enums/achievement'
 
 export default class RewardService {
@@ -1363,24 +1363,45 @@ export default class RewardService {
   }
 
   /**
-   * Performance Incentive using 60:40 matching ratio across genealogy legs.
+   * Performance Incentive using slab-specific 60:40 matching ratio.
+   *
+   * For each rank (highest first), checks:
+   *   1. total business ≥ rank criteria
+   *   2. power leg ≥ 60% of rank criteria
+   *   3. other legs ≥ 40% of rank criteria
+   *
+   * Example: for Bronze (₹500,000), power ≥ ₹300,000 AND others ≥ ₹200,000.
    */
   static getSalaryInfo(legAmounts: number[]) {
-    const ratio = checkMatchingRatio(legAmounts)
-    if (!ratio.matched) return null
+    if (!legAmounts || legAmounts.length === 0) return null
 
-    const rank = getPerformanceIncentiveRank(ratio.total)
-    if (!rank) return null
+    const total = legAmounts.reduce((sum, val) => sum + val, 0)
+    const sorted = [...legAmounts].sort((a, b) => b - a)
+    const topLeg = sorted[0]
+    const otherLegs = total - topLeg
 
-    return {
-      designation: rank.designation,
-      reward: rank.reward,
-      criteria: rank.criteria,
-      totalBusiness: ratio.total,
-      topLeg: ratio.topLeg,
-      otherLegs: ratio.otherLegs,
-      matched: true,
+    if (total === 0 || otherLegs === 0) return null
+
+    const descending = [...PERFORMANCE_INCENTIVE_CONFIG].sort((a, b) => b.criteria - a.criteria)
+    for (const rank of descending) {
+      if (
+        total >= rank.criteria &&
+        topLeg >= rank.criteria * 0.6 &&
+        otherLegs >= rank.criteria * 0.4
+      ) {
+        return {
+          designation: rank.designation,
+          reward: rank.reward,
+          criteria: rank.criteria,
+          totalBusiness: total,
+          topLeg,
+          otherLegs,
+          matched: true,
+        }
+      }
     }
+
+    return null
   }
 
   static async getPowerAndWeaker(user: User, endDate?: DateTime) {
