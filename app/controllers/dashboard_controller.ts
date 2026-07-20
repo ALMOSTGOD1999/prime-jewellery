@@ -52,6 +52,7 @@ export default class DashboardController {
     )
 
     // Working Wallet = ONLY 70% portion from WORKING INCOME (commissions)
+    // Exclude repurchase wallet (20%) — only count the 70% working-wallet portion
     const workingRes = await db.rawQuery(
       `SELECT coalesce(sum(
          CASE
@@ -60,7 +61,7 @@ export default class DashboardController {
            ELSE 0
          END
        ), 0)::float as total
-       FROM transactions WHERE user_id = ? AND remark ILIKE '%working income%' AND (remark ILIKE '%cashback wallet%' OR remark ILIKE '%income wallet%' OR remark ILIKE '%working wallet%')`,
+       FROM transactions WHERE user_id = ? AND remark ILIKE '%working income%' AND NOT (remark ILIKE '%repurchase%')`,
       [user.id]
     )
 
