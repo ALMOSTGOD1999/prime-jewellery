@@ -60,18 +60,3 @@ export function checkMatchingRatio(legs: number[]): {
   const matched = total > 0 && topLeg >= total * 0.6 && otherLegs >= total * 0.4
   return { matched, topLeg, otherLegs, total }
 }
-
-/**
- * Get the highest rank for a given total matched business.
- */
-export function getPerformanceIncentiveRank(
-  totalMatchedBusiness: number
-): PerformanceIncentiveRank | null {
-  const descending = [...PERFORMANCE_INCENTIVE_CONFIG].sort((a, b) => b.criteria - a.criteria)
-  for (const rank of descending) {
-    if (totalMatchedBusiness >= rank.criteria) {
-      return rank
-    }
-  }
-  return null
-}
