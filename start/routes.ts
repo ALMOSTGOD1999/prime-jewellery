@@ -452,6 +452,9 @@ router
           .post('/withdraw-all-working', [AdminPayoutController, 'withdrawAllWorking'])
           .as('withdrawAll.working')
         router.get('/history', [AdminPayoutHistoryController, 'index']).as('history')
+        router
+          .get('/history/download', [AdminPayoutHistoryController, 'download'])
+          .as('history.download')
       })
       .prefix('payout')
       .as('payout')

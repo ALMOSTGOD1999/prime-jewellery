@@ -5,6 +5,12 @@ import { Main } from '~/components/app/main'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card'
 import { Button } from '~/components/ui/button'
 import { Alert, AlertDescription, AlertTitle } from '~/components/ui/alert'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '~/components/ui/dropdown-menu'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
   Wallet01Icon,
@@ -13,6 +19,9 @@ import {
   CheckmarkCircle01Icon,
   AlertDiamondIcon,
   RefreshIcon,
+  Download04Icon,
+  File01Icon,
+  File02Icon,
 } from '@hugeicons/core-free-icons'
 
 interface PayoutPageProps {
@@ -29,6 +38,10 @@ interface PayoutPageProps {
     junePurchaseAmount: number
     activeInvestments: number
   }
+}
+
+function downloadUrl(month: string, wallet: string, format: string) {
+  return `/admin/payout/history/download?month=${month}&wallet=${wallet}&format=${format}`
 }
 
 export default function AdminPayoutPage({
@@ -52,6 +65,10 @@ export default function AdminPayoutPage({
   const handleReset = () => resetForm.post('/admin/payout/reset')
 
   const bothPaid = incomeWalletPayoutMonth === workingWalletPayoutMonth && !!incomeWalletPayoutMonth
+
+  // Determine the latest paid month for downloads
+  const incomeDownloadMonth = incomeWalletPayoutMonth || nextIncomeMonth
+  const workingDownloadMonth = workingWalletPayoutMonth || nextWorkingMonth
 
   return (
     <>
@@ -170,6 +187,36 @@ export default function AdminPayoutPage({
                       : `Payout Cashback Wallet for ${nextIncomeMonth}`}
                   </Button>
                 )}
+
+                {/* Download Payout History — Income Wallet */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="w-full">
+                      <HugeiconsIcon icon={Download04Icon} className="mr-2 h-4 w-4" />
+                      Download Income Wallet History
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuItem asChild>
+                      <a
+                        href={downloadUrl(incomeDownloadMonth, 'income', 'csv')}
+                        className="cursor-pointer"
+                      >
+                        <HugeiconsIcon icon={File01Icon} className="h-4 w-4" />
+                        Download in CSV
+                      </a>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <a
+                        href={downloadUrl(incomeDownloadMonth, 'income', 'pdf')}
+                        className="cursor-pointer"
+                      >
+                        <HugeiconsIcon icon={File02Icon} className="h-4 w-4" />
+                        Download in PDF
+                      </a>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </CardContent>
             </Card>
 
@@ -215,6 +262,36 @@ export default function AdminPayoutPage({
                       : `Payout Working Wallet for ${nextWorkingMonth}`}
                   </Button>
                 )}
+
+                {/* Download Payout History — Working Wallet */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="w-full">
+                      <HugeiconsIcon icon={Download04Icon} className="mr-2 h-4 w-4" />
+                      Download Working Wallet History
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuItem asChild>
+                      <a
+                        href={downloadUrl(workingDownloadMonth, 'working', 'csv')}
+                        className="cursor-pointer"
+                      >
+                        <HugeiconsIcon icon={File01Icon} className="h-4 w-4" />
+                        Download in CSV
+                      </a>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <a
+                        href={downloadUrl(workingDownloadMonth, 'working', 'pdf')}
+                        className="cursor-pointer"
+                      >
+                        <HugeiconsIcon icon={File02Icon} className="h-4 w-4" />
+                        Download in PDF
+                      </a>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </CardContent>
             </Card>
           </div>
