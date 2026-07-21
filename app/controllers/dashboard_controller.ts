@@ -1,63 +1,69 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import RewardService from '#services/reward_service'
 import PayoutService from '#services/payout_service'
 import cache from '@adonisjs/cache/services/main'
 import db from '@adonisjs/lucid/services/db'
 
-import UserService from '#services/user_service'
 import GoldService from '#services/gold_service'
+import DashboardMetricsService from '#services/dashboard_metrics_service'
 
 export default class DashboardController {
   async index({ auth, inertia }: HttpContext) {
     const user = auth.getUserOrFail()
-
-    const goldPrice = await cache.getOrSet({
-      key: 'gold-price',
-      ttl: '1h',
-      grace: '2h',
-      factory: async () => GoldService.getLiveGoldPrice(),
-    })
+    const uid = user.id
 
     if (user.role === 'admin') {
-      const stats = await UserService.getAdminDashboardMetrics()
+      const [goldPrice, stats] = await Promise.all([
+        cache.getOrSet({
+          key: 'gold-price',
+          ttl: '1h',
+          grace: '2h',
+          factory: async () => GoldService.getLiveGoldPrice(),
+        }),
+        DashboardMetricsService.getAdminMetrics(),
+      ])
       return inertia.render('admin/dashboard', { stats, goldPrice })
     }
-    const metrics = await RewardService.getDashboardMetrics(user)
-    const isPayoutReleased = await PayoutService.isPayoutReleased()
 
-    // Cashback Wallet = ONLY 70% portion from INVESTMENT RETURN (monthly 3% cashback)
-    const investmentReturnRes = await db.rawQuery(
-      `SELECT coalesce(sum(
-         CASE
-           WHEN type = 'wallet_credit' THEN amount
-           WHEN type = 'wallet_debit' THEN -amount
-           ELSE 0
-         END
-       ), 0)::float as total
-       FROM transactions WHERE user_id = ? AND remark ILIKE '%investment return%' AND (remark ILIKE '%cashback wallet%' OR remark ILIKE '%income wallet%')`,
-      [user.id]
-    )
-
-    // Repurchase Wallet = 20% portion from BOTH investment return + working income
-    const repurchaseRes = await db.rawQuery(
-      `SELECT coalesce(sum(
-         CASE
-           WHEN type = 'wallet_credit' THEN amount
-           WHEN type = 'wallet_debit' THEN -amount
-           ELSE 0
-         END
-       ), 0)::float as total
-       FROM transactions WHERE user_id = ? AND remark ILIKE '%repurchase wallet%'`,
-      [user.id]
-    )
-
-    // Working Wallet = DB column (source of truth, stays aligned with monthly_income_snapshots)
-    const workingRes = await db.rawQuery(`SELECT working_wallet FROM users WHERE id = ?`, [user.id])
+    // All independent queries run in parallel
+    const [goldPrice, metrics, isPayoutReleased, investmentReturnRes, repurchaseRes, workingRes] =
+      await Promise.all([
+        cache.getOrSet({
+          key: 'gold-price',
+          ttl: '1h',
+          grace: '2h',
+          factory: async () => GoldService.getLiveGoldPrice(),
+        }),
+        DashboardMetricsService.getMetrics(uid),
+        PayoutService.isPayoutReleased(),
+        db.rawQuery(
+          `SELECT coalesce(sum(
+             CASE
+               WHEN type = 'wallet_credit' THEN amount
+               WHEN type = 'wallet_debit' THEN -amount
+               ELSE 0
+             END
+           ), 0)::float as total
+           FROM transactions WHERE user_id = ? AND remark ILIKE '%investment return%' AND (remark ILIKE '%cashback wallet%' OR remark ILIKE '%income wallet%')`,
+          [uid]
+        ),
+        db.rawQuery(
+          `SELECT coalesce(sum(
+             CASE
+               WHEN type = 'wallet_credit' THEN amount
+               WHEN type = 'wallet_debit' THEN -amount
+               ELSE 0
+             END
+           ), 0)::float as total
+           FROM transactions WHERE user_id = ? AND remark ILIKE '%repurchase wallet%'`,
+          [uid]
+        ),
+        db.rawQuery(`SELECT working_wallet FROM users WHERE id = ?`, [uid]),
+      ])
 
     return inertia.render('dashboard', {
       metrics,
       goldPrice,
-      userId: user.id,
+      userId: uid,
       isPayoutReleased,
       incomeWallet: Number(investmentReturnRes.rows[0]?.total ?? 0),
       repurchaseWallet: Number(repurchaseRes.rows[0]?.total ?? 0),
