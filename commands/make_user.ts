@@ -3,6 +3,7 @@ import type { CommandOptions } from '@adonisjs/core/types/ace'
 import { DateTime } from 'luxon'
 import User from '#models/user'
 import { UserRoleEnum, UserGenderEnum } from '#enums/user'
+import WelcomeMessageService from '#services/welcome_message_service'
 
 export default class MakeUser extends BaseCommand {
   static commandName = 'make:user'
@@ -62,6 +63,9 @@ export default class MakeUser extends BaseCommand {
       this.logger.success(`User created successfully! ID: ${user.id}`)
       if (role === UserRoleEnum.ADMIN) {
         this.logger.info('Admin account is auto-activated.')
+      } else {
+        // Send welcome email (fire-and-forget)
+        WelcomeMessageService.sendWelcomeEmail(user.name, user.id, password!, user.email)
       }
     } catch (error) {
       this.logger.error(`Failed to create user: ${error.message}`)
