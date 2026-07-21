@@ -3,6 +3,7 @@ import { loginValidator, signupValidator } from '#validators/auth_validator'
 import User from '#models/user'
 import Session from '#models/session'
 import { UserRoleEnum } from '#enums/user'
+import WelcomeMessageService from '#services/welcome_message_service'
 
 export default class AuthController {
   async signupPage({ inertia, request }: HttpContext) {
@@ -16,7 +17,7 @@ export default class AuthController {
 
   async signup(ctx: HttpContext) {
     const { request } = ctx
-    let { referralCode, ...rest } = await request.validateUsing(signupValidator)
+    let { referralCode, password, ...rest } = await request.validateUsing(signupValidator)
 
     let parentId: number | null = null
 
@@ -30,9 +31,13 @@ export default class AuthController {
 
     const user = await User.create({
       ...rest,
+      password,
       parentId,
       role: UserRoleEnum.USER,
     })
+
+    // Send welcome email (fire-and-forget)
+    WelcomeMessageService.sendWelcomeEmail(user.name, user.id, password, user.email)
 
     await this.authenticate(ctx, user)
 

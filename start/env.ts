@@ -54,4 +54,11 @@ export default await Env.create(new URL('../', import.meta.url), {
   APP_URL: Env.schema.string(),
 
   GATEKEEP: Env.schema.boolean.optional(),
+
+  /*
+  |----------------------------------------------------------
+  | Variables for welcome email via Resend
+  |----------------------------------------------------------
+  */
+  RESEND_API_KEY: Env.schema.string.optional(),
 })

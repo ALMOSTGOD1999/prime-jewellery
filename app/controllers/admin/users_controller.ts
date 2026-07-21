@@ -9,6 +9,7 @@ import UserService from '#services/user_service'
 import BankService from '#services/bank_service'
 import KycService from '#services/kyc_service'
 import GoldService from '#services/gold_service'
+import WelcomeMessageService from '#services/welcome_message_service'
 
 export default class AdminUsersController {
   async index({ inertia, request }: HttpContext) {
@@ -107,7 +108,7 @@ export default class AdminUsersController {
     }
 
     // Create user (NOT auto-activated — admin must activate separately)
-    await User.create({
+    const user = await User.create({
       name: data.name,
       email: data.email,
       phone: data.phone,
@@ -116,6 +117,9 @@ export default class AdminUsersController {
       role: (data.role as any) || 'user',
       status: 'active',
     })
+
+    // Send welcome email (fire-and-forget)
+    WelcomeMessageService.sendWelcomeEmail(user.name, user.id, data.password, user.email)
 
     session.flash('success', 'User created successfully. Activate from the Activation page.')
     return response.redirect().back()

@@ -3,6 +3,7 @@ import { UserRoleEnum } from '#enums/user'
 import UserService from '#services/user_service'
 import { addMemberValidator } from '#validators/auth_validator'
 import User from '#models/user'
+import WelcomeMessageService from '#services/welcome_message_service'
 
 export default class MembersController {
   async index({ auth, inertia, request }: HttpContext) {
@@ -85,7 +86,7 @@ export default class MembersController {
       }
     }
 
-    await User.create({
+    const user = await User.create({
       name,
       password,
       email,
@@ -93,6 +94,9 @@ export default class MembersController {
       parentId: finalParentId,
       role: type as UserRoleEnum,
     })
+
+    // Send welcome email (fire-and-forget)
+    WelcomeMessageService.sendWelcomeEmail(user.name, user.id, password, user.email)
 
     session.flash('success', 'Member added successfully')
     return response.redirect().back()
