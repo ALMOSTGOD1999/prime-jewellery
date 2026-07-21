@@ -227,6 +227,7 @@ router
         router.post('/:id/reactivate', [AdminUsersController, 'reactivate']).as('reactivate')
         router.post('/:id/block', [AdminUsersController, 'block']).as('block')
         router.post('/:id/unblock', [AdminUsersController, 'unblock']).as('unblock')
+        router.delete('/:id', [AdminUsersController, 'destroy']).as('destroy')
         router.get('/:id/tree', [AdminUsersController, 'tree']).as('tree')
         router.get('/:id/lookup', [AdminUsersController, 'lookup']).as('lookup')
       })

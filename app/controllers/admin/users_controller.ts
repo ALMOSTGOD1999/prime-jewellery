@@ -254,6 +254,29 @@ export default class AdminUsersController {
     return response.redirect().back()
   }
 
+  async destroy({ params, session, response }: HttpContext) {
+    const user = await User.findOrFail(params.id)
+
+    const childrenCount = await user.related('children').query().count('* as total').first()
+    if (Number(childrenCount?.$extras.total || 0) > 0) {
+      session.flash(
+        'error',
+        `Cannot delete ${user.name} — they have team members. Remove them first.`
+      )
+      return response.redirect().back()
+    }
+
+    const purchaseCount = await user.related('purchases').query().count('* as total').first()
+    if (Number(purchaseCount?.$extras.total || 0) > 0) {
+      session.flash('error', `Cannot delete ${user.name} — they have purchase history.`)
+      return response.redirect().back()
+    }
+
+    await user.delete()
+    session.flash('success', `User ${user.name} permanently deleted.`)
+    return response.redirect().back()
+  }
+
   async tree({ params, inertia }: HttpContext) {
     const user = await User.findOrFail(params.id)
     const rootUser = await UserService.getTreeRoot(user)

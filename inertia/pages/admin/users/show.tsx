@@ -516,6 +516,18 @@ export default function MemberShow({ member }: InferPageProps<AdminUsersControll
                   <HugeiconsIcon icon={ShoppingBag03Icon} className="h-4 w-4 mr-2" />
                   Purchase History
                 </Link>
+
+                <Button
+                  variant="destructive"
+                  onClick={() => {
+                    if (confirm('Permanently delete this user? This cannot be undone.')) {
+                      router.delete(route('admin.users.destroy', { params: { id: member.id } }))
+                    }
+                  }}
+                >
+                  <HugeiconsIcon icon={Cancel01Icon} className="h-4 w-4 mr-2" />
+                  Delete User
+                </Button>
               </div>
             </CardContent>
           </Card>
