@@ -6,43 +6,33 @@ export default class DashboardMetricsService {
     const startOfMonth = DateTime.now().startOf('month').toSQLDate()
 
     const [directRes, personalRes, personalMonthRes, descendantRes] = await Promise.all([
-      // 1. Direct children + their direct business
       db.rawQuery(
         `SELECT COUNT(*)::int as direct_count, COALESCE(SUM(direct_business), 0)::float as direct_business
-         FROM (
-           SELECT u.id, (SELECT COALESCE(SUM(p.amount), 0)
-             FROM purchases p WHERE p.user_id = u.id AND p.approved_at IS NOT NULL AND p.cancelled_at IS NULL
-           ) as direct_business
-           FROM users u WHERE u.parent_id = ?
-         ) sub`,
+         FROM (SELECT u.id, (SELECT COALESCE(SUM(p.amount), 0)
+           FROM purchases p WHERE p.user_id = u.id AND p.approved_at IS NOT NULL AND p.cancelled_at IS NULL
+         ) as direct_business FROM users u WHERE u.parent_id = ?) sub`,
         [userId]
       ),
-      // 2. Personal business (all-time)
       db.rawQuery(
         `SELECT COALESCE(SUM(amount), 0)::float as total FROM purchases
          WHERE user_id = ? AND approved_at IS NOT NULL AND cancelled_at IS NULL`,
         [userId]
       ),
-      // 3. Personal business this month
       db.rawQuery(
         `SELECT COALESCE(SUM(amount), 0)::float as total FROM purchases
          WHERE user_id = ? AND approved_at IS NOT NULL AND cancelled_at IS NULL AND approved_at >= ?`,
         [userId, startOfMonth]
       ),
-      // 4. Descendants count + team business
       db.rawQuery(
         `WITH RECURSIVE descendants AS (
            SELECT id FROM users WHERE parent_id = ?
-           UNION ALL
-           SELECT u.id FROM users u INNER JOIN descendants d ON u.parent_id = d.id
+           UNION ALL SELECT u.id FROM users u INNER JOIN descendants d ON u.parent_id = d.id
          )
          SELECT
            (SELECT COUNT(*) FROM descendants)::int as team_count,
-           COALESCE((SELECT SUM(p.amount) FROM purchases p
-             INNER JOIN descendants d ON p.user_id = d.id
+           COALESCE((SELECT SUM(p.amount) FROM purchases p INNER JOIN descendants d ON p.user_id = d.id
              WHERE p.approved_at IS NOT NULL AND p.cancelled_at IS NULL), 0)::float as team_business,
-           COALESCE((SELECT SUM(p.amount) FROM purchases p
-             INNER JOIN descendants d ON p.user_id = d.id
+           COALESCE((SELECT SUM(p.amount) FROM purchases p INNER JOIN descendants d ON p.user_id = d.id
              WHERE p.approved_at IS NOT NULL AND p.cancelled_at IS NULL AND p.approved_at >= ?), 0)::float as team_business_month`,
         [userId, startOfMonth]
       ),
@@ -51,28 +41,21 @@ export default class DashboardMetricsService {
     const direct = directRes.rows[0]
     const dRow = descendantRes.rows[0]
 
-    // 5. Leg volumes (power/weaker) — separate simpler query
+    // Leg volumes: track which top-level child each descendant belongs to
     const legRes = await db.rawQuery(
-      `WITH RECURSIVE descendants AS (
-         SELECT id, parent_id FROM users WHERE parent_id = ?
-         UNION ALL
-         SELECT u.id, u.parent_id FROM users u INNER JOIN descendants d ON u.parent_id = d.id
-       ),
-       purchases_sum AS (
-         SELECT d.parent_id as leg_owner, COALESCE(SUM(p.amount), 0) as volume
-         FROM descendants d
-         LEFT JOIN purchases p ON p.user_id = d.id
-           AND p.approved_at IS NOT NULL AND p.cancelled_at IS NULL
-         GROUP BY d.parent_id
+      `WITH RECURSIVE leg_tree AS (
+         SELECT id, id as root_leg FROM users WHERE parent_id = ?
+         UNION ALL SELECT u.id, lt.root_leg FROM users u INNER JOIN leg_tree lt ON u.parent_id = lt.id
        )
-       SELECT COALESCE(SUM(volume), 0)::float as leg_volume
-       FROM purchases_sum`,
+       SELECT COALESCE(SUM(p.amount), 0)::float as leg_volume
+       FROM leg_tree lt
+       LEFT JOIN purchases p ON p.user_id = lt.id AND p.approved_at IS NOT NULL AND p.cancelled_at IS NULL
+       GROUP BY lt.root_leg ORDER BY leg_volume DESC`,
       [userId]
     )
 
     const legVolumes: number[] = legRes.rows.map((r: any) => Number(r.leg_volume) || 0)
     legVolumes.sort((a, b) => b - a)
-
     const powerToday = legVolumes.length > 0 ? legVolumes[0] : 0
     const weakerToday = legVolumes.length > 1 ? legVolumes.slice(1).reduce((a, b) => a + b, 0) : 0
 
@@ -167,9 +150,8 @@ export default class DashboardMetricsService {
       { designation: 'Starter', criteria: 200000 },
     ]
     for (const rank of descending) {
-      if (total >= rank.criteria && power >= rank.criteria * 0.6 && weaker >= rank.criteria * 0.4) {
+      if (total >= rank.criteria && power >= rank.criteria * 0.6 && weaker >= rank.criteria * 0.4)
         return rank.designation
-      }
     }
     return 'N/A'
   }
