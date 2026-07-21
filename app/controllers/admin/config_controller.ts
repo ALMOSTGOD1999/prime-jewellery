@@ -5,6 +5,7 @@ import PerformanceIncentive from '#models/performance_incentive'
 import RewardAward from '#models/reward_award'
 import MembershipLevelIncome from '#models/membership_level_income'
 import LevelIncome from '#models/level_income'
+import cache from '@adonisjs/cache/services/main'
 
 export default class AdminConfigController {
   async investmentPackages({ inertia }: HttpContext) {
@@ -135,6 +136,9 @@ export default class AdminConfigController {
         await PlatformConfig.set(key, String(data[key]), 'gold_billing')
       }
     }
+
+    // Clear cached gold price so dashboard shows the updated rate immediately
+    await cache.delete({ key: 'gold-price' })
 
     session.flash('success', 'Gold billing rates updated successfully')
     return response.redirect().back()

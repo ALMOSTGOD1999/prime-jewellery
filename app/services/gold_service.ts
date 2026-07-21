@@ -1,11 +1,9 @@
-import * as cheerio from 'cheerio'
 import { DateTime } from 'luxon'
 
 import User from '#models/user'
 import Purchase from '#models/purchase'
 import PlatformConfig from '#models/platform_config'
 import WalletService from '#services/wallet_service'
-import logger from '@adonisjs/core/services/logger'
 import CalculateAchievement from '#jobs/calculate_achievement'
 import { TransactionTypeEnum } from '#enums/transaction'
 
@@ -378,25 +376,12 @@ export default class GoldService {
   }
 
   static async getLiveGoldPrice() {
-    // Check for manual override first
-    const manualOverride = await PlatformConfig.get('gold_rate_manual_override')
-    if (manualOverride && manualOverride.trim() !== '') {
-      return manualOverride.trim()
+    // Admin-declared Gold Billing config (set at /admin/config/gold-billing)
+    const billingRate = await PlatformConfig.get('gold_rate_22ct')
+    if (billingRate && billingRate.trim() !== '') {
+      return billingRate.trim()
     }
 
-    try {
-      const response = await fetch('https://www.angelone.in/gold-rates-today/gold-rate-in-kolkata')
-      const html = await response.text()
-      const $ = cheerio.load(html)
-      const row = $('table tr')
-        .filter((_, el) => {
-          return $(el).find('td').first().text().toLowerCase().includes('1 gm')
-        })
-        .first()
-      return row.find('td').eq(2).text().trim().replace('₹', '')
-    } catch (e) {
-      logger.error(e)
-      return ''
-    }
+    return ''
   }
 }

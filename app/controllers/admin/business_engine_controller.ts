@@ -45,31 +45,22 @@ export default class BusinessEngineController {
     ])
 
     return inertia.render('admin/business-engine/index', {
-      goldConfig: goldConfig.reduce(
-        (acc: Record<string, string>, c: any) => {
-          acc[c.key] = c.value
-          return acc
-        },
-        {}
-      ),
-      incomeConfig: incomeConfig.reduce(
-        (acc: Record<string, string>, c: any) => {
-          acc[c.key] = c.value
-          return acc
-        },
-        {}
-      ),
+      goldConfig: goldConfig.reduce((acc: Record<string, string>, c: any) => {
+        acc[c.key] = c.value
+        return acc
+      }, {}),
+      incomeConfig: incomeConfig.reduce((acc: Record<string, string>, c: any) => {
+        acc[c.key] = c.value
+        return acc
+      }, {}),
       cashRewardSlabs: cashRewardSlabs.map((s) => s.serialize()),
       membershipLevels: membershipLevels.map((l) => l.serialize()),
       levelIncomes: levelIncomes.map((l) => l.serialize()),
       performanceIncentives: performanceIncentives.map((p) => p.serialize()),
-      businessRules: businessRules.reduce(
-        (acc: Record<string, string>, c: any) => {
-          acc[c.key] = c.value
-          return acc
-        },
-        {}
-      ),
+      businessRules: businessRules.reduce((acc: Record<string, string>, c: any) => {
+        acc[c.key] = c.value
+        return acc
+      }, {}),
     })
   }
 
@@ -227,7 +218,10 @@ export default class BusinessEngineController {
         },
         reason
       )
-      session.flash('success', data.id ? 'Performance incentive updated' : 'Performance incentive created')
+      session.flash(
+        'success',
+        data.id ? 'Performance incentive updated' : 'Performance incentive created'
+      )
     } catch (error) {
       session.flash('errors.global', error.message)
     }
