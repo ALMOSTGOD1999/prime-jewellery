@@ -101,7 +101,7 @@ export default function WelcomeAnimation() {
                 }}
               >
                 <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-yellow-200 via-gold to-yellow-600 shadow-lg shadow-gold/40 border border-yellow-100/60">
-                  <span className="text-[11px] font-bold text-yellow-900">₹</span>
+                  <span className="text-[11px] font-bold text-yellow-900">P</span>
                 </div>
                 {/* Coin shine */}
                 <div className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-white/50 blur-[1px]" />
