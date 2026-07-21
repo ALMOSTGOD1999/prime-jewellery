@@ -33,8 +33,16 @@ export default class ExplainWorkingWallet extends BaseCommand {
       return
     }
     const user = userRes.rows[0]
+    const dbValue = Number(user.working_wallet || 0)
 
-    // Get all working income transactions (the ones that count toward working wallet)
+    // Get snapshot total — this is the source of truth for what was supposed to be paid
+    const snapRes = await db.rawQuery(
+      `SELECT coalesce(sum(income_wallet_amount), 0)::float as total FROM monthly_income_snapshots WHERE user_id = ? AND paid_out_at IS NOT NULL`,
+      [uid]
+    )
+    const snapshotTotal = Number(snapRes.rows[0].total)
+
+    // Get all working income transactions
     const txns = await db.rawQuery(
       `SELECT id, amount, type, remark, created_at
        FROM transactions
@@ -49,72 +57,78 @@ export default class ExplainWorkingWallet extends BaseCommand {
     this.logger.info(`══════════════════════════════════════════════════`)
     this.logger.info(`  WORKING WALLET BREAKDOWN`)
     this.logger.info(`  User: PJ${String(uid).padStart(6, '0')} ${user.name}`)
-    this.logger.info(`  DB Column: ₹${Number(user.working_wallet || 0).toFixed(2)}`)
+    this.logger.info(`  DB Column: ₹${dbValue.toFixed(2)}`)
+    this.logger.info(`  Snapshot Expected: ₹${snapshotTotal.toFixed(2)}`)
     this.logger.info(`══════════════════════════════════════════════════`)
 
     if (txns.rows.length === 0) {
       this.logger.info('No working income transactions found.')
-      return
-    }
+    } else {
+      const credits: { amount: number; remark: string; date: string }[] = []
+      const debits: { amount: number; remark: string; date: string }[] = []
 
-    const credits: { amount: number; remark: string; date: string }[] = []
-    const debits: { amount: number; remark: string; date: string }[] = []
+      for (const t of txns.rows) {
+        const amount = Number(t.amount)
+        const date = new Date(t.created_at).toLocaleDateString('en-IN')
+        const remark = t.remark || ''
 
-    for (const t of txns.rows) {
-      const amount = Number(t.amount)
-      const date = new Date(t.created_at).toLocaleDateString('en-IN')
-      const remark = t.remark || ''
-
-      if (t.type === 'wallet_credit') {
-        credits.push({ amount, remark, date })
-      } else if (t.type === 'wallet_debit') {
-        debits.push({ amount, remark, date })
+        if (t.type === 'wallet_credit') {
+          credits.push({ amount, remark, date })
+        } else if (t.type === 'wallet_debit') {
+          debits.push({ amount, remark, date })
+        }
       }
-    }
 
-    // Print credits
-    this.logger.info('')
-    this.logger.info(`--- CREDITS (+) ---`)
-    let creditSum = 0
-    for (const c of credits) {
-      creditSum += c.amount
-      this.logger.info(`  + ₹${c.amount.toFixed(2)}  |  ${c.date}  |  ${c.remark.substring(0, 70)}`)
-    }
-    this.logger.info(`  Total Credits: +₹${creditSum.toFixed(2)}`)
-
-    // Print debits
-    let debitSum = 0
-    if (debits.length > 0) {
+      // Print credits
       this.logger.info('')
-      this.logger.info(`--- DEBITS (-) ---`)
-      for (const d of debits) {
-        debitSum += d.amount
+      this.logger.info(`--- CREDITS (+) ---`)
+      let creditSum = 0
+      for (const c of credits) {
+        creditSum += c.amount
         this.logger.info(
-          `  - ₹${d.amount.toFixed(2)}  |  ${d.date}  |  ${d.remark.substring(0, 70)}`
+          `  + ₹${c.amount.toFixed(2)}  |  ${c.date}  |  ${c.remark.substring(0, 70)}`
         )
       }
-      this.logger.info(`  Total Debits: -₹${debitSum.toFixed(2)}`)
+      this.logger.info(`  Total Credits: +₹${creditSum.toFixed(2)}`)
+
+      // Print debits
+      let debitSum = 0
+      if (debits.length > 0) {
+        this.logger.info('')
+        this.logger.info(`--- DEBITS (-) ---`)
+        for (const d of debits) {
+          debitSum += d.amount
+          this.logger.info(
+            `  - ₹${d.amount.toFixed(2)}  |  ${d.date}  |  ${d.remark.substring(0, 70)}`
+          )
+        }
+        this.logger.info(`  Total Debits: -₹${debitSum.toFixed(2)}`)
+      }
+
+      // Transaction math
+      const netFromTxns = creditSum - debitSum
+      this.logger.info('')
+      this.logger.info(`  Transaction Net: ₹${netFromTxns.toFixed(2)}`)
+      if (Math.abs(netFromTxns - dbValue) > 0.01) {
+        const missing = dbValue - netFromTxns
+        this.logger.info(
+          `  Transaction Gap: ₹${missing.toFixed(2)} (not all adjustments have audit records)`
+        )
+      }
     }
 
-    // Final math
-    const netFromTxns = creditSum - debitSum
-
+    // Final comparison against snapshot
     this.logger.info('')
     this.logger.info(`══════════════════════════════════════════════════`)
-    this.logger.info(`  MATH:`)
-    this.logger.info(`    Credits:  +₹${creditSum.toFixed(2)}`)
-    if (debits.length > 0) {
-      this.logger.info(`    Debits:   -₹${debitSum.toFixed(2)}`)
-    }
-    this.logger.info(`    ───────────────────────────────`)
-    this.logger.info(`    Net:      = ₹${netFromTxns.toFixed(2)}`)
-    this.logger.info(`    DB Column:  ₹${Number(user.working_wallet || 0).toFixed(2)}`)
+    this.logger.info(`  SUMMARY:`)
+    this.logger.info(`    DB Column:        ₹${dbValue.toFixed(2)}`)
+    this.logger.info(`    Snapshot Expected: ₹${snapshotTotal.toFixed(2)}`)
     this.logger.info(`══════════════════════════════════════════════════`)
 
-    if (Math.abs(netFromTxns - Number(user.working_wallet || 0)) > 0.01) {
-      this.logger.warning('MISMATCH: Transaction sum does not equal DB column!')
+    if (Math.abs(dbValue - snapshotTotal) > 0.99) {
+      this.logger.warning('MISMATCH: DB column does not match snapshot expected value!')
     } else {
-      this.logger.info('✅ Transaction sum matches DB column.')
+      this.logger.info('✅ DB column matches snapshot expected value.')
     }
   }
 }

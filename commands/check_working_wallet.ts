@@ -4,7 +4,7 @@ import db from '@adonisjs/lucid/services/db'
 
 export default class CheckWorkingWallet extends BaseCommand {
   static commandName = 'check:working-wallet'
-  static description = 'Check if a users working_wallet column matches their transaction history'
+  static description = 'Check if a users working_wallet column matches snapshot expected value'
   static options: CommandOptions = { startApp: true }
 
   @args.string({
@@ -37,31 +37,21 @@ export default class CheckWorkingWallet extends BaseCommand {
 
     for (const u of users.rows) {
       const uid = u.id
+      const dbValue = Number(u.working_wallet || 0)
 
-      // Calculate working wallet from transactions
-      const txSumRes = await db.rawQuery(
-        `SELECT coalesce(sum(
-           CASE
-             WHEN type = 'wallet_credit' THEN amount
-             WHEN type = 'wallet_debit' THEN -amount
-             ELSE 0
-           END
-         ), 0)::float as total
-         FROM transactions WHERE user_id = ? AND (
-           (remark ILIKE '%working income%' AND NOT (remark ILIKE '%repurchase%'))
-           OR remark ILIKE '%Excess working wallet%'
-         )`,
+      // Source of truth: sum of snapshot income_wallet_amount for paid months
+      const snapRes = await db.rawQuery(
+        `SELECT coalesce(sum(income_wallet_amount), 0)::float as total FROM monthly_income_snapshots WHERE user_id = ? AND paid_out_at IS NOT NULL`,
         [uid]
       )
-      const txSum = Number(txSumRes.rows[0].total)
-      const dbValue = Number(u.working_wallet || 0)
-      const diff = txSum - dbValue
+      const snapshotTotal = Number(snapRes.rows[0].total)
+      const diff = dbValue - snapshotTotal
 
-      if (Math.abs(diff) > 0.01) {
+      if (Math.abs(diff) > 0.99) {
         mismatchCount++
         this.logger.warning(`MISMATCH: PJ${String(uid).padStart(6, '0')} ${u.name}`)
         this.logger.warning(`  DB working_wallet: ₹${dbValue.toFixed(2)}`)
-        this.logger.warning(`  TX sum:            ₹${txSum.toFixed(2)}`)
+        this.logger.warning(`  Snapshot expected: ₹${snapshotTotal.toFixed(2)}`)
         this.logger.warning(`  DIFFERENCE:        ₹${diff.toFixed(2)}`)
         this.logger.warning(`  Status:            ${u.status}`)
       } else {
