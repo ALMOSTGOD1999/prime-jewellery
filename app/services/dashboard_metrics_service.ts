@@ -2,152 +2,94 @@ import { DateTime } from 'luxon'
 import db from '@adonisjs/lucid/services/db'
 
 export default class DashboardMetricsService {
-  /**
-   * Fast dashboard metrics — all data in a single round-trip of queries.
-   * Replaces the previous sequential N+1 approach in getDashboardMetrics + getPowerAndWeaker.
-   */
   static async getMetrics(userId: number) {
     const startOfMonth = DateTime.now().startOf('month').toSQLDate()
 
     const [directRes, personalRes, personalMonthRes, descendantRes] = await Promise.all([
-      // 1. Direct children + their direct business in one query
+      // 1. Direct children + their direct business
       db.rawQuery(
-        `SELECT
-          COUNT(*)::int as direct_count,
-          COALESCE(SUM(direct_business), 0)::float as direct_business
+        `SELECT COUNT(*)::int as direct_count, COALESCE(SUM(direct_business), 0)::float as direct_business
          FROM (
-           SELECT u.id,
-             (SELECT COALESCE(SUM(p.amount), 0)
-              FROM purchases p
-              WHERE p.user_id = u.id
-                AND p.approved_at IS NOT NULL
-                AND p.cancelled_at IS NULL
-             ) as direct_business
-           FROM users u
-           WHERE u.parent_id = ?
+           SELECT u.id, (SELECT COALESCE(SUM(p.amount), 0)
+             FROM purchases p WHERE p.user_id = u.id AND p.approved_at IS NOT NULL AND p.cancelled_at IS NULL
+           ) as direct_business
+           FROM users u WHERE u.parent_id = ?
          ) sub`,
         [userId]
       ),
-
       // 2. Personal business (all-time)
       db.rawQuery(
-        `SELECT COALESCE(SUM(amount), 0)::float as total
-         FROM purchases
-         WHERE user_id = ?
-           AND approved_at IS NOT NULL
-           AND cancelled_at IS NULL`,
+        `SELECT COALESCE(SUM(amount), 0)::float as total FROM purchases
+         WHERE user_id = ? AND approved_at IS NOT NULL AND cancelled_at IS NULL`,
         [userId]
       ),
-
       // 3. Personal business this month
       db.rawQuery(
-        `SELECT COALESCE(SUM(amount), 0)::float as total
-         FROM purchases
-         WHERE user_id = ?
-           AND approved_at IS NOT NULL
-           AND cancelled_at IS NULL
-           AND approved_at >= ?`,
+        `SELECT COALESCE(SUM(amount), 0)::float as total FROM purchases
+         WHERE user_id = ? AND approved_at IS NOT NULL AND cancelled_at IS NULL AND approved_at >= ?`,
         [userId, startOfMonth]
       ),
-
-      // 4. All descendants with their purchase totals (one recursive CTE, one query)
+      // 4. Descendants count + team business
       db.rawQuery(
         `WITH RECURSIVE descendants AS (
-           SELECT u.id, u.parent_id
-           FROM users u
-           WHERE u.parent_id = ?
+           SELECT id FROM users WHERE parent_id = ?
            UNION ALL
-           SELECT u.id, u.parent_id
-           FROM users u
-           INNER JOIN descendants d ON u.parent_id = d.id
-         ),
-         leg_purchases AS (
-           SELECT
-             d.id,
-             COALESCE(SUM(p.amount), 0) as volume
-           FROM descendants d
-           LEFT JOIN purchases p ON p.user_id = d.id
-             AND p.approved_at IS NOT NULL
-             AND p.cancelled_at IS NULL
-           GROUP BY d.id
-         ),
-         -- Aggregate per direct child (leg)
-         leg_totals AS (
-           SELECT
-             u.id as leg_owner_id,
-             COALESCE(SUM(lp.volume), 0) as leg_volume
-           FROM (
-             SELECT id FROM users WHERE parent_id = ?
-           ) u
-           LEFT JOIN descendants d ON d.parent_id = u.id OR d.id = u.id
-           LEFT JOIN purchases p ON p.user_id = d.id
-             AND p.approved_at IS NOT NULL
-             AND p.cancelled_at IS NULL
-           GROUP BY u.id
-         ),
-         team_month AS (
-           SELECT COALESCE(SUM(p.amount), 0)::float as month_total
-           FROM descendants d
-           INNER JOIN purchases p ON p.user_id = d.id
-             AND p.approved_at IS NOT NULL
-             AND p.cancelled_at IS NULL
-             AND p.approved_at >= ?
+           SELECT u.id FROM users u INNER JOIN descendants d ON u.parent_id = d.id
          )
          SELECT
            (SELECT COUNT(*) FROM descendants)::int as team_count,
-           (SELECT COALESCE(SUM(volume), 0)::float FROM leg_purchases) as team_business,
-           (SELECT month_total FROM team_month) as team_business_month,
-           COALESCE(
-             (SELECT STRING_AGG(leg_volume::text, ',' ORDER BY leg_volume DESC) FROM leg_totals),
-             ''
-           ) as leg_volumes
-        `,
-        [userId, userId, startOfMonth]
+           COALESCE((SELECT SUM(p.amount) FROM purchases p
+             INNER JOIN descendants d ON p.user_id = d.id
+             WHERE p.approved_at IS NOT NULL AND p.cancelled_at IS NULL), 0)::float as team_business,
+           COALESCE((SELECT SUM(p.amount) FROM purchases p
+             INNER JOIN descendants d ON p.user_id = d.id
+             WHERE p.approved_at IS NOT NULL AND p.cancelled_at IS NULL AND p.approved_at >= ?), 0)::float as team_business_month`,
+        [userId, startOfMonth]
       ),
     ])
 
-    // Parse results
     const direct = directRes.rows[0]
-    const myDirects = Number(direct.direct_count) || 0
-    const directBusiness = Number(direct.direct_business) || 0
-
-    const myBusiness = Number(personalRes.rows[0]?.total) || 0
-    const myBusinessMonth = Number(personalMonthRes.rows[0]?.total) || 0
-
     const dRow = descendantRes.rows[0]
-    const myTeam = Number(dRow.team_count) || 0
-    const teamBusiness = Number(dRow.team_business) || 0
-    const teamBusinessMonth = Number(dRow.team_business_month) || 0
 
-    // Parse leg volumes string into sorted array
-    const legVolumesStr = dRow.leg_volumes || ''
-    const legVolumes: number[] = legVolumesStr ? legVolumesStr.split(',').map(Number) : []
-    legVolumes.sort((a: number, b: number) => b - a)
+    // 5. Leg volumes (power/weaker) — separate simpler query
+    const legRes = await db.rawQuery(
+      `WITH RECURSIVE descendants AS (
+         SELECT id, parent_id FROM users WHERE parent_id = ?
+         UNION ALL
+         SELECT u.id, u.parent_id FROM users u INNER JOIN descendants d ON u.parent_id = d.id
+       ),
+       purchases_sum AS (
+         SELECT d.parent_id as leg_owner, COALESCE(SUM(p.amount), 0) as volume
+         FROM descendants d
+         LEFT JOIN purchases p ON p.user_id = d.id
+           AND p.approved_at IS NOT NULL AND p.cancelled_at IS NULL
+         GROUP BY d.parent_id
+       )
+       SELECT COALESCE(SUM(volume), 0)::float as leg_volume
+       FROM purchases_sum`,
+      [userId]
+    )
+
+    const legVolumes: number[] = legRes.rows.map((r: any) => Number(r.leg_volume) || 0)
+    legVolumes.sort((a, b) => b - a)
 
     const powerToday = legVolumes.length > 0 ? legVolumes[0] : 0
-    const weakerToday =
-      legVolumes.length > 1 ? legVolumes.slice(1).reduce((a: number, b: number) => a + b, 0) : 0
-
-    // Determine designation
-    const designation = this.getDesignation(powerToday, weakerToday, legVolumes)
+    const weakerToday = legVolumes.length > 1 ? legVolumes.slice(1).reduce((a, b) => a + b, 0) : 0
 
     return {
-      myDirects,
-      myTeam,
-      myBusiness,
-      myBusinessMonth,
-      directBusiness,
-      teamBusiness,
-      teamBusinessMonth,
+      myDirects: Number(direct.direct_count) || 0,
+      myTeam: Number(dRow.team_count) || 0,
+      myBusiness: Number(personalRes.rows[0]?.total) || 0,
+      myBusinessMonth: Number(personalMonthRes.rows[0]?.total) || 0,
+      directBusiness: Number(direct.direct_business) || 0,
+      teamBusiness: Number(dRow.team_business) || 0,
+      teamBusinessMonth: Number(dRow.team_business_month) || 0,
       powerToday,
       weakerToday,
-      designation,
+      designation: this.getDesignation(powerToday, weakerToday),
     }
   }
 
-  /**
-   * Get admin dashboard stats (user counts + business totals)
-   */
   static async getAdminMetrics() {
     const today = DateTime.now().startOf('day').toSQLDate()
     const startOfMonth = DateTime.now().startOf('month').toSQLDate()
@@ -198,7 +140,7 @@ export default class DashboardMetricsService {
     }
   }
 
-  private static getDesignation(power: number, weaker: number, _legVolumes: number[]): string {
+  private static getDesignation(power: number, weaker: number): string {
     if (power === 0 || weaker === 0) return 'N/A'
     const total = power + weaker
     const descending = [
