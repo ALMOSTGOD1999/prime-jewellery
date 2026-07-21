@@ -51,19 +51,8 @@ export default class DashboardController {
       [user.id]
     )
 
-    // Working Wallet = ONLY 70% portion from WORKING INCOME (commissions)
-    // Exclude repurchase wallet (20%) — only count the 70% working-wallet portion
-    const workingRes = await db.rawQuery(
-      `SELECT coalesce(sum(
-         CASE
-           WHEN type = 'wallet_credit' THEN amount
-           WHEN type = 'wallet_debit' THEN -amount
-           ELSE 0
-         END
-       ), 0)::float as total
-       FROM transactions WHERE user_id = ? AND remark ILIKE '%working income%' AND NOT (remark ILIKE '%repurchase%')`,
-      [user.id]
-    )
+    // Working Wallet = DB column (source of truth, stays aligned with monthly_income_snapshots)
+    const workingRes = await db.rawQuery(`SELECT working_wallet FROM users WHERE id = ?`, [user.id])
 
     return inertia.render('dashboard', {
       metrics,
@@ -72,7 +61,7 @@ export default class DashboardController {
       isPayoutReleased,
       incomeWallet: Number(investmentReturnRes.rows[0]?.total ?? 0),
       repurchaseWallet: Number(repurchaseRes.rows[0]?.total ?? 0),
-      workingWallet: Number(workingRes.rows[0]?.total ?? 0),
+      workingWallet: Number(workingRes.rows[0]?.working_wallet ?? 0),
     })
   }
 }
