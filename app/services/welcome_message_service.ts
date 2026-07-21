@@ -30,9 +30,7 @@ export default class WelcomeMessageService {
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 24px; background-color: #fafafa; border-radius: 12px;">
               <div style="text-align: center; margin-bottom: 28px;">
-                <div style="display: inline-block; width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(135deg, #C5A028, #F5D76E); color: #1a1a2e; font-size: 22px; font-weight: bold; line-height: 52px; text-align: center;">
-                  P
-                </div>
+                <img src="https://cdn.imgchest.com/files/d7d2a3846fe3.jpeg" alt="PRIME Jewellery" style="width: 64px; height: 64px; border-radius: 50%; object-fit: cover;" />
                 <h1 style="color: #C5A028; font-size: 28px; margin: 12px 0 4px;">PRIME</h1>
                 <p style="color: #1a1a2e; font-size: 18px; font-weight: bold; margin: 0 0 20px;">Dreams Will Become True</p>
               </div>
