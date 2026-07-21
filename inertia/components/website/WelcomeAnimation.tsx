@@ -133,19 +133,14 @@ export default function WelcomeAnimation() {
           }}
         >
           {phase !== 'coins' && (
-            <>
-              <div className="flex items-center justify-center gap-3 mb-1">
-                <div className="size-10 rounded-full bg-gradient-gold shadow-gold flex items-center justify-center">
-                  <span className="text-navy-dark text-lg font-bold font-heading">P</span>
-                </div>
-                <span className="text-3xl md:text-4xl font-heading font-bold text-gold no-underline">
-                  PRIME
-                </span>
+            <div className="flex items-center justify-center gap-3">
+              <div className="size-10 rounded-full bg-gradient-gold shadow-gold flex items-center justify-center">
+                <span className="text-navy-dark text-lg font-bold font-heading">P</span>
               </div>
-              <span className="block text-[10px] tracking-[0.3em] text-sky-light font-medium no-underline">
-                JEWELLERY PRIVATE LIMITED
+              <span className="text-3xl md:text-4xl font-heading font-bold text-gold no-underline">
+                PRIME
               </span>
-            </>
+            </div>
           )}
         </div>
 
@@ -159,10 +154,10 @@ export default function WelcomeAnimation() {
           }}
         >
           {(phase === 'tagline' || phase === 'done') && (
-            <p className="text-white/70 text-sm md:text-base font-light tracking-wider">
-              <span className="text-gold font-medium">"</span>
+            <p className="text-white text-2xl md:text-4xl font-bold tracking-wide">
+              <span className="text-gold font-bold">"</span>
               Dreams Will Become True
-              <span className="text-gold font-medium">"</span>
+              <span className="text-gold font-bold">"</span>
             </p>
           )}
         </div>
