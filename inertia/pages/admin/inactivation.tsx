@@ -1,4 +1,4 @@
-import { Head, router } from '@inertiajs/react'
+import { Head } from '@inertiajs/react'
 import AppLayout from '~/components/app/layout'
 import { Header } from '~/components/app/header'
 import { Main } from '~/components/app/main'
@@ -7,6 +7,14 @@ import { Input } from '~/components/ui/input'
 import { Badge } from '~/components/ui/badge'
 import { useState, useEffect } from 'react'
 import { formatUserId } from '~/lib/utils'
+import { toast } from 'sonner'
+
+function getCsrfToken(): string {
+  const name = 'XSRF-TOKEN'
+  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'))
+  if (match) return decodeURIComponent(match[2])
+  return ''
+}
 
 interface User {
   id: number
@@ -42,24 +50,42 @@ export default function AdminInactivationPage() {
     fetchUsers()
   }, [])
 
-  const handleInactivate = (userId: number) => {
-    router.post(
-      `/admin/users/${userId}/inactivate`,
-      {},
-      {
-        onSuccess: () => fetchUsers(),
-      }
-    )
+  const handleInactivate = async (userId: number) => {
+    try {
+      const res = await fetch(`/admin/users/${userId}/inactivate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-XSRF-TOKEN': getCsrfToken(),
+        },
+        body: JSON.stringify({}),
+      })
+      if (!res.ok) throw new Error('Failed to inactivate user')
+      await fetchUsers()
+      toast.success('User inactivated successfully')
+    } catch (e) {
+      console.error(e)
+      toast.error('Failed to inactivate user')
+    }
   }
 
-  const handleReactivate = (userId: number) => {
-    router.post(
-      `/admin/users/${userId}/reactivate`,
-      {},
-      {
-        onSuccess: () => fetchUsers(),
-      }
-    )
+  const handleReactivate = async (userId: number) => {
+    try {
+      const res = await fetch(`/admin/users/${userId}/reactivate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-XSRF-TOKEN': getCsrfToken(),
+        },
+        body: JSON.stringify({}),
+      })
+      if (!res.ok) throw new Error('Failed to reactivate user')
+      await fetchUsers()
+      toast.success('User reactivated successfully')
+    } catch (e) {
+      console.error(e)
+      toast.error('Failed to reactivate user')
+    }
   }
 
   return (

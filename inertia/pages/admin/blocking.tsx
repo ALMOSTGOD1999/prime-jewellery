@@ -1,4 +1,4 @@
-import { Head, router } from '@inertiajs/react'
+import { Head } from '@inertiajs/react'
 import AppLayout from '~/components/app/layout'
 import { Header } from '~/components/app/header'
 import { Main } from '~/components/app/main'
@@ -7,6 +7,14 @@ import { Input } from '~/components/ui/input'
 import { Badge } from '~/components/ui/badge'
 import { useState, useEffect } from 'react'
 import { formatUserId } from '~/lib/utils'
+import { toast } from 'sonner'
+
+function getCsrfToken(): string {
+  const name = 'XSRF-TOKEN'
+  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'))
+  if (match) return decodeURIComponent(match[2])
+  return ''
+}
 
 interface User {
   id: number
@@ -42,24 +50,42 @@ export default function AdminBlockingPage() {
     fetchUsers()
   }, [])
 
-  const handleBlock = (userId: number) => {
-    router.post(
-      `/admin/users/${userId}/block`,
-      {},
-      {
-        onSuccess: () => fetchUsers(),
-      }
-    )
+  const handleBlock = async (userId: number) => {
+    try {
+      const res = await fetch(`/admin/users/${userId}/block`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-XSRF-TOKEN': getCsrfToken(),
+        },
+        body: JSON.stringify({}),
+      })
+      if (!res.ok) throw new Error('Failed to block user')
+      await fetchUsers()
+      toast.success('User blocked successfully')
+    } catch (e) {
+      console.error(e)
+      toast.error('Failed to block user')
+    }
   }
 
-  const handleUnblock = (userId: number) => {
-    router.post(
-      `/admin/users/${userId}/unblock`,
-      {},
-      {
-        onSuccess: () => fetchUsers(),
-      }
-    )
+  const handleUnblock = async (userId: number) => {
+    try {
+      const res = await fetch(`/admin/users/${userId}/unblock`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-XSRF-TOKEN': getCsrfToken(),
+        },
+        body: JSON.stringify({}),
+      })
+      if (!res.ok) throw new Error('Failed to unblock user')
+      await fetchUsers()
+      toast.success('User unblocked successfully')
+    } catch (e) {
+      console.error(e)
+      toast.error('Failed to unblock user')
+    }
   }
 
   return (

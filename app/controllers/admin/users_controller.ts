@@ -223,18 +223,26 @@ export default class AdminUsersController {
   }
 
   async inactivate({ params, session, response }: HttpContext) {
-    const user = await User.findOrFail(params.id)
-    user.status = 'inactive'
-    await user.save()
-    session.flash('success', `${user.name} has been inactivated. All income generation stopped.`)
+    try {
+      const user = await User.findOrFail(params.id)
+      user.status = 'inactive'
+      await user.save()
+      session.flash('success', `${user.name} has been inactivated. All income generation stopped.`)
+    } catch (error) {
+      session.flash('errors.global', `Failed to inactivate user: ${error.message}`)
+    }
     return response.redirect().back()
   }
 
   async reactivate({ params, session, response }: HttpContext) {
-    const user = await User.findOrFail(params.id)
-    user.status = 'active'
-    await user.save()
-    session.flash('success', `${user.name} has been reactivated.`)
+    try {
+      const user = await User.findOrFail(params.id)
+      user.status = 'active'
+      await user.save()
+      session.flash('success', `${user.name} has been reactivated.`)
+    } catch (error) {
+      session.flash('errors.global', `Failed to reactivate user: ${error.message}`)
+    }
     return response.redirect().back()
   }
 
