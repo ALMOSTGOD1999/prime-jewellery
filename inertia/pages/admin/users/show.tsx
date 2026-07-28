@@ -521,7 +521,7 @@ export default function MemberShow({ member }: InferPageProps<AdminUsersControll
                   variant="destructive"
                   onClick={() => {
                     if (confirm('Permanently delete this user? This cannot be undone.')) {
-                      router.delete(route('admin.users.destroy', { params: { id: member.id } }))
+                      router.post(route('admin.users.destroy', { params: { id: member.id } }))
                     }
                   }}
                 >
