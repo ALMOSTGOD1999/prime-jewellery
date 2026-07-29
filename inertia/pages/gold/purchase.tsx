@@ -80,6 +80,11 @@ export default function PurchasePage({
     goldCarat: '22ct',
     goldWeight: '',
     amount: '',
+    goldRate: 0,
+    goldPrice: 0,
+    makingCharges: 0,
+    gstAmount: 0,
+    additionalCharges: 0,
     totalItems: '1',
     remark: '',
   })
@@ -221,6 +226,12 @@ export default function PurchasePage({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!canPurchase) return
+    // Set calculated gold billing values before submitting
+    form.setData('goldRate', calculation.goldRate)
+    form.setData('goldPrice', calculation.goldValue)
+    form.setData('makingCharges', calculation.makingCharges)
+    form.setData('gstAmount', calculation.gstAmount)
+    form.setData('additionalCharges', calculation.additionalCharges)
     form.post('/gold/purchase', {
       onSuccess: () => {
         form.reset()

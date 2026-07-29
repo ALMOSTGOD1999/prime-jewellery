@@ -129,13 +129,47 @@ export default class InvoiceService {
     const invoiceIndex = purchases.findIndex((item) => item.id === purchase.id) + 1
     const invoiceNo = `PSJ${String(Math.max(invoiceIndex, 1)).padStart(6, '0')}`
 
+    // Use stored gold billing values if available, otherwise use admin-set rates from config
+    const goldCarat = purchase.goldCarat
+    const goldWeight = Number(purchase.goldWeight) || Number(purchase.quantity) || 1
+    let goldRate = Number(purchase.goldRate)
+    let goldPrice = Number(purchase.goldPrice)
+    let makingCharges = Number(purchase.makingCharges)
+    let gstAmount = Number(purchase.gstAmount)
+    let additionalCharges = Number(purchase.additionalCharges)
+
+    // If goldRate wasn't stored on the purchase, derive it from admin config
+    if (!goldRate && goldCarat) {
+      const billingRates = await GoldBillingConfig.getRates()
+      goldRate = GoldBillingConfig.getRateForCarat(billingRates, goldCarat)
+    }
+
+    // If individual breakdown values aren't stored, calculate them from the total
+    if (!goldPrice && goldRate && goldWeight) {
+      const calc = GoldBillingConfig.calculate(
+        await GoldBillingConfig.getRates(),
+        goldCarat || '22ct',
+        goldWeight
+      )
+      goldPrice = calc.goldValue
+      makingCharges = calc.makingCharges
+      gstAmount = calc.gstAmount
+      additionalCharges = calc.additionalCharges
+    }
+
     return this.createGoldPurchasePDF({
       invoiceNo,
       invoiceDate: purchase.createdAt.toFormat('dd-MM-yyyy'),
       buyerName: purchase.buyerName || purchase.user.name,
       customerPhone: purchase.user.phone,
-      quantity: Number(purchase.quantity) || 1,
+      quantity: goldWeight,
       totalAmount: Number(purchase.amount),
+      goldCarat: goldCarat || '',
+      goldRate,
+      goldPrice,
+      makingCharges,
+      gstAmount,
+      additionalCharges,
     })
   }
 
@@ -146,6 +180,12 @@ export default class InvoiceService {
     customerPhone: string
     quantity: number
     totalAmount: number
+    goldCarat: string
+    goldRate: number
+    goldPrice: number
+    makingCharges: number
+    gstAmount: number
+    additionalCharges: number
   }): Promise<Uint8Array> {
     const pdf = PDF.create()
     pdf.setTitle(`Gold Purchase Invoice ${data.invoiceNo}`)
@@ -161,8 +201,10 @@ export default class InvoiceService {
     let y = height - margin
 
     const formatAmount = (amount: number) => `Rs. ${amount.toFixed(2)}`
-    const breakdown = await this.calculateGoldPurchaseBreakup(data.totalAmount)
-    const r = breakdown.rates
+
+    // Calculate display percentages based on admin-set rates
+    const displayPercent = await this.getGoldBreakup()
+    const r = displayPercent
 
     page.drawRectangle({ x: 0, y: height - 118, width, height: 118, color: softGold })
     page.drawRectangle({ x: 0, y: height - 122, width, height: 4, color: gold })
@@ -227,6 +269,7 @@ export default class InvoiceService {
       font: 'Helvetica',
       color: muted,
     })
+    const caratLabel = data.goldCarat ? data.goldCarat.toUpperCase() : ''
     page.drawText(`Quantity: ${data.quantity.toFixed(3)} gm`, {
       x: width / 2 + 20,
       y: y - 44,
@@ -234,15 +277,27 @@ export default class InvoiceService {
       font: 'Helvetica-Bold',
       color: dark,
     })
+    if (data.goldRate > 0) {
+      page.drawText(`Gold Rate: ${formatAmount(data.goldRate)}/${caratLabel || 'gm'}`, {
+        x: width / 2 + 20,
+        y: y - 62,
+        size: 10,
+        font: 'Helvetica',
+        color: dark,
+      })
+    }
     page.drawText(`Invoice Total: ${formatAmount(data.totalAmount)}`, {
       x: width / 2 + 20,
-      y: y - 62,
+      y: data.goldRate > 0 ? y - 80 : y - 62,
       size: 10,
       font: 'Helvetica-Bold',
       color: dark,
     })
 
+    // Adjust y position to account for the gold rate line if shown
+    if (data.goldRate > 0) y -= 18
     y -= 112
+
     this.drawGoldPurchaseRow(
       page,
       margin,
@@ -255,12 +310,19 @@ export default class InvoiceService {
     )
     y -= 30
 
+    // Use stored gold billing breakdown values from the purchase
+    const goldValue = data.goldPrice || data.totalAmount * r.gold
+    const cgst = data.gstAmount > 0 ? data.gstAmount / 2 : data.totalAmount * r.cgst
+    const sgst = data.gstAmount > 0 ? data.gstAmount / 2 : data.totalAmount * r.sgst
+    const additional = data.additionalCharges || data.totalAmount * r.additional
+    const making = data.makingCharges || data.totalAmount * r.making
+
     const rows = [
-      ['Gold Value', `${Math.round(r.jewelleryDisplay)}%`, breakdown.goldValue],
-      ['CGST', `${(r.gstDisplay / 2).toFixed(1)}%`, breakdown.cgst],
-      ['SGST', `${(r.gstDisplay / 2).toFixed(1)}%`, breakdown.sgst],
-      ['Additional Charges', `${Math.round(r.additionalDisplay)}%`, breakdown.additionalCharges],
-      ['Making Charges', `${r.makingDisplay}%`, breakdown.makingCharges],
+      ['Gold Value', `${Math.round(r.jewelleryDisplay)}%`, goldValue],
+      ['CGST', `${(r.gstDisplay / 2).toFixed(1)}%`, cgst],
+      ['SGST', `${(r.gstDisplay / 2).toFixed(1)}%`, sgst],
+      ['Additional Charges', `${Math.round(r.additionalDisplay)}%`, additional],
+      ['Making Charges', `${r.makingDisplay}%`, making],
     ] as const
 
     rows.forEach(([label, rate, amount]) => {
@@ -840,13 +902,47 @@ export default class InvoiceService {
     const invoiceIndex = purchases.findIndex((item) => item.id === purchase.id) + 1
     const invoiceNo = `PSJ${String(Math.max(invoiceIndex, 1)).padStart(6, '0')}`
 
+    // Use stored gold billing values if available, otherwise use admin-set rates from config
+    const goldCarat = purchase.goldCarat
+    const goldWeight = Number(purchase.goldWeight) || Number(purchase.quantity) || 1
+    let goldRate = Number(purchase.goldRate)
+    let goldPrice = Number(purchase.goldPrice)
+    let makingCharges = Number(purchase.makingCharges)
+    let gstAmount = Number(purchase.gstAmount)
+    let additionalCharges = Number(purchase.additionalCharges)
+
+    // If goldRate wasn't stored on the purchase, derive it from admin config
+    if (!goldRate && goldCarat) {
+      const billingRates = await GoldBillingConfig.getRates()
+      goldRate = GoldBillingConfig.getRateForCarat(billingRates, goldCarat)
+    }
+
+    // If individual breakdown values aren't stored, calculate them from the total
+    if (!goldPrice && goldRate && goldWeight) {
+      const calc = GoldBillingConfig.calculate(
+        await GoldBillingConfig.getRates(),
+        goldCarat || '22ct',
+        goldWeight
+      )
+      goldPrice = calc.goldValue
+      makingCharges = calc.makingCharges
+      gstAmount = calc.gstAmount
+      additionalCharges = calc.additionalCharges
+    }
+
     return this.createGoldPurchasePDF({
       invoiceNo,
       invoiceDate: purchase.createdAt.toFormat('dd-MM-yyyy'),
       buyerName: purchase.buyerName || purchase.user.name,
       customerPhone: purchase.user.phone,
-      quantity: Number(purchase.quantity) || 1,
+      quantity: goldWeight,
       totalAmount: Number(purchase.amount),
+      goldCarat: goldCarat || '',
+      goldRate,
+      goldPrice,
+      makingCharges,
+      gstAmount,
+      additionalCharges,
     })
   }
 
