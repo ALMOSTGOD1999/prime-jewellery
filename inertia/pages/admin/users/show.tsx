@@ -794,7 +794,7 @@ export default function MemberShow({ member }: InferPageProps<AdminUsersControll
                               router.post(
                                 route('admin.bank.update', {
                                   params: { id: member.bank!.id || member.id },
-                                }),
+                                }).toString(),
                                 { type: bankActionType === 'approve' ? 'approved' : 'rejected' },
                                 {
                                   onSuccess: () => setIsBankActionOpen(false),
@@ -1016,7 +1016,7 @@ export default function MemberShow({ member }: InferPageProps<AdminUsersControll
                       className="h-8 w-8 p-0"
                       onClick={() => {
                         router.patch(
-                          route('admin.kyc.update', { params: { id: member.kyc?.id } }),
+                          route('admin.kyc.update', { params: { id: member.kyc?.id } }).toString(),
                           { type: 'approved' }
                         )
                       }}
@@ -1030,7 +1030,7 @@ export default function MemberShow({ member }: InferPageProps<AdminUsersControll
                       className="h-8 w-8 p-0"
                       onClick={() => {
                         router.patch(
-                          route('admin.kyc.update', { params: { id: member.kyc?.id } }),
+                          route('admin.kyc.update', { params: { id: member.kyc?.id } }).toString(),
                           { type: 'rejected' }
                         )
                       }}

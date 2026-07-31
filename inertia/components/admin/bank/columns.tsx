@@ -165,9 +165,10 @@ export const columns: ColumnDef<BankRequest>[] = [
                 <Button
                   className="bg-primary"
                   onClick={() => {
-                    router.post(route('admin.bank.update', { params: { id: request.id } }), {
-                      type: 'approved',
-                    })
+                    router.post(
+                      route('admin.bank.update', { params: { id: request.id } }).toString(),
+                      { type: 'approved' }
+                    )
                   }}
                 >
                   Approve
@@ -192,9 +193,10 @@ export const columns: ColumnDef<BankRequest>[] = [
                 <Button
                   variant="destructive"
                   onClick={() => {
-                    router.post(route('admin.bank.update', { params: { id: request.id } }), {
-                      type: 'rejected',
-                    })
+                    router.post(
+                      route('admin.bank.update', { params: { id: request.id } }).toString(),
+                      { type: 'rejected' }
+                    )
                   }}
                 >
                   Reject

@@ -16,20 +16,20 @@ export default class Kyc extends compose(BaseModel, withTimestamps()) {
 
   @attachment({
     folder: (k: Kyc) => `kyc/${k.id}`,
-    rename: (k: Kyc) => `aadhaar.${k.aadhaarProof.extname}`,
+    rename: (k: Kyc) => `${k.id}-aadhaar.${k.aadhaarProof?.extname}`,
     preComputeUrl: true,
   })
-  declare aadhaarProof: Attachment
+  declare aadhaarProof: Attachment | null
 
   @column()
   declare panNumber: string
 
   @attachment({
     folder: (k: Kyc) => `kyc/${k.id}`,
-    rename: (k: Kyc) => `pan.${k.panProof.extname}`,
+    rename: (k: Kyc) => `${k.id}-pan.${k.panProof?.extname}`,
     preComputeUrl: true,
   })
-  declare panProof: Attachment
+  declare panProof: Attachment | null
 
   @column.dateTime()
   declare approvedAt: DateTime | null
