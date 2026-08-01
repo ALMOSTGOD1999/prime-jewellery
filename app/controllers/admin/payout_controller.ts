@@ -1,6 +1,7 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import PayoutService from '#services/payout_service'
 import PlatformConfig from '#models/platform_config'
+import ProcessWorkingPayout from '#jobs/process_working_payout'
 import db from '@adonisjs/lucid/services/db'
 import { DateTime } from 'luxon'
 
@@ -143,10 +144,13 @@ export default class AdminPayoutController {
     }
 
     try {
-      const result = await PayoutService.processWorkingWalletPayout(targetMonth, admin.id)
+      // The working payout computation is heavy (several minutes), so it runs
+      // in the background. The job credits wallets for the full target month
+      // (day 1 → last day) and records the payout month on success.
+      await ProcessWorkingPayout.enqueue(targetMonth.toFormat('yyyy-MM'), admin.id)
       session.flash(
         'success',
-        `Working payout done. ${result.credited} users, ₹${result.totalAmount.toLocaleString('en-IN')}.`
+        `Working payout for ${targetMonth.toFormat('yyyy-MM')} started in the background. Wallets will be credited automatically once processing completes (usually a few minutes).`
       )
     } catch (error) {
       session.flash('errors.global', error.message)

@@ -139,7 +139,9 @@ export default function AdminPayoutPage({
             <AlertDescription className="text-amber-700">
               Users cannot see their income, transactions, or Cashback until both payout buttons are
               clicked for the month. Click both buttons at the start of each month to release the
-              previous month&apos;s earnings.
+              previous month&apos;s earnings (day 1 to the last day of the month). The Working
+              Wallet payout is calculated in the background and can take a few minutes — wallets are
+              credited automatically once it finishes.
             </AlertDescription>
           </Alert>
 

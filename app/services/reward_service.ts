@@ -395,18 +395,27 @@ export default class RewardService {
     const userIdsToFetch = [...new Set(paginatedRewards.map((r) => r._userId))]
 
     if (userIdsToFetch.length > 0) {
-      const users = await User.findMany(userIdsToFetch)
-      const userMap = new Map<number, User>()
-      for (const u of users) {
-        userMap.set(u.id, u)
-      }
-
-      for (const r of paginatedRewards) {
-        const u = userMap.get(r._userId)
-        if (u) {
-          r.source.avatar = u.avatar
+      try {
+        const users = await User.findMany(userIdsToFetch)
+        const userMap = new Map<number, User>()
+        for (const u of users) {
+          userMap.set(u.id, u)
         }
-        delete r._userId
+
+        for (const r of paginatedRewards) {
+          const u = userMap.get(r._userId)
+          if (u) {
+            r.source.avatar = u.avatar
+          }
+          delete r._userId
+        }
+      } catch {
+        // Avatar URL generation can fail (e.g. missing file / disk hiccup).
+        // Rewards are unaffected — just degrade to no avatars instead of
+        // crashing the caller (e.g. the monthly payout job).
+        for (const r of paginatedRewards) {
+          delete r._userId
+        }
       }
     }
 

@@ -1,5 +1,6 @@
 import { DateTime } from 'luxon'
 import db from '@adonisjs/lucid/services/db'
+import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
 import User from '#models/user'
 import Transaction from '#models/transaction'
 import { TransactionTypeEnum } from '#enums/transaction'
@@ -35,9 +36,10 @@ export default class WalletService {
     userId: number,
     amount: number,
     adminId: number,
-    remark?: string
+    remark?: string,
+    client?: TransactionClientContract
   ) {
-    return db.transaction(async (trx) => {
+    const apply = async (trx: TransactionClientContract) => {
       const user = await User.query({ client: trx }).where('id', userId).firstOrFail()
       const transaction = await Transaction.create(
         {
@@ -52,16 +54,21 @@ export default class WalletService {
       user.repurchaseWallet = Number(user.repurchaseWallet ?? 0) + amount
       await user.save()
       return transaction
-    })
+    }
+
+    // When called inside an existing transaction, participate in it.
+    // Otherwise create a dedicated transaction.
+    return client ? apply(client) : db.transaction(apply)
   }
 
   static async creditWorkingWallet(
     userId: number,
     amount: number,
     adminId: number,
-    remark?: string
+    remark?: string,
+    client?: TransactionClientContract
   ) {
-    return db.transaction(async (trx) => {
+    const apply = async (trx: TransactionClientContract) => {
       const user = await User.query({ client: trx }).where('id', userId).firstOrFail()
       const transaction = await Transaction.create(
         {
@@ -76,7 +83,11 @@ export default class WalletService {
       user.workingWallet = Number(user.workingWallet ?? 0) + amount
       await user.save()
       return transaction
-    })
+    }
+
+    // When called inside an existing transaction, participate in it.
+    // Otherwise create a dedicated transaction.
+    return client ? apply(client) : db.transaction(apply)
   }
 
   /**
