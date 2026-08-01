@@ -75,6 +75,8 @@ export default class AdminPayoutController {
     try {
       await PlatformConfig.set('income_wallet_payout_month', '', 'payout')
       await PlatformConfig.set('working_wallet_payout_month', '', 'payout')
+      await PayoutService.releasePayoutLock('income')
+      await PayoutService.releasePayoutLock('working')
       session.flash('success', 'Payout months reset.')
     } catch (error) {
       session.flash('errors.global', error.message)
@@ -108,11 +110,24 @@ export default class AdminPayoutController {
       }
     }
 
+    // Atomic in-progress lock: a second click while the first request is still
+    // running is rejected instead of double-crediting users.
+    const acquired = await PayoutService.acquirePayoutLock('income', targetMonth)
+    if (!acquired) {
+      session.flash(
+        'errors.global',
+        `Income payout for ${targetMonth.toFormat('yyyy-MM')} is already in progress. Please wait for it to finish.`
+      )
+      return response.redirect().back()
+    }
+
     try {
       const result = await PayoutService.processIncomeWalletPayout(targetMonth, admin.id)
       session.flash('success', `Income payout done. ${result.processed} distributions.`)
     } catch (error) {
       session.flash('errors.global', error.message)
+    } finally {
+      await PayoutService.releasePayoutLock('income')
     }
     return response.redirect().back()
   }
@@ -143,10 +158,21 @@ export default class AdminPayoutController {
       }
     }
 
+    // Atomic in-progress lock: held from enqueue until the background job
+    // finishes, so a double-click cannot enqueue two jobs for the same month.
+    const acquired = await PayoutService.acquirePayoutLock('working', targetMonth)
+    if (!acquired) {
+      session.flash(
+        'errors.global',
+        `Working payout for ${targetMonth.toFormat('yyyy-MM')} is already in progress. Please wait for it to finish.`
+      )
+      return response.redirect().back()
+    }
+
     try {
       // The working payout computation is heavy (several minutes), so it runs
       // in the background. The job credits wallets for the full target month
-      // (day 1 → last day) and records the payout month on success.
+      // (day 1 → last day), records the payout month, and releases the lock.
       await ProcessWorkingPayout.enqueue(targetMonth.toFormat('yyyy-MM'), admin.id)
       session.flash(
         'success',
@@ -154,6 +180,7 @@ export default class AdminPayoutController {
       )
     } catch (error) {
       session.flash('errors.global', error.message)
+      await PayoutService.releasePayoutLock('working')
     }
     return response.redirect().back()
   }

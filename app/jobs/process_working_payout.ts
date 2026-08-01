@@ -25,6 +25,11 @@ export default class ProcessWorkingPayout extends BaseJob {
         `[payout] Working payout for ${monthStr} FAILED: ${error instanceof Error ? error.message : error}`
       )
       throw error
+    } finally {
+      // Always release the in-progress lock (held since the admin clicked the
+      // button) so the month can be retried if the job failed, or the next
+      // month can be processed once this one is done.
+      await PayoutService.releasePayoutLock('working')
     }
   }
 }

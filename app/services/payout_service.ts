@@ -19,6 +19,54 @@ export default class PayoutService {
   static readonly REPURCHASE_PERCENT = 0.2
   static readonly ADMIN_PERCENT = 0.1
 
+  /** How long an in-progress payout lock stays valid before it can be re-acquired. */
+  static readonly PAYOUT_LOCK_TTL_SECONDS = 2 * 60 * 60
+
+  private static payoutLockKey(type: 'income' | 'working') {
+    return type === 'income'
+      ? 'income_wallet_payout_in_progress'
+      : 'working_wallet_payout_in_progress'
+  }
+
+  /**
+   * Atomically acquire a per-wallet payout lock so that two requests (double
+   * clicks, multiple tabs, concurrent admins) cannot process the same month
+   * at the same time. The lock is stored in platform_configs so it survives
+   * restarts and is visible across processes.
+   *
+   * Returns true when this caller got the lock. A lock held by someone else is
+   * only taken over once its TTL has expired (e.g. a crashed job) or when it
+   * was released with {@link releasePayoutLock}.
+   */
+  static async acquirePayoutLock(type: 'income' | 'working', month: DateTime): Promise<boolean> {
+    const key = this.payoutLockKey(type)
+    const lockValue = `${month.toFormat('yyyy-MM')}|${DateTime.now().plus({ seconds: this.PAYOUT_LOCK_TTL_SECONDS }).toSeconds()}`
+
+    const result = await db.rawQuery(
+      `INSERT INTO platform_configs (key, value, "group", created_at, updated_at)
+       VALUES (?, ?, 'payout', NOW(), NOW())
+       ON CONFLICT (key) DO UPDATE
+         SET value = EXCLUDED.value, updated_at = NOW()
+         WHERE platform_configs.value = ''
+            OR platform_configs.value IS NULL
+            OR (NULLIF(split_part(platform_configs.value, '|', 2), '')::bigint IS NOT NULL
+                AND NULLIF(split_part(platform_configs.value, '|', 2), '')::bigint < ?)
+       RETURNING id`,
+      [key, lockValue, DateTime.now().toSeconds()]
+    )
+
+    return (result.rows?.length ?? 0) > 0
+  }
+
+  /** Release an in-progress payout lock (called when processing finishes/fails). */
+  static async releasePayoutLock(type: 'income' | 'working') {
+    const existing = await PlatformConfig.query().where('key', this.payoutLockKey(type)).first()
+    if (existing) {
+      existing.value = ''
+      await existing.save()
+    }
+  }
+
   static async getIncomeWalletPayoutMonth(): Promise<DateTime | null> {
     const monthStr = await PlatformConfig.get('income_wallet_payout_month')
     return monthStr ? DateTime.fromISO(monthStr + '-01').startOf('month') : null
@@ -170,9 +218,10 @@ export default class PayoutService {
     userId: number,
     amount: number,
     adminId: number,
-    remark?: string
+    remark?: string,
+    client?: TransactionClientContract
   ) {
-    return db.transaction(async (trx) => {
+    const apply = async (trx: TransactionClientContract) => {
       const user = await User.query({ client: trx }).where('id', userId).firstOrFail()
       const transaction = await Transaction.create(
         {
@@ -188,7 +237,11 @@ export default class PayoutService {
       user.incomeWallet = currentBalance + amount
       await user.save()
       return transaction
-    })
+    }
+
+    // When called inside an existing transaction, participate in it.
+    // Otherwise create a dedicated transaction.
+    return client ? apply(client) : db.transaction(apply)
   }
 
   static async processIncomeWalletPayout(month: DateTime, adminId: number) {
@@ -218,36 +271,56 @@ export default class PayoutService {
     let processed = 0
 
     for (const distribution of distributions) {
-      // Skip inactive users — mark as paid but don't credit
-      const user = await User.find(distribution.userId)
-      if (!user || user.status === 'inactive') {
-        distribution.paidOutAt = DateTime.now()
-        await distribution.save()
-        continue
-      }
+      // Re-read the distribution inside a locked transaction and only credit
+      // it when it is still unpaid. If a concurrent payout run already paid it,
+      // the FOR UPDATE query returns nothing and we simply skip it — this makes
+      // double-processing (admin double-click, two tabs) harmless for every user.
+      const credited = await db.transaction(async (trx) => {
+        const locked = await InvestmentReturnDistribution.query({ client: trx })
+          .where('id', distribution.id)
+          .whereNull('paid_out_at')
+          .forUpdate()
+          .first()
 
-      const gross = Number(distribution.returnAmount)
-      const incomeAmount = Math.round(gross * this.INCOME_PERCENT * 100) / 100
-      const repurchaseAmount = Math.round(gross * this.REPURCHASE_PERCENT * 100) / 100
+        if (!locked) return false
 
-      const repurchaseTransaction = await WalletService.creditRepurchaseWallet(
-        distribution.userId,
-        repurchaseAmount,
-        adminId,
-        `Repurchase wallet (20%) from investment return for ${period.toFormat('LLLL yyyy')}`
-      )
-      const incomeTransaction = await this.creditIncomeWallet(
-        distribution.userId,
-        incomeAmount,
-        adminId,
-        `Cashback wallet (70%) from investment return for ${period.toFormat('LLLL yyyy')}`
-      )
+        // Skip inactive users — mark as paid but don't credit
+        const user = await User.query({ client: trx }).where('id', locked.userId).first()
+        if (!user || user.status === 'inactive') {
+          locked.useTransaction(trx)
+          locked.paidOutAt = DateTime.now()
+          await locked.save()
+          return true
+        }
 
-      distribution.goldTransactionId = repurchaseTransaction.id
-      distribution.incomeWalletTransactionId = incomeTransaction.id
-      distribution.paidOutAt = DateTime.now()
-      await distribution.save()
-      processed += 1
+        const gross = Number(locked.returnAmount)
+        const incomeAmount = Math.round(gross * this.INCOME_PERCENT * 100) / 100
+        const repurchaseAmount = Math.round(gross * this.REPURCHASE_PERCENT * 100) / 100
+
+        const repurchaseTransaction = await WalletService.creditRepurchaseWallet(
+          locked.userId,
+          repurchaseAmount,
+          adminId,
+          `Repurchase wallet (20%) from investment return for ${period.toFormat('LLLL yyyy')}`,
+          trx
+        )
+        const incomeTransaction = await this.creditIncomeWallet(
+          locked.userId,
+          incomeAmount,
+          adminId,
+          `Cashback wallet (70%) from investment return for ${period.toFormat('LLLL yyyy')}`,
+          trx
+        )
+
+        locked.useTransaction(trx)
+        locked.goldTransactionId = repurchaseTransaction.id
+        locked.incomeWalletTransactionId = incomeTransaction.id
+        locked.paidOutAt = DateTime.now()
+        await locked.save()
+        return true
+      })
+
+      if (credited) processed += 1
     }
 
     await PlatformConfig.set(
