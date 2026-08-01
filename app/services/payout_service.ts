@@ -40,7 +40,7 @@ export default class PayoutService {
    */
   static async acquirePayoutLock(type: 'income' | 'working', month: DateTime): Promise<boolean> {
     const key = this.payoutLockKey(type)
-    const lockValue = `${month.toFormat('yyyy-MM')}|${DateTime.now().plus({ seconds: this.PAYOUT_LOCK_TTL_SECONDS }).toSeconds()}`
+    const lockValue = `${month.toFormat('yyyy-MM')}|${Math.floor(DateTime.now().plus({ seconds: this.PAYOUT_LOCK_TTL_SECONDS }).toSeconds())}`
 
     const result = await db.rawQuery(
       `INSERT INTO platform_configs (key, value, "group", created_at, updated_at)
@@ -52,7 +52,7 @@ export default class PayoutService {
             OR (NULLIF(split_part(platform_configs.value, '|', 2), '')::bigint IS NOT NULL
                 AND NULLIF(split_part(platform_configs.value, '|', 2), '')::bigint < ?)
        RETURNING id`,
-      [key, lockValue, DateTime.now().toSeconds()]
+      [key, lockValue, Math.floor(DateTime.now().toSeconds())]
     )
 
     return (result.rows?.length ?? 0) > 0
