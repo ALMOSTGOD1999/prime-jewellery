@@ -217,7 +217,7 @@ export default class AdminPayoutController {
             userId: user.id,
             type: TransactionTypeEnum.WALLET_DEBIT,
             amount,
-            remark: `Income wallet (cashback) withdrawal — payout cleared by admin #${admin.id}`,
+            remark: `Income wallet (cashback) withdrawal from investment return — payout cleared by admin #${admin.id}`,
             approvedAt: DateTime.now(),
           },
           { client: trx }

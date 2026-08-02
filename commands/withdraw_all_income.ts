@@ -70,7 +70,7 @@ export default class WithdrawAllIncome extends BaseCommand {
             userId: user.id,
             type: TransactionTypeEnum.WALLET_DEBIT,
             amount,
-            remark: `Income wallet (cashback) withdrawal — payout cleared by admin (command)`,
+            remark: `Income wallet (cashback) withdrawal from investment return — payout cleared by admin (command)`,
             approvedAt: DateTime.now(),
           },
           { client: trx }
@@ -94,8 +94,12 @@ export default class WithdrawAllIncome extends BaseCommand {
     const afterTotal = Number(after.rows[0].total)
 
     this.logger.info('')
-    this.logger.info(`Cleared ${cleared} cashback wallets, total ₹${totalCleared.toLocaleString('en-IN')}`)
-    this.logger.info(`Remaining users with cashback balance: ${afterUsers} (₹${afterTotal.toLocaleString('en-IN')})`)
+    this.logger.info(
+      `Cleared ${cleared} cashback wallets, total ₹${totalCleared.toLocaleString('en-IN')}`
+    )
+    this.logger.info(
+      `Remaining users with cashback balance: ${afterUsers} (₹${afterTotal.toLocaleString('en-IN')})`
+    )
     this.logger.info(`History: ${cleared} wallet_debit transactions created.`)
     this.logger.info(`Working wallets: unchanged.`)
   }
