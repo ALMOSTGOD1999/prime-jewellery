@@ -2,6 +2,9 @@ import type { HttpContext } from '@adonisjs/core/http'
 import PayoutService from '#services/payout_service'
 import PlatformConfig from '#models/platform_config'
 import ProcessWorkingPayout from '#jobs/process_working_payout'
+import User from '#models/user'
+import Transaction from '#models/transaction'
+import { TransactionTypeEnum } from '#enums/transaction'
 import db from '@adonisjs/lucid/services/db'
 import { DateTime } from 'luxon'
 
@@ -186,11 +189,53 @@ export default class AdminPayoutController {
   }
 
   async withdrawAllIncome({ auth, session, response }: HttpContext) {
-    await auth.getUserOrFail()
+    const admin = auth.getUserOrFail()
+
+    // 1. Approve all pending income wallet withdrawal requests (existing behavior)
     await db.rawQuery(
       `UPDATE withdrawls SET status = 'approved', approved_at = NOW() WHERE type = 'investment_income' AND status = 'pending'`
     )
-    session.flash('success', 'All pending income wallet withdrawals approved.')
+
+    // 2. Clear every user's cashback (income) wallet so the amount leaves the
+    //    system, while keeping a per-user audit trail (wallet_debit history).
+    //    Working wallets are intentionally left unchanged.
+    let cleared = 0
+    let totalCleared = 0
+
+    await db.transaction(async (trx) => {
+      const users = await User.query({ client: trx })
+        .whereNot('role', 'admin')
+        .where('income_wallet', '>', 0)
+        .select('id', 'income_wallet')
+
+      for (const user of users) {
+        const amount = Number(user.incomeWallet)
+        if (amount <= 0) continue
+
+        await Transaction.create(
+          {
+            userId: user.id,
+            type: TransactionTypeEnum.WALLET_DEBIT,
+            amount,
+            remark: `Income wallet (cashback) withdrawal — payout cleared by admin #${admin.id}`,
+            approvedAt: DateTime.now(),
+          },
+          { client: trx }
+        )
+
+        user.useTransaction(trx)
+        user.incomeWallet = 0
+        await user.save()
+
+        cleared++
+        totalCleared += amount
+      }
+    })
+
+    session.flash(
+      'success',
+      `All pending income wallet withdrawals approved. ${cleared} cashback wallets cleared (₹${totalCleared.toLocaleString('en-IN')}).`
+    )
     return response.redirect().back()
   }
 

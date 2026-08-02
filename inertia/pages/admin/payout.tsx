@@ -329,7 +329,8 @@ export default function AdminPayoutPage({
               <CardHeader>
                 <CardTitle>Withdraw All — Income Wallet</CardTitle>
                 <CardDescription>
-                  Approve all pending investment income withdrawals at once.
+                  Clear every user's cashback (income) wallet and record the payout in history.
+                  Working wallets are not touched.
                 </CardDescription>
               </CardHeader>
               <CardContent>
