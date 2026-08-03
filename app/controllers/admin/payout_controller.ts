@@ -100,14 +100,17 @@ export default class AdminPayoutController {
       return response.redirect().back()
     }
 
-    // Prevent double-processing
+    // Prevent double-processing: block only when a NEWER month has already been
+    // recorded. Re-running the current target month is allowed — paid
+    // distributions are skipped inside processIncomeWalletPayout, so a re-run
+    // never double-credits anyone and simply finishes any unpaid leftovers.
     const alreadyPaid = await PlatformConfig.get('income_wallet_payout_month')
     if (alreadyPaid) {
       const paidMonth = DateTime.fromISO(alreadyPaid + '-01').startOf('month')
-      if (paidMonth >= targetMonth) {
+      if (paidMonth > targetMonth) {
         session.flash(
           'errors.global',
-          `Income payout for ${targetMonth.toFormat('yyyy-MM')} already done.`
+          `Cannot process ${targetMonth.toFormat('yyyy-MM')} — a later payout month (${paidMonth.toFormat('yyyy-MM')}) is already recorded.`
         )
         return response.redirect().back()
       }
@@ -126,7 +129,14 @@ export default class AdminPayoutController {
 
     try {
       const result = await PayoutService.processIncomeWalletPayout(targetMonth, admin.id)
-      session.flash('success', `Income payout done. ${result.processed} distributions.`)
+      if (result.processed === 0) {
+        session.flash(
+          'success',
+          `Cashback payout for ${targetMonth.toFormat('yyyy-MM')} is already complete — no unpaid distributions found.`
+        )
+      } else {
+        session.flash('success', `Income payout done. ${result.processed} distributions.`)
+      }
     } catch (error) {
       session.flash('errors.global', error.message)
     } finally {

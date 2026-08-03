@@ -66,6 +66,13 @@ export default function AdminPayoutPage({
 
   const bothPaid = incomeWalletPayoutMonth === workingWalletPayoutMonth && !!incomeWalletPayoutMonth
 
+  // Month label for the diagnostic card (e.g. "July 2026") — the data always
+  // belongs to the upcoming payout month, not a hardcoded month.
+  const diagnosticMonthLabel = new Date(nextIncomeMonth + '-01').toLocaleString('en-US', {
+    month: 'long',
+    year: 'numeric',
+  })
+
   // Determine the latest paid month for downloads
   const incomeDownloadMonth = incomeWalletPayoutMonth || nextIncomeMonth
   const workingDownloadMonth = workingWalletPayoutMonth || nextWorkingMonth
@@ -101,7 +108,7 @@ export default function AdminPayoutPage({
           <Card className="border-blue-200 bg-blue-50/30">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm text-blue-800">
-                Data Available for {nextIncomeMonth}
+                Data Available for {diagnosticMonthLabel}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -111,11 +118,13 @@ export default function AdminPayoutPage({
                   <strong>{diagnostic.activeUsers}</strong>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">June Purchases:</span>{' '}
+                  <span className="text-muted-foreground">
+                    Purchases in {diagnosticMonthLabel}:
+                  </span>{' '}
                   <strong>{diagnostic.junePurchaseCount}</strong>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">June Amount:</span>{' '}
+                  <span className="text-muted-foreground">Amount in {diagnosticMonthLabel}:</span>{' '}
                   <strong>₹{diagnostic.junePurchaseAmount.toLocaleString('en-IN')}</strong>
                 </div>
                 <div>
@@ -173,22 +182,22 @@ export default function AdminPayoutPage({
                   </div>
                 </div>
 
-                {incomeWalletPayoutMonth === nextIncomeMonth && !hasUnpaidIncome ? (
+                {incomeWalletPayoutMonth === nextIncomeMonth && !hasUnpaidIncome && (
                   <div className="flex items-center gap-2 text-sm text-green-600">
                     <HugeiconsIcon icon={CheckmarkCircle01Icon} className="h-4 w-4" />
                     <span>Payout already completed for {nextIncomeMonth}</span>
                   </div>
-                ) : (
-                  <Button
-                    onClick={handleIncomePayout}
-                    disabled={incomeForm.processing || needsReset}
-                    className="w-full"
-                  >
-                    {incomeForm.processing
-                      ? 'Processing...'
-                      : `Payout Cashback Wallet for ${nextIncomeMonth}`}
-                  </Button>
                 )}
+
+                <Button
+                  onClick={handleIncomePayout}
+                  disabled={incomeForm.processing || needsReset}
+                  className="w-full"
+                >
+                  {incomeForm.processing
+                    ? 'Processing...'
+                    : `Payout Cashback Wallet for ${nextIncomeMonth}`}
+                </Button>
 
                 {/* Download Payout History — Income Wallet */}
                 <DropdownMenu>
@@ -247,23 +256,23 @@ export default function AdminPayoutPage({
                   </div>
                 </div>
 
-                {workingWalletPayoutMonth === nextWorkingMonth && !hasUnpaidWorking ? (
+                {workingWalletPayoutMonth === nextWorkingMonth && !hasUnpaidWorking && (
                   <div className="flex items-center gap-2 text-sm text-green-600">
                     <HugeiconsIcon icon={CheckmarkCircle01Icon} className="h-4 w-4" />
                     <span>Payout already completed for {nextWorkingMonth}</span>
                   </div>
-                ) : (
-                  <Button
-                    onClick={handleWorkingPayout}
-                    disabled={workingForm.processing || needsReset}
-                    variant="outline"
-                    className="w-full border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
-                  >
-                    {workingForm.processing
-                      ? 'Processing...'
-                      : `Payout Working Wallet for ${nextWorkingMonth}`}
-                  </Button>
                 )}
+
+                <Button
+                  onClick={handleWorkingPayout}
+                  disabled={workingForm.processing || needsReset}
+                  variant="outline"
+                  className="w-full border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
+                >
+                  {workingForm.processing
+                    ? 'Processing...'
+                    : `Payout Working Wallet for ${nextWorkingMonth}`}
+                </Button>
 
                 {/* Download Payout History — Working Wallet */}
                 <DropdownMenu>
