@@ -2,12 +2,60 @@ import { DateTime } from 'luxon'
 
 import User from '#models/user'
 import Purchase from '#models/purchase'
+import Investment from '#models/investment'
+import InvestmentPackage from '#models/investment_package'
 import PlatformConfig from '#models/platform_config'
 import WalletService from '#services/wallet_service'
 import CalculateAchievement from '#jobs/calculate_achievement'
 import { TransactionTypeEnum } from '#enums/transaction'
 
 export default class GoldService {
+  /**
+   * Gold purchases and investments are the same thing — every approved
+   * purchase is a self-investment. This creates the linked investment record
+   * (idempotent) so monthly returns and the cashback-wallet payout pick it up
+   * automatically, prorated from the purchase date.
+   */
+  static async ensureInvestmentForPurchase(purchase: Purchase): Promise<Investment | null> {
+    if (!purchase.approvedAt) return null
+
+    const existing = await Investment.query().where('purchase_id', purchase.id).first()
+    if (existing) return existing
+
+    const pkg = await InvestmentPackage.findPackageForAmount(Number(purchase.amount))
+    const rate = pkg?.monthlyReturnPercent ?? 3
+
+    const investment = await Investment.create({
+      userId: purchase.userId,
+      amount: purchase.amount,
+      monthlyReturnRate: rate,
+      status: 'active',
+      startedAt: purchase.approvedAt ?? purchase.createdAt,
+      remark: 'Auto-created from gold purchase',
+      purchaseId: purchase.id,
+    })
+
+    // A purchase is a self-investment, so it counts towards total invested.
+    const user = await User.find(purchase.userId)
+    if (user) {
+      user.totalInvested = Number(user.totalInvested ?? 0) + Number(purchase.amount)
+      await user.save()
+    }
+
+    return investment
+  }
+
+  /** Close the investment linked to a purchase that was rejected/stopped/cancelled. */
+  static async closeInvestmentForPurchase(purchase: Purchase, reason: string) {
+    const investment = await Investment.query().where('purchase_id', purchase.id).first()
+    if (investment && investment.status === 'active') {
+      investment.status = 'closed'
+      investment.closedAt = DateTime.now()
+      investment.remark = `${reason} — investment closed (purchase ${purchase.id})`
+      await investment.save()
+    }
+  }
+
   static async getPurchaseData(
     user: User,
     filters: {
@@ -113,6 +161,9 @@ export default class GoldService {
       remark: data.remark ?? null,
     })
 
+    // Every approved purchase is an investment — register it for monthly returns.
+    await this.ensureInvestmentForPurchase(purchase)
+
     return purchase
   }
 
@@ -163,6 +214,9 @@ export default class GoldService {
       approvedAt: DateTime.now(),
       remark: `Purchase made by admin #${adminId} of ₹${data.amount.toLocaleString('en-IN')}`,
     })
+
+    // Every approved purchase is an investment — register it for monthly returns.
+    await this.ensureInvestmentForPurchase(purchase)
 
     return purchase
   }
@@ -248,6 +302,14 @@ export default class GoldService {
     }
 
     await purchase.save()
+
+    // Every approved purchase is an investment: approve → create the linked
+    // investment; reject/stop/cancel → close it so it stops earning returns.
+    if (status === 'approved') {
+      await this.ensureInvestmentForPurchase(purchase)
+    } else {
+      await this.closeInvestmentForPurchase(purchase, `Purchase ${status}`)
+    }
   }
 
   static async updatePurchaseDetails(
@@ -331,6 +393,56 @@ export default class GoldService {
     }
 
     await purchase.save()
+
+    // Keep the linked investment (purchase == investment) in sync with edits.
+    await this.syncInvestmentForPurchase(purchase)
+  }
+
+  /**
+   * Align the linked investment with the purchase record after an edit:
+   * approved purchases get an active investment matching the new amount/date,
+   * anything else gets its investment closed.
+   */
+  static async syncInvestmentForPurchase(purchase: Purchase) {
+    const approved =
+      Boolean(purchase.approvedAt) &&
+      !purchase.rejectedAt &&
+      !purchase.stoppedAt &&
+      !purchase.cancelledAt
+
+    const investment = await Investment.query().where('purchase_id', purchase.id).first()
+
+    if (!approved) {
+      await this.closeInvestmentForPurchase(purchase, 'Purchase no longer approved')
+      return
+    }
+
+    if (!investment) {
+      await this.ensureInvestmentForPurchase(purchase)
+      return
+    }
+
+    const pkg = await InvestmentPackage.findPackageForAmount(Number(purchase.amount))
+    const oldAmount = Number(investment.amount)
+
+    investment.amount = purchase.amount
+    investment.monthlyReturnRate = pkg?.monthlyReturnPercent ?? investment.monthlyReturnRate
+    investment.startedAt = purchase.approvedAt ?? purchase.createdAt
+    if (investment.status === 'closed') {
+      investment.status = 'active'
+      investment.closedAt = null
+    }
+    await investment.save()
+
+    // Keep total invested in step with the amount change.
+    const delta = Number(purchase.amount) - oldAmount
+    if (delta !== 0) {
+      const user = await User.find(purchase.userId)
+      if (user) {
+        user.totalInvested = Math.max(0, Number(user.totalInvested ?? 0) + delta)
+        await user.save()
+      }
+    }
   }
 
   static async getUserPurchases(

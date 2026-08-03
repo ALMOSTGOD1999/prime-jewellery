@@ -1,0 +1,296 @@
+
+=== PAYOUT CONFIG (platform_configs) ===
+income_wallet_payout_month = 2026-07  (updated Mon Aug 03 2026 15:00:02 GMT+0530 (India Standard Time))
+working_wallet_payout_month = 2026-07  (updated Mon Aug 03 2026 15:51:09 GMT+0530 (India Standard Time))
+
+=== USERS FOUND: 25/25 ===
+
+=== PER-USER JULY 2026 PAYOUT STATUS ===
+
+PJ063896  Manashi Mallick
+  Income (cashback)  : PAID — return ₹24,040 → income ₹16,828 + gold ₹4,808 at Mon Aug 03 2026 14:59:37 GMT+0530 (India Standard Time)
+  Working wallet     : PAID — gross ₹50 → income ₹35 + repurchase ₹10 at Mon Aug 03 2026 15:50:15 GMT+0530 (India Standard Time)
+  Wallet credit      : +₹4,808  txn#e2mk5qjjgzewc88exvhccoi6  "Repurchase wallet (20%) from investment return for July 2026"  (Sat Aug 01 2026 13:29:46 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹16,828  txn#tm499jbz7mbstir2bjrj89ws  "Cashback wallet (70%) from investment return for July 2026"  (Sat Aug 01 2026 13:29:47 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹4,808  txn#dhli2i2xlb597ir9lzzxyfpi  "Repurchase wallet (20%) from investment return for July 2026"  (Mon Aug 03 2026 14:59:36 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹16,828  txn#pvhz9q51yjiysrrhzu3i6ejf  "Cashback wallet (70%) from investment return for July 2026"  (Mon Aug 03 2026 14:59:37 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹35  txn#w1voxtphkz1o9mx41qm5favr  "Working wallet (70%) from working income for July 2026"  (Mon Aug 03 2026 15:50:14 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹10  txn#fqzdxa53gnq5jmzxtb6mimz4  "Repurchase wallet (20%) from working income for July 2026"  (Mon Aug 03 2026 15:50:14 GMT+0530 (India Standard Time))
+  Wallet debit/rev   : -₹10,657.73  txn#riarx14u75f33bfuy2ducn0a  "REVERSAL: Duplicate June 2026 income credited to main wallet (original payout run)"  (Sun Aug 02 2026 21:04:40 GMT+0530 (India Standard Time))
+  Wallet debit/rev   : -₹16,828  txn#rpchwlgfi4gejfe8oi4nvgww  "REVERSAL: July 2026 cashback payout (orig txn #tm499jbz7mbstir2bjrj89ws)"  (Mon Aug 03 2026 14:58:00 GMT+0530 (India Standard Time))
+  Wallet debit/rev   : -₹4,808  txn#yrcidekqwrczqqxwdw0nnm0s  "REVERSAL: July 2026 repurchase payout (orig txn #e2mk5qjjgzewc88exvhccoi6)"  (Mon Aug 03 2026 14:58:02 GMT+0530 (India Standard Time))
+  Balances           : income ₹27,485.73 | working ₹35 | repurchase ₹7,863.07
+
+PJ067819  Prahlad Halder
+  Income (cashback)  : PAID — return ₹7,035 → income ₹4,924.5 + gold ₹1,407 at Mon Aug 03 2026 14:59:38 GMT+0530 (India Standard Time)
+  Working wallet     : PAID — gross ₹50 → income ₹35 + repurchase ₹10 at Mon Aug 03 2026 15:44:33 GMT+0530 (India Standard Time)
+  Wallet credit      : +₹1,407  txn#b43eo2m13eu7eyog2ccamoz1  "Repurchase wallet (20%) from investment return for July 2026"  (Sat Aug 01 2026 13:29:48 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹4,924.5  txn#z55nlqqdce2yizy6bpyxzbry  "Cashback wallet (70%) from investment return for July 2026"  (Sat Aug 01 2026 13:29:49 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹1,407  txn#epxg7lqgcplt62shusfn1jby  "Repurchase wallet (20%) from investment return for July 2026"  (Mon Aug 03 2026 14:59:38 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹4,924.5  txn#xofkgmf49wmbd9hoq8ciwfyv  "Cashback wallet (70%) from investment return for July 2026"  (Mon Aug 03 2026 14:59:38 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹35  txn#pmlllmj55j6ysuch0rfpzlig  "Working wallet (70%) from working income for July 2026"  (Mon Aug 03 2026 15:44:32 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹10  txn#ap393albdd2bc4zcjgj90s4k  "Repurchase wallet (20%) from working income for July 2026"  (Mon Aug 03 2026 15:44:33 GMT+0530 (India Standard Time))
+  Wallet debit/rev   : -₹3,283  txn#atacmrtady18n91j8dovb02x  "REVERSAL: Duplicate June 2026 income credited to main wallet (original payout run)"  (Sun Aug 02 2026 21:04:41 GMT+0530 (India Standard Time))
+  Wallet debit/rev   : -₹4,924.5  txn#mwxyl7so5c5jfk28oxrs1q5a  "REVERSAL: July 2026 cashback payout (orig txn #z55nlqqdce2yizy6bpyxzbry)"  (Mon Aug 03 2026 14:58:00 GMT+0530 (India Standard Time))
+  Wallet debit/rev   : -₹1,407  txn#cbbv15j1o24644tu5rlkz8g7  "REVERSAL: July 2026 repurchase payout (orig txn #b43eo2m13eu7eyog2ccamoz1)"  (Mon Aug 03 2026 14:58:01 GMT+0530 (India Standard Time))
+  Balances           : income ₹8,207.5 | working ₹35 | repurchase ₹2,355
+
+PJ139063  MALA SARKAR
+  Income (cashback)  : PAID — return ₹1,655.81 → income ₹1,159.07 + gold ₹331.16 at Mon Aug 03 2026 14:59:40 GMT+0530 (India Standard Time)
+  Working wallet     : NO snapshot record for July 2026
+  Wallet credit      : +₹331.16  txn#pneajhz2nxlj7je4o0faxpl3  "Repurchase wallet (20%) from investment return for July 2026"  (Sat Aug 01 2026 13:29:50 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹1,159.07  txn#zllgoiv3ou8j3yy5ef4bmol4  "Cashback wallet (70%) from investment return for July 2026"  (Sat Aug 01 2026 13:29:51 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹331.16  txn#wyt68x6t2kvbgbche44z9ncv  "Repurchase wallet (20%) from investment return for July 2026"  (Mon Aug 03 2026 14:59:39 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹1,159.07  txn#cn5wtmtznv3qlvgtc3vg473v  "Cashback wallet (70%) from investment return for July 2026"  (Mon Aug 03 2026 14:59:39 GMT+0530 (India Standard Time))
+  Wallet debit/rev   : -₹1,159.07  txn#gaxs5dwtckg410wl1ddmi1lz  "REVERSAL: July 2026 cashback payout (orig txn #zllgoiv3ou8j3yy5ef4bmol4)"  (Mon Aug 03 2026 14:58:01 GMT+0530 (India Standard Time))
+  Wallet debit/rev   : -₹331.16  txn#egac2ygy73vt4yxhcbe4tii3  "REVERSAL: July 2026 repurchase payout (orig txn #pneajhz2nxlj7je4o0faxpl3)"  (Mon Aug 03 2026 14:58:03 GMT+0530 (India Standard Time))
+  Balances           : income ₹1,159.07 | working ₹0 | repurchase ₹331.16
+
+PJ150228  RUNA PARVEEN
+  Income (cashback)  : PAID — return ₹7,035 → income ₹4,924.5 + gold ₹1,407 at Mon Aug 03 2026 14:59:41 GMT+0530 (India Standard Time)
+  Working wallet     : NO snapshot record for July 2026
+  Wallet credit      : +₹1,407  txn#z581eulxamrvj4xo4965isxi  "Repurchase wallet (20%) from investment return for July 2026"  (Sat Aug 01 2026 13:29:53 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹4,924.5  txn#j0v2an4piwoh015rxy452t14  "Cashback wallet (70%) from investment return for July 2026"  (Sat Aug 01 2026 13:29:53 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹1,407  txn#xex3w46mxyyosivrmrxaao8j  "Repurchase wallet (20%) from investment return for July 2026"  (Mon Aug 03 2026 14:59:40 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹4,924.5  txn#iqcs7fomtt6hmpaaokxa0ij6  "Cashback wallet (70%) from investment return for July 2026"  (Mon Aug 03 2026 14:59:41 GMT+0530 (India Standard Time))
+  Wallet debit/rev   : -₹4,924.5  txn#niebdhcff18qldtjhftw8a08  "REVERSAL: July 2026 cashback payout (orig txn #j0v2an4piwoh015rxy452t14)"  (Mon Aug 03 2026 14:57:58 GMT+0530 (India Standard Time))
+  Wallet debit/rev   : -₹1,407  txn#qrtkzx505xq4zfonp5ir4k91  "REVERSAL: July 2026 repurchase payout (orig txn #z581eulxamrvj4xo4965isxi)"  (Mon Aug 03 2026 14:58:05 GMT+0530 (India Standard Time))
+  Balances           : income ₹4,924.5 | working ₹0 | repurchase ₹1,407
+
+PJ245303  Prahlad Halder
+  Income (cashback)  : PAID — return ₹40,040 → income ₹28,028 + gold ₹8,008 at Mon Aug 03 2026 14:59:42 GMT+0530 (India Standard Time)
+  Working wallet     : PAID — gross ₹50 → income ₹35 + repurchase ₹10 at Mon Aug 03 2026 15:50:19 GMT+0530 (India Standard Time)
+  Wallet credit      : +₹8,008  txn#i7ynvfvk5sf5dr4fv0e0voxt  "Repurchase wallet (20%) from investment return for July 2026"  (Sat Aug 01 2026 13:29:55 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹28,028  txn#n0a1wnmeynghecsi4xmttnv7  "Cashback wallet (70%) from investment return for July 2026"  (Sat Aug 01 2026 13:29:56 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹8,008  txn#grg5orvkhntq21nqe4sweh1o  "Repurchase wallet (20%) from investment return for July 2026"  (Mon Aug 03 2026 14:59:42 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹28,028  txn#xrczobwxtezce1omxb6xr1ne  "Cashback wallet (70%) from investment return for July 2026"  (Mon Aug 03 2026 14:59:42 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹35  txn#oifo8n39qmhnhwdmzi5af6i8  "Working wallet (70%) from working income for July 2026"  (Mon Aug 03 2026 15:50:18 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹10  txn#r9kun19jwne396qzpzrryigz  "Repurchase wallet (20%) from working income for July 2026"  (Mon Aug 03 2026 15:50:19 GMT+0530 (India Standard Time))
+  Wallet debit/rev   : -₹18,685.33  txn#n5t58u7qoo3bcmvmm0y4m3w1  "REVERSAL: Duplicate June 2026 income credited to main wallet (original payout run)"  (Sun Aug 02 2026 21:04:41 GMT+0530 (India Standard Time))
+  Wallet debit/rev   : -₹28,028  txn#d6u44sunc8d6izhr2v32om28  "REVERSAL: July 2026 cashback payout (orig txn #n0a1wnmeynghecsi4xmttnv7)"  (Mon Aug 03 2026 14:57:58 GMT+0530 (India Standard Time))
+  Wallet debit/rev   : -₹8,008  txn#yuyfknjf7ykfg3tzvht11hrt  "REVERSAL: July 2026 repurchase payout (orig txn #i7ynvfvk5sf5dr4fv0e0voxt)"  (Mon Aug 03 2026 14:58:02 GMT+0530 (India Standard Time))
+  Balances           : income ₹46,713.33 | working ₹35 | repurchase ₹13,356.67
+
+PJ278356  Taslima Bibi
+  Income (cashback)  : PAID — return ₹4,530 → income ₹3,171 + gold ₹906 at Mon Aug 03 2026 14:59:44 GMT+0530 (India Standard Time)
+  Working wallet     : PAID — gross ₹50 → income ₹35 + repurchase ₹10 at Mon Aug 03 2026 15:50:21 GMT+0530 (India Standard Time)
+  Wallet credit      : +₹906  txn#ycoc5pshpuqleldmhj1sm9uu  "Repurchase wallet (20%) from investment return for July 2026"  (Sat Aug 01 2026 13:29:57 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹3,171  txn#nv4llr3y0lr3j87mt0mnwrtr  "Cashback wallet (70%) from investment return for July 2026"  (Sat Aug 01 2026 13:29:58 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹906  txn#gpanghrk0nte41exz99dly72  "Repurchase wallet (20%) from investment return for July 2026"  (Mon Aug 03 2026 14:59:43 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹3,171  txn#vmqyyig77esg51y25wv37yee  "Cashback wallet (70%) from investment return for July 2026"  (Mon Aug 03 2026 14:59:43 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹35  txn#lt7modt4rdkfgfodt4zme5qm  "Working wallet (70%) from working income for July 2026"  (Mon Aug 03 2026 15:50:20 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹10  txn#c0ekprjrr0cwdnn5wtq2sqbs  "Repurchase wallet (20%) from working income for July 2026"  (Mon Aug 03 2026 15:50:20 GMT+0530 (India Standard Time))
+  Wallet debit/rev   : -₹2,325.4  txn#fp6xbexi1wzujfoep59d0wxi  "REVERSAL: Duplicate June 2026 income credited to main wallet (original payout run)"  (Sun Aug 02 2026 21:04:41 GMT+0530 (India Standard Time))
+  Wallet debit/rev   : -₹3,171  txn#fz4bbwlppucj615bgtbj11tk  "REVERSAL: July 2026 cashback payout (orig txn #nv4llr3y0lr3j87mt0mnwrtr)"  (Mon Aug 03 2026 14:57:58 GMT+0530 (India Standard Time))
+  Wallet debit/rev   : -₹906  txn#zwxf7m9z0xg54rtyeal7o49p  "REVERSAL: July 2026 repurchase payout (orig txn #ycoc5pshpuqleldmhj1sm9uu)"  (Mon Aug 03 2026 14:58:05 GMT+0530 (India Standard Time))
+  Balances           : income ₹5,496.4 | working ₹35 | repurchase ₹1,580.4
+
+PJ331062  Prahlad Halder
+  Income (cashback)  : PAID — return ₹7,035 → income ₹4,924.5 + gold ₹1,407 at Mon Aug 03 2026 14:59:45 GMT+0530 (India Standard Time)
+  Working wallet     : PAID — gross ₹50 → income ₹35 + repurchase ₹10 at Mon Aug 03 2026 15:50:12 GMT+0530 (India Standard Time)
+  Wallet credit      : +₹1,407  txn#cncgler1ovfyn9jiw3j0bq8r  "Repurchase wallet (20%) from investment return for July 2026"  (Sat Aug 01 2026 13:29:59 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹4,924.5  txn#z7vn5jsvh99glinmw6qcmyqj  "Cashback wallet (70%) from investment return for July 2026"  (Sat Aug 01 2026 13:30:00 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹1,407  txn#egncsc4ouqw0id9cjp6i6f1c  "Repurchase wallet (20%) from investment return for July 2026"  (Mon Aug 03 2026 14:59:44 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹4,924.5  txn#r53kcmfpa2rwvharqvcnlpoe  "Cashback wallet (70%) from investment return for July 2026"  (Mon Aug 03 2026 14:59:45 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹35  txn#khnhholqjbvcskv8s83w88ip  "Working wallet (70%) from working income for July 2026"  (Mon Aug 03 2026 15:50:11 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹10  txn#dy68uivb2ocxienbl4riktbi  "Repurchase wallet (20%) from working income for July 2026"  (Mon Aug 03 2026 15:50:12 GMT+0530 (India Standard Time))
+  Wallet debit/rev   : -₹3,283  txn#zsfjlxhodbsphhjs6ehc49i9  "REVERSAL: Duplicate June 2026 income credited to main wallet (original payout run)"  (Sun Aug 02 2026 21:04:42 GMT+0530 (India Standard Time))
+  Wallet debit/rev   : -₹4,924.5  txn#dkjcu69rg0nlrqudbzxh1f4o  "REVERSAL: July 2026 cashback payout (orig txn #z7vn5jsvh99glinmw6qcmyqj)"  (Mon Aug 03 2026 14:58:00 GMT+0530 (India Standard Time))
+  Wallet debit/rev   : -₹1,407  txn#hy7pcb1wzcaezirmhs1rja63  "REVERSAL: July 2026 repurchase payout (orig txn #cncgler1ovfyn9jiw3j0bq8r)"  (Mon Aug 03 2026 14:58:01 GMT+0530 (India Standard Time))
+  Balances           : income ₹8,207.5 | working ₹35 | repurchase ₹2,355
+
+PJ499862  Manisha Basnet
+  Income (cashback)  : PAID — return ₹1,530 → income ₹1,071 + gold ₹306 at Mon Aug 03 2026 14:59:49 GMT+0530 (India Standard Time)
+  Working wallet     : PAID — gross ₹50 → income ₹35 + repurchase ₹10 at Mon Aug 03 2026 15:49:09 GMT+0530 (India Standard Time)
+  Wallet credit      : +₹306  txn#lw6s4x524a19vtuahnjdj59s  "Repurchase wallet (20%) from investment return for July 2026"  (Sat Aug 01 2026 13:30:06 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹1,071  txn#pk8599e4kioxrrlv5r17ltzf  "Cashback wallet (70%) from investment return for July 2026"  (Sat Aug 01 2026 13:30:06 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹306  txn#tgzaxpmnmm1q0q5slh7knoi5  "Repurchase wallet (20%) from investment return for July 2026"  (Mon Aug 03 2026 14:59:48 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹1,071  txn#wdzy6zi2m87msyu12mgz3g80  "Cashback wallet (70%) from investment return for July 2026"  (Mon Aug 03 2026 14:59:48 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹35  txn#pfad5awobdysbu7q51altos9  "Working wallet (70%) from working income for July 2026"  (Mon Aug 03 2026 15:49:08 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹10  txn#xlzjv5d8o83pxzgaiyaz3wv7  "Repurchase wallet (20%) from working income for July 2026"  (Mon Aug 03 2026 15:49:08 GMT+0530 (India Standard Time))
+  Wallet debit/rev   : -₹499.8  txn#a59plpsf4wyshytnc2a6i7sl  "REVERSAL: Duplicate June 2026 income credited to main wallet (original payout run)"  (Sun Aug 02 2026 21:04:43 GMT+0530 (India Standard Time))
+  Wallet debit/rev   : -₹1,071  txn#yi2kmwyl3ss9mugt0xtznctv  "REVERSAL: July 2026 cashback payout (orig txn #pk8599e4kioxrrlv5r17ltzf)"  (Mon Aug 03 2026 14:57:59 GMT+0530 (India Standard Time))
+  Wallet debit/rev   : -₹306  txn#c7f9w1syo36bhlzuqz5k4gy0  "REVERSAL: July 2026 repurchase payout (orig txn #lw6s4x524a19vtuahnjdj59s)"  (Mon Aug 03 2026 14:58:03 GMT+0530 (India Standard Time))
+  Balances           : income ₹1,570.8 | working ₹35 | repurchase ₹458.8
+
+PJ533697  Prahlad Halder
+  Income (cashback)  : PAID — return ₹10,535 → income ₹7,374.5 + gold ₹2,107 at Mon Aug 03 2026 14:59:50 GMT+0530 (India Standard Time)
+  Working wallet     : PAID — gross ₹50 → income ₹35 + repurchase ₹10 at Mon Aug 03 2026 15:44:37 GMT+0530 (India Standard Time)
+  Wallet credit      : +₹2,107  txn#fs60hvawajwcvmluomkdkdlr  "Repurchase wallet (20%) from investment return for July 2026"  (Sat Aug 01 2026 13:30:08 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹7,374.5  txn#dl89oyc2d5menoo0le10y0bu  "Cashback wallet (70%) from investment return for July 2026"  (Sat Aug 01 2026 13:30:09 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹2,107  txn#nzyczxo55do4c5s24zlqqazy  "Repurchase wallet (20%) from investment return for July 2026"  (Mon Aug 03 2026 14:59:49 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹7,374.5  txn#z4cky7yjgdfaq8toosuet027  "Cashback wallet (70%) from investment return for July 2026"  (Mon Aug 03 2026 14:59:50 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹35  txn#n1vpxtyp0oqqc7v4z1i6rlw3  "Working wallet (70%) from working income for July 2026"  (Mon Aug 03 2026 15:44:36 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹10  txn#odhaaeoibs5ekhxjbna71pli  "Repurchase wallet (20%) from working income for July 2026"  (Mon Aug 03 2026 15:44:37 GMT+0530 (India Standard Time))
+  Wallet debit/rev   : -₹4,916.33  txn#ejg4q13gn5kjn2jra8e0jddx  "REVERSAL: Duplicate June 2026 income credited to main wallet (original payout run)"  (Sun Aug 02 2026 21:04:43 GMT+0530 (India Standard Time))
+  Wallet debit/rev   : -₹7,374.5  txn#bxpcaakhn8fa32lkrwcwpa1o  "REVERSAL: July 2026 cashback payout (orig txn #dl89oyc2d5menoo0le10y0bu)"  (Mon Aug 03 2026 14:57:57 GMT+0530 (India Standard Time))
+  Wallet debit/rev   : -₹2,107  txn#zqnxctshoub4yf6onudbe2sy  "REVERSAL: July 2026 repurchase payout (orig txn #fs60hvawajwcvmluomkdkdlr)"  (Mon Aug 03 2026 14:58:02 GMT+0530 (India Standard Time))
+  Balances           : income ₹12,290.83 | working ₹35 | repurchase ₹3,521.67
+
+PJ617173  Pranati Baidya
+  Income (cashback)  : PAID — return ₹24,040 → income ₹16,828 + gold ₹4,808 at Mon Aug 03 2026 14:59:53 GMT+0530 (India Standard Time)
+  Working wallet     : PAID — gross ₹100 → income ₹70 + repurchase ₹20 at Mon Aug 03 2026 15:50:16 GMT+0530 (India Standard Time)
+  Wallet credit      : +₹4,808  txn#scb960ypgi43u6af78pqxw5m  "Repurchase wallet (20%) from investment return for July 2026"  (Sat Aug 01 2026 13:30:12 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹16,828  txn#h6kb9ev6scq66wfz21w2ppes  "Cashback wallet (70%) from investment return for July 2026"  (Sat Aug 01 2026 13:30:13 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹4,808  txn#h9f7cc7dy7u2v9e8hoi2d2t1  "Repurchase wallet (20%) from investment return for July 2026"  (Mon Aug 03 2026 14:59:52 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹16,828  txn#iqkk4oeatc40j7m6zoschjh8  "Cashback wallet (70%) from investment return for July 2026"  (Mon Aug 03 2026 14:59:52 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹70  txn#u0122089kw5ybg50zit9k6cg  "Working wallet (70%) from working income for July 2026"  (Mon Aug 03 2026 15:50:15 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹20  txn#x5uz3j41uey7afrpgw8utra9  "Repurchase wallet (20%) from working income for July 2026"  (Mon Aug 03 2026 15:50:16 GMT+0530 (India Standard Time))
+  Wallet debit/rev   : -₹6,731.2  txn#dde867s25lbkai6t9iboby3f  "REVERSAL: Duplicate June 2026 income credited to main wallet (original payout run)"  (Sun Aug 02 2026 21:04:44 GMT+0530 (India Standard Time))
+  Wallet debit/rev   : -₹16,828  txn#sy1j8mqzwkebrmzez63jv0eu  "REVERSAL: July 2026 cashback payout (orig txn #h6kb9ev6scq66wfz21w2ppes)"  (Mon Aug 03 2026 14:57:58 GMT+0530 (India Standard Time))
+  Wallet debit/rev   : -₹4,808  txn#heoggsxsig4r6etr0rwkz7du  "REVERSAL: July 2026 repurchase payout (orig txn #scb960ypgi43u6af78pqxw5m)"  (Mon Aug 03 2026 14:58:04 GMT+0530 (India Standard Time))
+  Balances           : income ₹23,559.2 | working ₹352.18 | repurchase ₹6,831.82
+
+PJ644117  MADHUMITA BAIDYA
+  Income (cashback)  : PAID — return ₹2,100 → income ₹1,470 + gold ₹420 at Mon Aug 03 2026 14:59:54 GMT+0530 (India Standard Time)
+  Working wallet     : PAID — gross ₹50 → income ₹35 + repurchase ₹10 at Mon Aug 03 2026 15:44:42 GMT+0530 (India Standard Time)
+  Wallet credit      : +₹420  txn#l9no9w083clfv9m4m2zbo77d  "Repurchase wallet (20%) from investment return for July 2026"  (Sat Aug 01 2026 13:30:14 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹1,470  txn#bq0d7mv0jxg94z7dg8c6cnhi  "Cashback wallet (70%) from investment return for July 2026"  (Sat Aug 01 2026 13:30:15 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹420  txn#z8rh516pupo5dj1oxu9rsvxm  "Repurchase wallet (20%) from investment return for July 2026"  (Mon Aug 03 2026 14:59:53 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹1,470  txn#samfyref67zete16v4hm5f7u  "Cashback wallet (70%) from investment return for July 2026"  (Mon Aug 03 2026 14:59:54 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹35  txn#kjwlapje1ahzc2lw2cmcp4vt  "Working wallet (70%) from working income for July 2026"  (Mon Aug 03 2026 15:44:41 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹10  txn#mkliv0yyir1w4d4bluvw2m19  "Repurchase wallet (20%) from working income for July 2026"  (Mon Aug 03 2026 15:44:41 GMT+0530 (India Standard Time))
+  Wallet debit/rev   : -₹539  txn#k606cwhp1bbx5xkunqbqu9lk  "REVERSAL: Duplicate June 2026 income credited to main wallet (original payout run)"  (Sun Aug 02 2026 21:04:44 GMT+0530 (India Standard Time))
+  Wallet debit/rev   : -₹1,470  txn#e5pw51vt5lalw3yn4zc863id  "REVERSAL: July 2026 cashback payout (orig txn #bq0d7mv0jxg94z7dg8c6cnhi)"  (Mon Aug 03 2026 14:57:57 GMT+0530 (India Standard Time))
+  Wallet debit/rev   : -₹420  txn#plzfsj792fi8pj7la8ge2azp  "REVERSAL: July 2026 repurchase payout (orig txn #l9no9w083clfv9m4m2zbo77d)"  (Mon Aug 03 2026 14:58:02 GMT+0530 (India Standard Time))
+  Balances           : income ₹2,009 | working ₹35 | repurchase ₹584
+
+PJ698847  Manashi Mallick
+  Income (cashback)  : PAID — return ₹20,040 → income ₹14,028 + gold ₹4,008 at Mon Aug 03 2026 14:59:55 GMT+0530 (India Standard Time)
+  Working wallet     : PAID — gross ₹50 → income ₹35 + repurchase ₹10 at Mon Aug 03 2026 15:50:36 GMT+0530 (India Standard Time)
+  Wallet credit      : +₹4,008  txn#aqtqcpdspa03pc06fwrbhyn9  "Repurchase wallet (20%) from investment return for July 2026"  (Sat Aug 01 2026 13:30:16 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹14,028  txn#sxyi2yqj07virjkk9xrh2t6p  "Cashback wallet (70%) from investment return for July 2026"  (Sat Aug 01 2026 13:30:17 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹4,008  txn#vddf8c4c1ztyrjnwdb6mwovw  "Repurchase wallet (20%) from investment return for July 2026"  (Mon Aug 03 2026 14:59:54 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹14,028  txn#jybn8kpy3jmsnfe50073u4oc  "Cashback wallet (70%) from investment return for July 2026"  (Mon Aug 03 2026 14:59:55 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹35  txn#bvngjyst75ml9brh4e6aix24  "Working wallet (70%) from working income for July 2026"  (Mon Aug 03 2026 15:50:35 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹10  txn#cixj9ne8qo1s9t8tfrvlqz4v  "Repurchase wallet (20%) from working income for July 2026"  (Mon Aug 03 2026 15:50:36 GMT+0530 (India Standard Time))
+  Wallet debit/rev   : -₹8,884.4  txn#ta3zn3iuvy2wae6z8gzu59fm  "REVERSAL: Duplicate June 2026 income credited to main wallet (original payout run)"  (Sun Aug 02 2026 21:04:44 GMT+0530 (India Standard Time))
+  Wallet debit/rev   : -₹14,028  txn#p2bfub66z3sfvjfvu6jcfqwa  "REVERSAL: July 2026 cashback payout (orig txn #sxyi2yqj07virjkk9xrh2t6p)"  (Mon Aug 03 2026 14:57:59 GMT+0530 (India Standard Time))
+  Wallet debit/rev   : -₹4,008  txn#v1ygcutriigz412os81vb7vm  "REVERSAL: July 2026 repurchase payout (orig txn #aqtqcpdspa03pc06fwrbhyn9)"  (Mon Aug 03 2026 14:58:01 GMT+0530 (India Standard Time))
+  Balances           : income ₹22,912.4 | working ₹35 | repurchase ₹6,556.4
+
+PJ698875  Pk Das
+  Income (cashback)  : PAID — return ₹24,040 → income ₹16,828 + gold ₹4,808 at Mon Aug 03 2026 14:59:56 GMT+0530 (India Standard Time)
+  Working wallet     : PAID — gross ₹50 → income ₹35 + repurchase ₹10 at Mon Aug 03 2026 15:50:38 GMT+0530 (India Standard Time)
+  Wallet credit      : +₹4,808  txn#wofwmkh7kp5581k2qkjl99vd  "Repurchase wallet (20%) from investment return for July 2026"  (Sat Aug 01 2026 13:30:19 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹16,828  txn#t1r5xnt7f2m2m4n387gjl6ow  "Cashback wallet (70%) from investment return for July 2026"  (Sat Aug 01 2026 13:30:19 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹4,808  txn#stkms7x82b7joa3nvlp9oicy  "Repurchase wallet (20%) from investment return for July 2026"  (Mon Aug 03 2026 14:59:56 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹16,828  txn#ktxc2gllfr2vtznjkx7bg2pp  "Cashback wallet (70%) from investment return for July 2026"  (Mon Aug 03 2026 14:59:56 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹35  txn#xe0ui9i6w2cy70zwyr459hqz  "Working wallet (70%) from working income for July 2026"  (Mon Aug 03 2026 15:50:37 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹10  txn#hyps0w8zcufepib2ubrcyshd  "Repurchase wallet (20%) from working income for July 2026"  (Mon Aug 03 2026 15:50:37 GMT+0530 (India Standard Time))
+  Wallet debit/rev   : -₹8,974.93  txn#n7klq0fa1vywuzjgmymwxe7h  "REVERSAL: Duplicate June 2026 income credited to main wallet (original payout run)"  (Sun Aug 02 2026 21:04:45 GMT+0530 (India Standard Time))
+  Wallet debit/rev   : -₹16,828  txn#kasw7sb5ns19afmsxl5usgfh  "REVERSAL: July 2026 cashback payout (orig txn #t1r5xnt7f2m2m4n387gjl6ow)"  (Mon Aug 03 2026 14:58:00 GMT+0530 (India Standard Time))
+  Wallet debit/rev   : -₹4,808  txn#dtypm27htxkzsum830o482o7  "REVERSAL: July 2026 repurchase payout (orig txn #wofwmkh7kp5581k2qkjl99vd)"  (Mon Aug 03 2026 14:58:04 GMT+0530 (India Standard Time))
+  Balances           : income ₹25,802.93 | working ₹35 | repurchase ₹7,382.27
+
+PJ722361  Prahlad Halder
+  Income (cashback)  : PAID — return ₹10,535 → income ₹7,374.5 + gold ₹2,107 at Mon Aug 03 2026 14:59:58 GMT+0530 (India Standard Time)
+  Working wallet     : PAID — gross ₹50 → income ₹35 + repurchase ₹10 at Mon Aug 03 2026 15:50:18 GMT+0530 (India Standard Time)
+  Wallet credit      : +₹2,107  txn#p2ji3rm29g5aaxog54k165g8  "Repurchase wallet (20%) from investment return for July 2026"  (Sat Aug 01 2026 13:30:21 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹7,374.5  txn#o483ada74m9bdbrgixa8j987  "Cashback wallet (70%) from investment return for July 2026"  (Sat Aug 01 2026 13:30:22 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹2,107  txn#gu6l89jezzft055rixhxi1px  "Repurchase wallet (20%) from investment return for July 2026"  (Mon Aug 03 2026 14:59:57 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹7,374.5  txn#uzjh3kxgy4jarhorgmtx3ndy  "Cashback wallet (70%) from investment return for July 2026"  (Mon Aug 03 2026 14:59:57 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹35  txn#jwoagkaq9p87zqsyjqxl05gj  "Working wallet (70%) from working income for July 2026"  (Mon Aug 03 2026 15:50:17 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹10  txn#iqmrmcw0dmh7akuk8m4jqg4u  "Repurchase wallet (20%) from working income for July 2026"  (Mon Aug 03 2026 15:50:17 GMT+0530 (India Standard Time))
+  Wallet debit/rev   : -₹4,916.33  txn#zcyx8h2bgosxgk3cksq2igdw  "REVERSAL: Duplicate June 2026 income credited to main wallet (original payout run)"  (Sun Aug 02 2026 21:04:45 GMT+0530 (India Standard Time))
+  Wallet debit/rev   : -₹7,374.5  txn#cukhshzgd9d738tq7bskxyvq  "REVERSAL: July 2026 cashback payout (orig txn #o483ada74m9bdbrgixa8j987)"  (Mon Aug 03 2026 14:57:59 GMT+0530 (India Standard Time))
+  Wallet debit/rev   : -₹2,107  txn#zz635p6r5z35qhhj1uygkr1h  "REVERSAL: July 2026 repurchase payout (orig txn #p2ji3rm29g5aaxog54k165g8)"  (Mon Aug 03 2026 14:58:03 GMT+0530 (India Standard Time))
+  Balances           : income ₹12,290.83 | working ₹35 | repurchase ₹3,521.67
+
+PJ776339  Marufa Molla
+  Income (cashback)  : PAID — return ₹12,285 → income ₹8,599.5 + gold ₹2,457 at Mon Aug 03 2026 14:59:59 GMT+0530 (India Standard Time)
+  Working wallet     : PAID — gross ₹50 → income ₹35 + repurchase ₹10 at Mon Aug 03 2026 15:44:00 GMT+0530 (India Standard Time)
+  Wallet credit      : +₹2,457  txn#bd1yaclszzar331pme4ilydt  "Repurchase wallet (20%) from investment return for July 2026"  (Sat Aug 01 2026 13:30:23 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹8,599.5  txn#rxwegjil3jg2jao5jp796avy  "Cashback wallet (70%) from investment return for July 2026"  (Sat Aug 01 2026 13:30:24 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹2,457  txn#notv80ndndbpqfldno8cj4da  "Repurchase wallet (20%) from investment return for July 2026"  (Mon Aug 03 2026 14:59:58 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹8,599.5  txn#ssp6huwhwbz6oewhpl9k84a4  "Cashback wallet (70%) from investment return for July 2026"  (Mon Aug 03 2026 14:59:59 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹35  txn#dca5ymkwofs3ci2kh36n0c1o  "Working wallet (70%) from working income for July 2026"  (Mon Aug 03 2026 15:43:59 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹10  txn#egwmohslht998ecz0npqq1th  "Repurchase wallet (20%) from working income for July 2026"  (Mon Aug 03 2026 15:44:00 GMT+0530 (India Standard Time))
+  Wallet debit/rev   : -₹6,019.65  txn#dpr3lb3pjsyr30h070ywgls7  "REVERSAL: Duplicate June 2026 income credited to main wallet (original payout run)"  (Sun Aug 02 2026 21:04:46 GMT+0530 (India Standard Time))
+  Wallet debit/rev   : -₹8,599.5  txn#ix6ozrfux1pw93pej66swoxk  "REVERSAL: July 2026 cashback payout (orig txn #rxwegjil3jg2jao5jp796avy)"  (Mon Aug 03 2026 14:57:59 GMT+0530 (India Standard Time))
+  Wallet debit/rev   : -₹2,457  txn#p0ckrg3yvtmmo0coddtyx2ld  "REVERSAL: July 2026 repurchase payout (orig txn #bd1yaclszzar331pme4ilydt)"  (Mon Aug 03 2026 14:58:01 GMT+0530 (India Standard Time))
+  Balances           : income ₹14,619.15 | working ₹35 | repurchase ₹4,186.9
+
+PJ780949  Sumita Das Banerjee
+  Income (cashback)  : PAID — return ₹10,535 → income ₹7,374.5 + gold ₹2,107 at Mon Aug 03 2026 15:00:00 GMT+0530 (India Standard Time)
+  Working wallet     : PAID — gross ₹50 → income ₹35 + repurchase ₹10 at Mon Aug 03 2026 15:50:13 GMT+0530 (India Standard Time)
+  Wallet credit      : +₹2,107  txn#cnv5ld49eawifvrgwwu8272r  "Repurchase wallet (20%) from investment return for July 2026"  (Sat Aug 01 2026 13:30:25 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹7,374.5  txn#zk2pso3y9vpd98ijnrr6lql1  "Cashback wallet (70%) from investment return for July 2026"  (Sat Aug 01 2026 13:30:26 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹2,107  txn#nnhobbdxwowpzbvsc03d84u9  "Repurchase wallet (20%) from investment return for July 2026"  (Mon Aug 03 2026 15:00:00 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹7,374.5  txn#h9l94yu76qkkdo1twwqtfpav  "Cashback wallet (70%) from investment return for July 2026"  (Mon Aug 03 2026 15:00:00 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹35  txn#ipgx9eg8mudtu7l90uw7h215  "Working wallet (70%) from working income for July 2026"  (Mon Aug 03 2026 15:50:13 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹10  txn#vq9iviwerz2qggt5554l0x0y  "Repurchase wallet (20%) from working income for July 2026"  (Mon Aug 03 2026 15:50:13 GMT+0530 (India Standard Time))
+  Wallet debit/rev   : -₹5,162.15  txn#kogobw6tyfpo7mby4f54pc5s  "REVERSAL: Duplicate June 2026 income credited to main wallet (original payout run)"  (Sun Aug 02 2026 21:04:46 GMT+0530 (India Standard Time))
+  Wallet debit/rev   : -₹7,374.5  txn#ik36xar7ffsdblm2skdb3kb1  "REVERSAL: July 2026 cashback payout (orig txn #zk2pso3y9vpd98ijnrr6lql1)"  (Mon Aug 03 2026 14:58:00 GMT+0530 (India Standard Time))
+  Wallet debit/rev   : -₹2,107  txn#zhi3yijp7mbyrc6u6p3eq8ri  "REVERSAL: July 2026 repurchase payout (orig txn #cnv5ld49eawifvrgwwu8272r)"  (Mon Aug 03 2026 14:58:02 GMT+0530 (India Standard Time))
+  Balances           : income ₹12,536.65 | working ₹35 | repurchase ₹3,591.9
+
+PJ932914  SUBIR BOSE 1
+  Income (cashback)  : PAID — return ₹14,035 → income ₹9,824.5 + gold ₹2,807 at Mon Aug 03 2026 15:00:02 GMT+0530 (India Standard Time)
+  Working wallet     : PAID — gross ₹50 → income ₹35 + repurchase ₹10 at Mon Aug 03 2026 15:50:22 GMT+0530 (India Standard Time)
+  Wallet credit      : +₹2,807  txn#tvz1pzcora0j7tqe2qw0czna  "Repurchase wallet (20%) from investment return for July 2026"  (Sat Aug 01 2026 13:30:27 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹9,824.5  txn#ayv99pdmx8sgfp5f8wuhz9ir  "Cashback wallet (70%) from investment return for July 2026"  (Sat Aug 01 2026 13:30:28 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹2,807  txn#x3itau7ye6v4n8tgcx3vs5a2  "Repurchase wallet (20%) from investment return for July 2026"  (Mon Aug 03 2026 15:00:01 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹9,824.5  txn#ebwdizxfzvoci4p8odgzvvzn  "Cashback wallet (70%) from investment return for July 2026"  (Mon Aug 03 2026 15:00:01 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹35  txn#tfiy7sx0sjzrr30utwcysat6  "Working wallet (70%) from working income for July 2026"  (Mon Aug 03 2026 15:50:21 GMT+0530 (India Standard Time))
+  Wallet credit      : +₹10  txn#z6qqdye8icztzjdvat3ltwkh  "Repurchase wallet (20%) from working income for July 2026"  (Mon Aug 03 2026 15:50:22 GMT+0530 (India Standard Time))
+  Wallet debit/rev   : -₹4,584.77  txn#ljfrl65w74kjo37ihdlta982  "REVERSAL: Duplicate June 2026 income credited to main wallet (original payout run)"  (Sun Aug 02 2026 21:04:46 GMT+0530 (India Standard Time))
+  Wallet debit/rev   : -₹9,824.5  txn#eh5ggsb64l0q2d9ss2m2m0e8  "REVERSAL: July 2026 cashback payout (orig txn #ayv99pdmx8sgfp5f8wuhz9ir)"  (Mon Aug 03 2026 14:57:57 GMT+0530 (India Standard Time))
+  Wallet debit/rev   : -₹2,807  txn#d3zra9tla4239a43mxxrh9xp  "REVERSAL: July 2026 repurchase payout (orig txn #tvz1pzcora0j7tqe2qw0czna)"  (Mon Aug 03 2026 14:58:04 GMT+0530 (India Standard Time))
+  Balances           : income ₹14,409.27 | working ₹35 | repurchase ₹4,126.93
+
+PJ5937652  Dipankar Nag 
+  Income (cashback)  : NO distribution record for July 2026
+  Working wallet     : NO snapshot record for July 2026
+  Wallet credits     : NONE for July 2026
+  Wallet debits/rev  : NONE for July 2026
+  Balances           : income ₹0 | working ₹0 | repurchase ₹0
+
+PJ7943738  Shefali shaw
+  Income (cashback)  : NO distribution record for July 2026
+  Working wallet     : NO snapshot record for July 2026
+  Wallet credits     : NONE for July 2026
+  Wallet debits/rev  : NONE for July 2026
+  Balances           : income ₹0 | working ₹0 | repurchase ₹0
+
+PJ884535  Kuddus 4
+  Income (cashback)  : NO distribution record for July 2026
+  Working wallet     : NO snapshot record for July 2026
+  Wallet credits     : NONE for July 2026
+  Wallet debits/rev  : NONE for July 2026
+  Balances           : income ₹0 | working ₹0 | repurchase ₹0
+
+PJ236641  Priyabala2
+  Income (cashback)  : NO distribution record for July 2026
+  Working wallet     : NO snapshot record for July 2026
+  Wallet credits     : NONE for July 2026
+  Wallet debits/rev  : NONE for July 2026
+  Balances           : income ₹0 | working ₹0 | repurchase ₹0
+
+PJ018168  Soma bhaumik
+  Income (cashback)  : NO distribution record for July 2026
+  Working wallet     : NO snapshot record for July 2026
+  Wallet credits     : NONE for July 2026
+  Wallet debits/rev  : NONE for July 2026
+  Balances           : income ₹0 | working ₹0 | repurchase ₹0
+
+PJ426687  Sk Nasim Ul Islam
+  Income (cashback)  : NO distribution record for July 2026
+  Working wallet     : NO snapshot record for July 2026
+  Wallet credits     : NONE for July 2026
+  Wallet debits/rev  : NONE for July 2026
+  Balances           : income ₹0 | working ₹0 | repurchase ₹0
+
+PJ165958  Sajahan Laskar 
+  Income (cashback)  : NO distribution record for July 2026
+  Working wallet     : NO snapshot record for July 2026
+  Wallet credits     : NONE for July 2026
+  Wallet debits/rev  : NONE for July 2026
+  Balances           : income ₹0 | working ₹0 | repurchase ₹0
+
+PJ295975  Humayun Kabir Mondal
+  Income (cashback)  : NO distribution record for July 2026
+  Working wallet     : NO snapshot record for July 2026
+  Wallet credits     : NONE for July 2026
+  Wallet debits/rev  : NONE for July 2026
+  Balances           : income ₹0 | working ₹0 | repurchase ₹0

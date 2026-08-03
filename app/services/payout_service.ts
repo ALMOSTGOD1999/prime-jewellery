@@ -222,7 +222,10 @@ export default class PayoutService {
     client?: TransactionClientContract
   ) {
     const apply = async (trx: TransactionClientContract) => {
-      const user = await User.query({ client: trx }).where('id', userId).firstOrFail()
+      const user = await User.query({ client: trx })
+        .select('id', 'income_wallet')
+        .where('id', userId)
+        .firstOrFail()
       const transaction = await Transaction.create(
         {
           userId,
@@ -284,8 +287,13 @@ export default class PayoutService {
 
         if (!locked) return false
 
-        // Skip inactive users — mark as paid but don't credit
-        const user = await User.query({ client: trx }).where('id', locked.userId).first()
+        // Skip inactive users — mark as paid but don't credit. Select only the
+        // columns needed so the avatar attachment (which computes its URL) is
+        // not loaded in console/CLI contexts without HTTP routes.
+        const user = await User.query({ client: trx })
+          .select('id', 'status')
+          .where('id', locked.userId)
+          .first()
         if (!user || user.status === 'inactive') {
           locked.useTransaction(trx)
           locked.paidOutAt = DateTime.now()

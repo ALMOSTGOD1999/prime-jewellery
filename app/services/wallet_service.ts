@@ -40,7 +40,10 @@ export default class WalletService {
     client?: TransactionClientContract
   ) {
     const apply = async (trx: TransactionClientContract) => {
-      const user = await User.query({ client: trx }).where('id', userId).firstOrFail()
+      const user = await User.query({ client: trx })
+        .select('id', 'repurchase_wallet')
+        .where('id', userId)
+        .firstOrFail()
       const transaction = await Transaction.create(
         {
           userId,
@@ -69,7 +72,10 @@ export default class WalletService {
     client?: TransactionClientContract
   ) {
     const apply = async (trx: TransactionClientContract) => {
-      const user = await User.query({ client: trx }).where('id', userId).firstOrFail()
+      const user = await User.query({ client: trx })
+        .select('id', 'working_wallet')
+        .where('id', userId)
+        .firstOrFail()
       const transaction = await Transaction.create(
         {
           userId,

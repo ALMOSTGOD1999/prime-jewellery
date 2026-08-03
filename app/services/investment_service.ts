@@ -196,8 +196,13 @@ export default class InvestmentService {
     let maxReturnReached = 0
 
     for (const investment of investments) {
-      // Skip investments belonging to inactive users
-      const invUser = await User.find(investment.userId)
+      // Skip investments belonging to inactive users. Select only the columns
+      // needed — loading the avatar attachment computes its URL, which fails
+      // in console/CLI contexts (no HTTP routes are registered).
+      const invUser = await User.query()
+        .select('id', 'status')
+        .where('id', investment.userId)
+        .first()
       if (!invUser || invUser.status === 'inactive') {
         skipped += 1
         continue

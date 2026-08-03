@@ -17,6 +17,13 @@ export default class Investment extends BaseModel {
   @column()
   declare amount: number
 
+  /**
+   * Gold purchase this investment was created from. Gold purchases and
+   * investments are the same thing — every approved purchase is an investment.
+   */
+  @column()
+  declare purchaseId: string | null
+
   @column()
   declare monthlyReturnRate: number
 
