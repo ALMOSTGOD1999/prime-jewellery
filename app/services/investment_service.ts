@@ -233,10 +233,14 @@ export default class InvestmentService {
       const rate = Number(investment.monthlyReturnRate) || 3
       const investmentAmount = Number(investment.amount)
 
-      // Prorate return based on days active in the month
-      const startedAt = DateTime.fromJSDate(new Date(investment.startedAt.toString())).startOf(
-        'day'
-      )
+      // Prorate return based on days active in the month. `started_at` is a
+      // timezone-less `timestamp` whose wall-clock value is the UTC wall time
+      // (Lucid serializes DateTimes to UTC), so its calendar date is read in
+      // UTC. Converting through the local timezone instead (e.g. Asia/Kolkata)
+      // would shift an evening UTC timestamp to the next local day and lose a
+      // day of eligibility — e.g. a purchase recorded 2026-07-28T18:57Z would
+      // start counting from July 29 instead of July 28.
+      const startedAt = investment.startedAt.toUTC().startOf('day')
       const daysInMonth = period.daysInMonth!
       const startDay = startedAt.month === period.month ? startedAt.day : 1
       const activeDays = daysInMonth - startDay + 1

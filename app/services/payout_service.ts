@@ -301,9 +301,12 @@ export default class PayoutService {
           return true
         }
 
-        const gross = Number(locked.returnAmount)
-        const incomeAmount = Math.round(gross * this.INCOME_PERCENT * 100) / 100
-        const repurchaseAmount = Math.round(gross * this.REPURCHASE_PERCENT * 100) / 100
+        // Credit the amounts stored on the distribution (single source of
+        // truth). Recomputing from the gross here could round differently
+        // (e.g. return × 0.7 vs return × 70 / 100 disagree on .5 boundaries)
+        // and drift a paise away from what the record says.
+        const incomeAmount = Number(locked.incomeAmount)
+        const repurchaseAmount = Number(locked.goldAmount)
 
         const repurchaseTransaction = await WalletService.creditRepurchaseWallet(
           locked.userId,
