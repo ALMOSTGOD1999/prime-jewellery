@@ -4,8 +4,11 @@ import { DateTime } from 'luxon'
 import db from '@adonisjs/lucid/services/db'
 import PayoutService from '#services/payout_service'
 import RewardService from '#services/reward_service'
+import WalletService from '#services/wallet_service'
 import { UserRoleEnum } from '#enums/user'
 import User from '#models/user'
+import MonthlyIncomeSnapshot from '#models/monthly_income_snapshot'
+import PlatformConfig from '#models/platform_config'
 import router from '@adonisjs/core/services/router'
 
 /**
@@ -159,12 +162,83 @@ export default class RerunJulyPayout extends BaseCommand {
     this.logger.info('')
 
     // ─── Step 3: Process Working Wallet Payout ───
+    // Credit each snapshot in its OWN transaction to avoid the giant
+    // single-transaction approach that times out Neon connections (~180s).
     this.logger.info('─── Step 3: Processing Working Wallet Payout ───')
 
     try {
-      const workingResult = await PayoutService.processWorkingWalletPayout(july, 1)
+      // 3a: Ensure snapshots exist (fast — skips existing)
+      const snapResult = await PayoutService.snapshotMonthlyIncomes(july)
+      this.logger.info(`  Snapshots created: ${snapResult.created} (skipped existing)`)
+
+      // 3b: Credit each unpaid snapshot individually
+      const unpaidSnapshots = await MonthlyIncomeSnapshot.query()
+        .where('month', july.toISODate()!)
+        .whereNull('paid_out_at')
+
+      this.logger.info(`  Unpaid snapshots to credit: ${unpaidSnapshots.length}`)
+      let credited = 0
+      let totalAmount = 0
+
+      for (const snapshot of unpaidSnapshots) {
+        const snapStart = Date.now()
+        try {
+          // Skip inactive users
+          const snapUser = await User.query().where('id', snapshot.userId).first()
+          if (!snapUser || snapUser.status === 'inactive') {
+            snapshot.paidOutAt = DateTime.now()
+            await snapshot.save()
+            this.logger.info(
+              `  Snapshot ${snapshot.userId}: skipped (inactive)`
+            )
+            continue
+          }
+
+          const gross = Number(snapshot.grossAmount)
+          const incomeAmount = Math.round(gross * 0.7 * 100) / 100
+          const repurchaseAmount = Math.round(gross * 0.2 * 100) / 100
+
+          // Each credit runs in its own transaction (no client param = standalone txn)
+          await WalletService.creditWorkingWallet(
+            snapshot.userId,
+            incomeAmount,
+            1,
+            `Working wallet (70%) from working income for ${july.toFormat('LLLL yyyy')}`
+          )
+          if (repurchaseAmount > 0) {
+            await WalletService.creditRepurchaseWallet(
+              snapshot.userId,
+              repurchaseAmount,
+              1,
+              `Repurchase wallet (20%) from working income for ${july.toFormat('LLLL yyyy')}`
+            )
+          }
+
+          snapshot.paidOutAt = DateTime.now()
+          await snapshot.save()
+          credited++
+          totalAmount += gross
+          this.logger.info(
+            `  Snapshot ${snapshot.userId}: ₹${gross.toLocaleString('en-IN')} (${Date.now() - snapStart}ms)`
+          )
+        } catch (error: any) {
+          this.logger.error(
+            `  Snapshot ${snapshot.userId}: FAILED (${Date.now() - snapStart}ms): ${error.message}`
+          )
+        }
+      }
+
+      // 3c: Record payout month
+      await PlatformConfig.set(
+        'working_wallet_payout_month',
+        july.toFormat('yyyy-MM'),
+        'payout',
+        'Working Wallet Payout Month',
+        'Last month for which working wallet payout was processed'
+      )
+
       this.logger.success(
-        `  Working payout complete: ${workingResult.credited} users credited, gross ₹${workingResult.totalAmount.toLocaleString('en-IN')}`
+        `  Working payout complete: ${credited} users credited, gross ₹${totalAmount.toLocaleString('en-IN')}`
       )
     } catch (error: any) {
       this.logger.error(`  Working payout failed: ${error.message}`)

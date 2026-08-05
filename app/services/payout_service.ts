@@ -173,18 +173,32 @@ export default class PayoutService {
       .where('status', 'active')
 
     let created = 0
+    const total = users.length
+    const startAll = Date.now()
 
-    for (const user of users) {
+    for (let i = 0; i < users.length; i++) {
+      const user = users[i]
+      const userStart = Date.now()
       try {
         const existing = await MonthlyIncomeSnapshot.query({ client: trx })
           .where('user_id', user.id)
           .where('month', period.toISODate()!)
           .first()
-        if (existing) continue
+        if (existing) {
+          logger.info(
+            `[payout] Snapshot ${i + 1}/${total}: user ${user.id} — skipped (exists)`
+          )
+          continue
+        }
 
         const grossAmount = await RewardService.getUserMonthlyWorkingIncome(user, period)
 
-        if (grossAmount <= 0) continue
+        if (grossAmount <= 0) {
+          logger.info(
+            `[payout] Snapshot ${i + 1}/${total}: user ${user.id} — skipped (₹0 income, ${(Date.now() - userStart)}ms)`
+          )
+          continue
+        }
 
         const incomeWalletAmount = Math.round(grossAmount * this.INCOME_PERCENT * 100) / 100
         const repurchaseWalletAmount = Math.round(grossAmount * this.REPURCHASE_PERCENT * 100) / 100
@@ -202,15 +216,19 @@ export default class PayoutService {
         )
 
         created++
+        logger.info(
+          `[payout] Snapshot ${i + 1}/${total}: user ${user.id} — ₹${grossAmount.toLocaleString('en-IN')} income (${Date.now() - userStart}ms)`
+        )
       } catch (error) {
-        // A single failing user must not block the whole month's payout.
-        // Log the error so the user can be identified and paid manually.
         logger.error(
-          `[payout] Failed to compute monthly income for user ${user.id} (${month.toFormat('yyyy-MM')}): ${error instanceof Error ? error.message : error}`
+          `[payout] Snapshot ${i + 1}/${total}: user ${user.id} — FAILED (${Date.now() - userStart}ms): ${error instanceof Error ? error.message : error}`
         )
       }
     }
 
+    logger.info(
+      `[payout] Snapshot creation complete: ${created} snapshots in ${((Date.now() - startAll) / 1000).toFixed(1)}s`
+    )
     return { created, month: period.toISODate()! }
   }
 
