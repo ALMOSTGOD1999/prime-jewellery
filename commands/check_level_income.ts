@@ -2,6 +2,8 @@ import { BaseCommand, args } from '@adonisjs/core/ace'
 import type { CommandOptions } from '@adonisjs/core/types/ace'
 import { DateTime } from 'luxon'
 import User from '#models/user'
+import LevelIncome from '#models/level_income'
+import TeamBusinessLevel from '#models/team_business_level'
 import RewardService from '#services/reward_service'
 
 export default class CheckLevelIncome extends BaseCommand {
@@ -50,14 +52,27 @@ export default class CheckLevelIncome extends BaseCommand {
     const directCount = Number(directChildren[0].$extras.total)
     this.logger.info(`[Direct Children] ${directCount}`)
 
-    // Max depth based on direct count
-    let maxDepth = 0
-    if (directCount >= 5) maxDepth = 20
-    else if (directCount >= 4) maxDepth = 12
-    else if (directCount >= 3) maxDepth = 8
-    else if (directCount >= 2) maxDepth = 4
-    else if (directCount >= 1) maxDepth = 2
+    // Max depth based on direct count + team business level
+    const dbModule = await import('@adonisjs/lucid/services/db')
+    const db = dbModule.default
 
+    const tbd = await db.rawQuery(
+      `WITH RECURSIVE descendants AS (
+        SELECT id FROM users WHERE parent_id = ?
+        UNION ALL
+        SELECT u.id FROM users u INNER JOIN descendants d ON u.parent_id = d.id
+      )
+      SELECT COALESCE(SUM(p.amount), 0)::float as total_team_business
+      FROM descendants d
+      LEFT JOIN purchases p ON p.user_id = d.id AND p.approved_at IS NOT NULL AND p.cancelled_at IS NULL`,
+      [user.id]
+    )
+    const teamBusiness = Number(tbd.rows[0]?.total_team_business) || 0
+    const teamBusinessLevel = await TeamBusinessLevel.getLevelForBusiness(teamBusiness)
+    const maxDepth = await LevelIncome.getMaxUnlockedLevel(directCount, teamBusinessLevel)
+
+    this.logger.info(`[Team Business] ${teamBusiness}`)
+    this.logger.info(`[Team Business Level] ${teamBusinessLevel}`)
     this.logger.info(`[Max Depth] ${maxDepth}`)
 
     // ─── 2. Level Income (purchase-based) ───
@@ -128,9 +143,6 @@ export default class CheckLevelIncome extends BaseCommand {
     // ─── 5. Descendant purchase summary ───
     this.logger.info('─── Descendant Purchase Summary ───')
 
-    const dbModule = await import('@adonisjs/lucid/services/db')
-    const db = dbModule.default
-
     const descendants = await db.rawQuery(
       `WITH RECURSIVE descendants AS (
         SELECT id, name, parent_id, 1 as depth
@@ -140,7 +152,7 @@ export default class CheckLevelIncome extends BaseCommand {
         SELECT u.id, u.name, u.parent_id, d.depth + 1
         FROM users u
         INNER JOIN descendants d ON u.parent_id = d.id
-        WHERE d.depth < 20
+        WHERE d.depth < 24
       )
       SELECT d.id, d.name, d.depth,
         COALESCE(SUM(p.amount) FILTER (WHERE p.approved_at IS NOT NULL AND p.cancelled_at IS NULL), 0)::float as total_purchases

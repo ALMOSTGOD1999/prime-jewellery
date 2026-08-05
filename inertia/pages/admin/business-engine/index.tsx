@@ -151,12 +151,51 @@ function LevelRow({
         level.isActive ? 'bg-muted/30' : 'bg-muted/10 opacity-60'
       )}
     >
-      <div className="flex-1 grid grid-cols-4 gap-2 text-sm">
+      <div className="flex-1 grid grid-cols-5 gap-2 text-sm">
         <span className="font-medium">Level {level.level}</span>
         <span>{level.percentage}%</span>
         {level.minDirects != null && (
           <span className="text-muted-foreground">Min {level.minDirects} directs</span>
         )}
+        {level.minTeamBusinessLevel != null && (
+          <span className="text-muted-foreground">Team Biz L{level.minTeamBusinessLevel}</span>
+        )}
+        <Badge variant={level.isActive ? 'default' : 'secondary'}>
+          {level.isActive ? 'Active' : 'Disabled'}
+        </Badge>
+      </div>
+      <div className="flex gap-1">
+        <Button variant="ghost" size="sm" onClick={() => onEdit(level)}>
+          Edit
+        </Button>
+        <Button variant="ghost" size="sm" onClick={() => onToggle(level.id, !level.isActive)}>
+          {level.isActive ? 'Disable' : 'Enable'}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+// ─── Team Business Level Row ───────────────────────────────────
+function TeamBusinessRow({
+  level,
+  onEdit,
+  onToggle,
+}: {
+  level: any
+  onEdit: (l: any) => void
+  onToggle: (id: number, active: boolean) => void
+}) {
+  return (
+    <div
+      className={cn(
+        'flex items-center gap-3 p-3 rounded-lg border',
+        level.isActive ? 'bg-muted/30' : 'bg-muted/10 opacity-60'
+      )}
+    >
+      <div className="flex-1 grid grid-cols-3 gap-2 text-sm">
+        <span className="font-medium">Level {level.level}</span>
+        <span>Min Business: ₹{Number(level.minBusiness).toLocaleString('en-IN')}</span>
         <Badge variant={level.isActive ? 'default' : 'secondary'}>
           {level.isActive ? 'Active' : 'Disabled'}
         </Badge>
@@ -223,6 +262,7 @@ interface Props {
   levelIncomes: any[]
   performanceIncentives: any[]
   businessRules: Record<string, string>
+  teamBusinessLevels: any[]
 }
 
 export default function BusinessEngineIndex(props: Props) {
@@ -256,6 +296,14 @@ export default function BusinessEngineIndex(props: Props) {
     level: '',
     percentage: '',
     minDirects: '0',
+    minTeamBusinessLevel: '0',
+    isActive: 'true',
+    _reason: '',
+  })
+  const teamBusinessPost = useForm({
+    id: '',
+    level: '',
+    minBusiness: '',
     isActive: 'true',
     _reason: '',
   })
@@ -302,6 +350,7 @@ export default function BusinessEngineIndex(props: Props) {
               <TabsTrigger value="slabs">Cash Rewards</TabsTrigger>
               <TabsTrigger value="membership">Membership Levels</TabsTrigger>
               <TabsTrigger value="levels">Level Income</TabsTrigger>
+              <TabsTrigger value="team-business">Team Business</TabsTrigger>
               <TabsTrigger value="incentives">Performance Incentives</TabsTrigger>
               <TabsTrigger value="rules">Business Rules</TabsTrigger>
             </TabsList>
@@ -637,6 +686,7 @@ export default function BusinessEngineIndex(props: Props) {
                           level: String(level.level),
                           percentage: String(level.percentage),
                           minDirects: String(level.minDirects ?? 0),
+                          minTeamBusinessLevel: String(level.minTeamBusinessLevel ?? 0),
                           isActive: String(level.isActive),
                           _reason: '',
                         })
@@ -668,7 +718,7 @@ export default function BusinessEngineIndex(props: Props) {
                     }}
                     className="space-y-4"
                   >
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-2 gap-4">
                       <ConfigField
                         label="Level"
                         name="level"
@@ -688,6 +738,13 @@ export default function BusinessEngineIndex(props: Props) {
                         onChange={(n, v) => levelPost.setData('minDirects', v)}
                         hint="Qualification rule"
                       />
+                      <ConfigField
+                        label="Min Team Business Level"
+                        name="minTeamBusinessLevel"
+                        value={levelPost.data.minTeamBusinessLevel}
+                        onChange={(n, v) => levelPost.setData('minTeamBusinessLevel', v)}
+                        hint="Required team business level"
+                      />
                     </div>
                     <div className="flex gap-3 items-end">
                       <div className="flex-1">
@@ -703,6 +760,97 @@ export default function BusinessEngineIndex(props: Props) {
                       </Button>
                       {levelPost.data.id && (
                         <Button variant="ghost" size="sm" onClick={() => levelPost.reset()}>
+                          Cancel
+                        </Button>
+                      )}
+                    </div>
+                  </form>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Team Business Levels */}
+            <TabsContent value="team-business" className="mt-4 space-y-4">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Team Business Levels</CardTitle>
+                  <CardDescription>
+                    Business thresholds that qualify users for level income unlock
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {props.teamBusinessLevels.map((l) => (
+                    <TeamBusinessRow
+                      key={l.id}
+                      level={l}
+                      onEdit={(level) =>
+                        teamBusinessPost.setData({
+                          id: String(level.id),
+                          level: String(level.level),
+                          minBusiness: String(level.minBusiness ?? 0),
+                          isActive: String(level.isActive),
+                          _reason: '',
+                        })
+                      }
+                      onToggle={(id, active) => {
+                        const l = props.teamBusinessLevels.find((x) => x.id === id)
+                        if (l)
+                          teamBusinessPost.post(
+                            '/admin/system/advanced/business-engine/team-business-level',
+                            { ...l, isActive: active, id }
+                          )
+                      }}
+                    />
+                  ))}
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">
+                    {teamBusinessPost.data.id
+                      ? 'Edit Team Business Level'
+                      : 'Add Team Business Level'}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault()
+                      teamBusinessPost.post(
+                        '/admin/system/advanced/business-engine/team-business-level'
+                      )
+                    }}
+                    className="space-y-4"
+                  >
+                    <div className="grid grid-cols-2 gap-4">
+                      <ConfigField
+                        label="Level"
+                        name="level"
+                        value={teamBusinessPost.data.level}
+                        onChange={(n, v) => teamBusinessPost.setData('level', v)}
+                      />
+                      <ConfigField
+                        label="Min Business (₹)"
+                        name="minBusiness"
+                        value={teamBusinessPost.data.minBusiness}
+                        onChange={(n, v) => teamBusinessPost.setData('minBusiness', v)}
+                        hint="Team business required for this level"
+                      />
+                    </div>
+                    <div className="flex gap-3 items-end">
+                      <div className="flex-1">
+                        <Label className="text-xs text-muted-foreground">Reason</Label>
+                        <Input
+                          value={teamBusinessPost.data._reason}
+                          onChange={(e) => teamBusinessPost.setData('_reason', e.target.value)}
+                          className="h-9"
+                        />
+                      </div>
+                      <Button type="submit" size="sm" disabled={teamBusinessPost.processing}>
+                        {teamBusinessPost.data.id ? 'Update' : 'Create'}
+                      </Button>
+                      {teamBusinessPost.data.id && (
+                        <Button variant="ghost" size="sm" onClick={() => teamBusinessPost.reset()}>
                           Cancel
                         </Button>
                       )}

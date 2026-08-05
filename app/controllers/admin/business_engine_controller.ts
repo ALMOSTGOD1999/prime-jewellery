@@ -34,6 +34,7 @@ export default class BusinessEngineController {
       levelIncomes,
       performanceIncentives,
       businessRules,
+      teamBusinessLevels,
     ] = await Promise.all([
       be.getGoldPurchaseConfig(),
       be.getIncomeDistributionConfig(),
@@ -42,6 +43,7 @@ export default class BusinessEngineController {
       be.getLevelIncomes(),
       be.getPerformanceIncentives(),
       be.getBusinessRules(),
+      be.getTeamBusinessLevels(),
     ])
 
     return inertia.render('admin/business-engine/index', {
@@ -61,6 +63,7 @@ export default class BusinessEngineController {
         acc[c.key] = c.value
         return acc
       }, {}),
+      teamBusinessLevels: teamBusinessLevels.map((l) => l.serialize()),
     })
   }
 
@@ -186,6 +189,7 @@ export default class BusinessEngineController {
           level: Number(data.level),
           percentage: Number(data.percentage),
           minDirects: Number(data.minDirects),
+          minTeamBusinessLevel: data.minTeamBusinessLevel ? Number(data.minTeamBusinessLevel) : 0,
           isActive: data.isActive === 'true' || data.isActive === true,
         },
         reason
@@ -221,6 +225,35 @@ export default class BusinessEngineController {
       session.flash(
         'success',
         data.id ? 'Performance incentive updated' : 'Performance incentive created'
+      )
+    } catch (error) {
+      session.flash('errors.global', error.message)
+    }
+    return response.redirect().back()
+  }
+
+  // ─── Team Business Levels ─────────────────────────────────────
+
+  async upsertTeamBusinessLevel({ auth, request, session, response }: HttpContext) {
+    const admin = auth.getUserOrFail()
+    const be = new BusinessEngineService(admin.id)
+    const data = request.all()
+    const reason = data._reason
+    delete data._reason
+
+    try {
+      await be.upsertTeamBusinessLevel(
+        {
+          id: data.id ? Number(data.id) : undefined,
+          level: Number(data.level),
+          minBusiness: Number(data.minBusiness),
+          isActive: data.isActive === 'true' || data.isActive === true,
+        },
+        reason
+      )
+      session.flash(
+        'success',
+        data.id ? 'Team business level updated' : 'Team business level created'
       )
     } catch (error) {
       session.flash('errors.global', error.message)

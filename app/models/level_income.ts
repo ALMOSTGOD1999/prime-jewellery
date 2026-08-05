@@ -17,6 +17,9 @@ export default class LevelIncome extends BaseModel {
   declare minDirects: number
 
   @column()
+  declare minTeamBusinessLevel: number
+
+  @column()
   declare isActive: boolean
 
   @column.dateTime({ autoCreate: true })
@@ -39,5 +42,18 @@ export default class LevelIncome extends BaseModel {
   static async getPercentageForLevel(level: number): Promise<number> {
     const record = await this.query().where('level', level).where('is_active', true).first()
     return record?.percentage ?? 0
+  }
+
+  static async getMaxUnlockedLevel(
+    directCount: number,
+    teamBusinessLevel: number
+  ): Promise<number> {
+    const levels = await this.query().where('is_active', true).orderBy('level', 'desc')
+    for (const l of levels) {
+      if (directCount >= l.minDirects && teamBusinessLevel >= l.minTeamBusinessLevel) {
+        return l.level
+      }
+    }
+    return 0
   }
 }

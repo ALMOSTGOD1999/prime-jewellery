@@ -4,6 +4,7 @@ import InvestmentPackage from '#models/investment_package'
 import PerformanceIncentive from '#models/performance_incentive'
 import MembershipLevelIncome from '#models/membership_level_income'
 import LevelIncome from '#models/level_income'
+import TeamBusinessLevel from '#models/team_business_level'
 import AuditLog from '#models/audit_log'
 
 export default class BusinessEngineService {
@@ -378,6 +379,7 @@ export default class BusinessEngineService {
       level: number
       percentage: number
       minDirects: number
+      minTeamBusinessLevel: number
       isActive: boolean
     },
     reason?: string
@@ -408,6 +410,16 @@ export default class BusinessEngineService {
             String(data.minDirects),
             reason
           )
+        if (record.minTeamBusinessLevel !== data.minTeamBusinessLevel)
+          await this.auditTx(
+            trx,
+            'level_income',
+            record.id,
+            'min_team_business_level',
+            String(record.minTeamBusinessLevel),
+            String(data.minTeamBusinessLevel),
+            reason
+          )
         if (record.isActive !== data.isActive)
           await this.auditTx(
             trx,
@@ -423,6 +435,7 @@ export default class BusinessEngineService {
       record.level = data.level
       record.percentage = data.percentage
       record.minDirects = data.minDirects
+      record.minTeamBusinessLevel = data.minTeamBusinessLevel
       record.isActive = data.isActive
       await record.useTransaction(trx).save()
 
@@ -430,6 +443,73 @@ export default class BusinessEngineService {
         await AuditLog.create(
           {
             entityType: 'level_income',
+            entityId: record.id,
+            field: 'all',
+            oldValue: null,
+            newValue: JSON.stringify(data),
+            changedBy: this.adminId,
+            reason: reason || 'Created',
+          },
+          { client: trx }
+        )
+      }
+
+      return record
+    })
+  }
+
+  // ─── Team Business Levels ─────────────────────────────────────
+
+  async getTeamBusinessLevels() {
+    return TeamBusinessLevel.query().orderBy('level', 'asc')
+  }
+
+  async upsertTeamBusinessLevel(
+    data: {
+      id?: number
+      level: number
+      minBusiness: number
+      isActive: boolean
+    },
+    reason?: string
+  ) {
+    return db.transaction(async (trx) => {
+      const record = data.id
+        ? await TeamBusinessLevel.query({ client: trx }).where('id', data.id).firstOrFail()
+        : new TeamBusinessLevel()
+
+      if (data.id) {
+        if (record.minBusiness !== data.minBusiness)
+          await this.auditTx(
+            trx,
+            'team_business_level',
+            record.id,
+            'min_business',
+            String(record.minBusiness),
+            String(data.minBusiness),
+            reason
+          )
+        if (record.isActive !== data.isActive)
+          await this.auditTx(
+            trx,
+            'team_business_level',
+            record.id,
+            'is_active',
+            String(record.isActive),
+            String(data.isActive),
+            reason
+          )
+      }
+
+      record.level = data.level
+      record.minBusiness = data.minBusiness
+      record.isActive = data.isActive
+      await record.useTransaction(trx).save()
+
+      if (!data.id) {
+        await AuditLog.create(
+          {
+            entityType: 'team_business_level',
             entityId: record.id,
             field: 'all',
             oldValue: null,

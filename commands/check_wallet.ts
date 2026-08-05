@@ -84,7 +84,7 @@ export default class CheckWallet extends BaseCommand {
         UNION ALL
         SELECT u.id, u.name, u.parent_id, d.depth + 1
         FROM users u INNER JOIN descendants d ON u.parent_id = d.id
-        WHERE d.depth < 20
+        WHERE d.depth < 24
       )
       SELECT COUNT(*) as count, COALESCE(SUM(p.amount),0)::float as total_purchases
       FROM descendants d

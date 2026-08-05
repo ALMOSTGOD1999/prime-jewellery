@@ -18,7 +18,7 @@ export default class CheckPurchaseDate extends BaseCommand {
         SELECT u.id, u.name, u.parent_id, d.depth + 1
         FROM users u
         INNER JOIN descendants d ON u.parent_id = d.id
-        WHERE d.depth < 20
+        WHERE d.depth < 24
       )
       SELECT d.id, d.name, d.depth FROM descendants d
       ORDER BY d.depth, d.id`,
@@ -53,7 +53,9 @@ export default class CheckPurchaseDate extends BaseCommand {
 
     this.logger.info(`Found ${purchases.rows.length} purchase records`)
     for (const r of purchases.rows) {
-      this.logger.info(`User PJ${String(r.user_id).padStart(6, '0')} (${r.name}) — Amount: ₹${r.amount} — Approved: ${r.approved_at} — Created: ${r.created_at}`)
+      this.logger.info(
+        `User PJ${String(r.user_id).padStart(6, '0')} (${r.name}) — Amount: ₹${r.amount} — Approved: ${r.approved_at} — Created: ${r.created_at}`
+      )
     }
 
     // Also check the actual level income calculation dates from the service
@@ -74,7 +76,9 @@ export default class CheckPurchaseDate extends BaseCommand {
       `SELECT * FROM purchases WHERE user_id = 932914 ORDER BY approved_at ASC`
     )
     for (const r of purchase932914.rows) {
-      this.logger.info(`Purchase for PJ932914: id=${r.id}, amount=${r.amount}, approved_at=${r.approved_at}, created_at=${r.created_at}`)
+      this.logger.info(
+        `Purchase for PJ932914: id=${r.id}, amount=${r.amount}, approved_at=${r.approved_at}, created_at=${r.created_at}`
+      )
     }
   }
 }

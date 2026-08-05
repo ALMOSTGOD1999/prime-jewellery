@@ -18,7 +18,7 @@ export default class CalculateSalaries extends BaseCommand {
   static options: CommandOptions = { startApp: true }
 
   @args.string({ required: false, description: 'Month in YYYY-MM format (e.g. 2026-06)' })
-  declare month: string | null
+  declare month?: string
 
   async run() {
     const targetMonth = this.month
@@ -40,20 +40,74 @@ export default class CalculateSalaries extends BaseCommand {
     const endDate = targetMonth.endOf('month')
     // createdAt = last day of target month at 23:59
     const createdAt = targetMonth.endOf('month').set({ hour: 23, minute: 59 })
+    // Business accumulation window: trailing 6 months
+    const windowStart = targetMonth.minus({ months: 5 }).startOf('month')
 
     let created = 0
+    let paid = 0
+    let expired = 0
 
     for (const user of users) {
       try {
-        const { power, weaker, legAmounts } = await RewardService.getPowerAndWeaker(user, endDate)
+        // Compute business within the trailing 6-month window
+        const { power, weaker, legAmounts } = await RewardService.getPowerAndWeaker(
+          user,
+          endDate,
+          windowStart
+        )
 
+        const currentBusiness = (legAmounts || []).reduce((sum: number, v: number) => sum + v, 0)
+
+        // ---------------------------------------------------------------
+        // Phase 1: Resolve pending incentives
+        // Check if any pending incentive has achieved the 20% growth
+        // requirement or has exceeded the 3-month conversion window.
+        // ---------------------------------------------------------------
+        const pendingSalaries = await user
+          .related('salaries')
+          .query()
+          .where('status', 'pending')
+          .orderBy('created_at', 'asc')
+
+        for (const pending of pendingSalaries) {
+          const createdMonth = pending.createdAt.startOf('month')
+          const monthsSince = Math.floor(targetMonth.diff(createdMonth, 'months').months)
+
+          const qualifyingBusiness = Number(pending.qualifyingBusiness) || 0
+
+          // Check 20% growth requirement
+          if (qualifyingBusiness > 0 && currentBusiness >= qualifyingBusiness * 1.2) {
+            pending.status = 'paid'
+            pending.paidAt = createdAt
+            await pending.save()
+            paid++
+            this.logger.info(
+              `Incentive PAID for user ${user.id}: ${pending.info?.designation} ` +
+                `(business ${currentBusiness} >= ${(qualifyingBusiness * 1.2).toFixed(0)} = 1.2x qualifying)`
+            )
+          } else if (monthsSince >= 3) {
+            // 3 months passed without achieving 20% growth — expire
+            pending.status = 'expired'
+            await pending.save()
+            expired++
+            this.logger.info(
+              `Incentive EXPIRED for user ${user.id}: ${pending.info?.designation} ` +
+                `(business ${currentBusiness} < ${(qualifyingBusiness * 1.2).toFixed(0)} after ${monthsSince} months)`
+            )
+          }
+          // else: still within window, leave pending for next run
+        }
+
+        // ---------------------------------------------------------------
+        // Phase 2: Create new pending incentive if eligible
+        // ---------------------------------------------------------------
         const eligibleInfo = RewardService.getSalaryInfo(legAmounts || [])
 
         if (!eligibleInfo) {
           continue
         }
 
-        // Check for max payouts per designation (max 6 times)
+        // Check for max payouts per designation (max 6 times, paid only)
         // Also skip if already got a salary this month
         const history = await user.related('salaries').query().orderBy('createdAt', 'desc')
 
@@ -62,29 +116,45 @@ export default class CalculateSalaries extends BaseCommand {
         )
         if (thisMonth.length > 0) continue
 
-        const count = history.filter((h) => h.info?.criteria === eligibleInfo.criteria).length
+        const paidCount = history.filter(
+          (h) => h.status === 'paid' && h.info?.criteria === eligibleInfo.criteria
+        ).length
 
-        if (count >= 6) {
+        if (paidCount >= 6) {
           continue
         }
 
-        // Create Salary Record with backdated created_at
+        // Only one active pending incentive per designation at a time
+        const pendingSameRank = history.some(
+          (h) => h.status === 'pending' && h.info?.criteria === eligibleInfo.criteria
+        )
+        if (pendingSameRank) {
+          continue
+        }
+
+        // Create pending Salary record — payout requires 20% growth within next 3 months
         await user.related('salaries').create({
           power: Math.floor(power),
           weaker: Math.floor(weaker),
+          status: 'pending',
+          qualifyingBusiness: Math.floor(currentBusiness),
           createdAt,
           updatedAt: createdAt,
         })
 
         created++
         this.logger.info(
-          `Performance incentive created for user ${user.id}: ${eligibleInfo.designation}`
+          `Incentive PENDING for user ${user.id}: ${eligibleInfo.designation} ` +
+            `(qualifying business: ${currentBusiness}, must grow to ${(currentBusiness * 1.2).toFixed(0)} within 3 months)`
         )
       } catch (error) {
         this.logger.error(`Error calculating incentive for user ${user.id}: ${error.message}`)
       }
     }
 
-    this.logger.info(`Performance incentive calculation completed. ${created} records created.`)
+    this.logger.info(
+      `Performance incentive calculation completed. ` +
+        `${created} pending created, ${paid} paid, ${expired} expired.`
+    )
   }
 }

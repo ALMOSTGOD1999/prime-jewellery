@@ -5,6 +5,7 @@ import PerformanceIncentive from '#models/performance_incentive'
 import RewardAward from '#models/reward_award'
 import MembershipLevelIncome from '#models/membership_level_income'
 import LevelIncome from '#models/level_income'
+import TeamBusinessLevel from '#models/team_business_level'
 
 export default class extends BaseSeeder {
   async run() {
@@ -41,133 +42,91 @@ export default class extends BaseSeeder {
 
     // ─── Performance Incentives (60:40 business accumulation) ───
     await PerformanceIncentive.createMany([
-      { title: 'Starter', businessTarget: 200000, rewardAmount: 999, sortOrder: 1, isActive: true },
-      { title: 'Bronze', businessTarget: 500000, rewardAmount: 2499, sortOrder: 2, isActive: true },
+      { title: 'Starter', businessTarget: 500000, rewardAmount: 1999, sortOrder: 1, isActive: true },
+      { title: 'Bronze', businessTarget: 1000000, rewardAmount: 3499, sortOrder: 2, isActive: true },
       {
         title: 'Silver',
-        businessTarget: 1000000,
-        rewardAmount: 5499,
+        businessTarget: 2500000,
+        rewardAmount: 9999,
         sortOrder: 3,
         isActive: true,
       },
-      { title: 'Gold', businessTarget: 2500000, rewardAmount: 15999, sortOrder: 4, isActive: true },
-      {
-        title: 'Platinum',
-        businessTarget: 5000000,
-        rewardAmount: 24999,
-        sortOrder: 5,
-        isActive: true,
-      },
+      { title: 'Gold', businessTarget: 5000000, rewardAmount: 19499, sortOrder: 4, isActive: true },
       {
         title: 'Emerald',
         businessTarget: 10000000,
-        rewardAmount: 51999,
-        sortOrder: 6,
+        rewardAmount: 39999,
+        sortOrder: 5,
         isActive: true,
       },
       {
         title: 'Ruby',
         businessTarget: 30000000,
-        rewardAmount: 105999,
-        sortOrder: 7,
+        rewardAmount: 79999,
+        sortOrder: 6,
         isActive: true,
       },
       {
         title: 'Sapphire',
         businessTarget: 50000000,
-        rewardAmount: 154999,
-        sortOrder: 8,
+        rewardAmount: 129999,
+        sortOrder: 7,
         isActive: true,
       },
       {
         title: 'Topaz',
         businessTarget: 100000000,
-        rewardAmount: 254999,
-        sortOrder: 9,
+        rewardAmount: 199999,
+        sortOrder: 8,
         isActive: true,
       },
       {
         title: 'Diamond',
-        businessTarget: 200000000,
-        rewardAmount: 509999,
+        businessTarget: 250000000,
+        rewardAmount: 259999,
+        sortOrder: 9,
+        isActive: true,
+      },
+      {
+        title: 'B Diamond',
+        businessTarget: 500000000,
+        rewardAmount: 449999,
         sortOrder: 10,
         isActive: true,
       },
       {
-        title: 'Black Diamond',
-        businessTarget: 500000000,
-        rewardAmount: 824999,
+        title: 'C Diamond',
+        businessTarget: 1000000000,
+        rewardAmount: 799999,
         sortOrder: 11,
         isActive: true,
       },
       {
-        title: 'Crown Diamond',
-        businessTarget: 1000000000,
-        rewardAmount: 1249999,
-        sortOrder: 12,
-        isActive: true,
-      },
-      {
-        title: 'Royal Diamond',
+        title: 'R Diamond',
         businessTarget: 3000000000,
-        rewardAmount: 2999999,
-        sortOrder: 13,
+        rewardAmount: 1499999,
+        sortOrder: 12,
         isActive: true,
       },
       {
         title: 'Crown',
         businessTarget: 8000000000,
-        rewardAmount: 4949999,
-        sortOrder: 14,
+        rewardAmount: 2999999,
+        sortOrder: 13,
         isActive: true,
       },
       {
         title: 'Royal',
         businessTarget: 12000000000,
-        rewardAmount: 7499999,
-        sortOrder: 15,
+        rewardAmount: 4999999,
+        sortOrder: 14,
         isActive: true,
       },
       {
         title: 'Elite',
         businessTarget: 17000000000,
-        rewardAmount: 9999999,
-        sortOrder: 16,
-        isActive: true,
-      },
-      {
-        title: 'Legend',
-        businessTarget: 25000000000,
-        rewardAmount: 14999999,
-        sortOrder: 17,
-        isActive: true,
-      },
-      {
-        title: 'Supreme',
-        businessTarget: 35000000000,
-        rewardAmount: 19999999,
-        sortOrder: 18,
-        isActive: true,
-      },
-      {
-        title: 'Master',
-        businessTarget: 50000000000,
-        rewardAmount: 24000000,
-        sortOrder: 19,
-        isActive: true,
-      },
-      {
-        title: 'Emperor',
-        businessTarget: 80000000000,
-        rewardAmount: 34999999,
-        sortOrder: 20,
-        isActive: true,
-      },
-      {
-        title: 'King',
-        businessTarget: 100000000000,
-        rewardAmount: 49999999,
-        sortOrder: 21,
+        rewardAmount: 7999999,
+        sortOrder: 15,
         isActive: true,
       },
     ])
@@ -302,32 +261,73 @@ export default class extends BaseSeeder {
       { level: 10, percentage: 0.5, isActive: true },
     ])
 
-    // ─── Level Income System (20 levels, unlocked by direct referrals) ───
-    // Unlock rules:
-    // 1 direct → levels 1-2, 2 directs → levels 1-4, 3 directs → levels 1-8,
-    // 4 directs → levels 1-12, 5+ directs → all 20 levels
-    await LevelIncome.createMany([
-      { level: 1, percentage: 1, minDirects: 1, isActive: true },
-      { level: 2, percentage: 0.5, minDirects: 1, isActive: true },
-      { level: 3, percentage: 0.2, minDirects: 2, isActive: true },
-      { level: 4, percentage: 0.15, minDirects: 2, isActive: true },
-      { level: 5, percentage: 0.15, minDirects: 3, isActive: true },
-      { level: 6, percentage: 0.15, minDirects: 3, isActive: true },
-      { level: 7, percentage: 0.15, minDirects: 3, isActive: true },
-      { level: 8, percentage: 0.1, minDirects: 3, isActive: true },
-      { level: 9, percentage: 0.1, minDirects: 4, isActive: true },
-      { level: 10, percentage: 0.1, minDirects: 4, isActive: true },
-      { level: 11, percentage: 0.1, minDirects: 4, isActive: true },
-      { level: 12, percentage: 0.05, minDirects: 4, isActive: true },
-      { level: 13, percentage: 0.05, minDirects: 5, isActive: true },
-      { level: 14, percentage: 0.05, minDirects: 5, isActive: true },
-      { level: 15, percentage: 0.05, minDirects: 5, isActive: true },
-      { level: 16, percentage: 0.05, minDirects: 5, isActive: true },
-      { level: 17, percentage: 0.05, minDirects: 5, isActive: true },
-      { level: 18, percentage: 0.05, minDirects: 5, isActive: true },
-      { level: 19, percentage: 0.05, minDirects: 5, isActive: true },
-      { level: 20, percentage: 0.1, minDirects: 5, isActive: true },
-    ])
+    // ─── Level Income System (24 levels, unlocked by direct referrals + team business) ───
+    // Unlock rules (direct referrals + team business level):
+    // 1 direct → levels 1-2
+    // 2 directs + 2-level team business → levels 1-4
+    // 3 directs + 5-level team business → levels 1-8
+    // 4 directs + 10-level team business → levels 1-12
+    // 5 directs + 15-level team business → levels 1-16
+    // 6 directs + 25-level team business → levels 1-24
+    // Percentages: L1 1%, L2 0.5%, L3 0.2%, L4-7 0.15%, L8-11 0.10%, L12-19 0.05%, L20-24 0.02%
+    const levelIncomeData: Array<{
+      level: number
+      percentage: number
+      minDirects: number
+      minTeamBusinessLevel: number
+      isActive: boolean
+    }> = []
+    const levelRules = [
+      { maxLevel: 2, minDirects: 1, minTeamBusinessLevel: 1 },
+      { maxLevel: 4, minDirects: 2, minTeamBusinessLevel: 2 },
+      { maxLevel: 8, minDirects: 3, minTeamBusinessLevel: 5 },
+      { maxLevel: 12, minDirects: 4, minTeamBusinessLevel: 10 },
+      { maxLevel: 16, minDirects: 5, minTeamBusinessLevel: 15 },
+      { maxLevel: 24, minDirects: 6, minTeamBusinessLevel: 25 },
+    ]
+    for (const rule of levelRules) {
+      for (let l = 1; l <= 24; l++) {
+        if (l > rule.maxLevel) continue
+        const existing = levelIncomeData.find((x) => x.level === l)
+        if (existing) continue
+        let percentage = 0.02
+        if (l === 1) percentage = 1
+        else if (l === 2) percentage = 0.5
+        else if (l === 3) percentage = 0.2
+        else if (l >= 4 && l <= 7) percentage = 0.15
+        else if (l >= 8 && l <= 11) percentage = 0.1
+        else if (l >= 12 && l <= 19) percentage = 0.05
+        levelIncomeData.push({
+          level: l,
+          percentage,
+          minDirects: rule.minDirects,
+          minTeamBusinessLevel: rule.minTeamBusinessLevel,
+          isActive: true,
+        })
+      }
+    }
+    await LevelIncome.createMany(levelIncomeData)
+
+    // ─── Team Business Levels (25 levels, thresholds in INR) ───
+    // Default scale — editable via Business Engine. Level N requires min_team_business.
+    await TeamBusinessLevel.createMany(
+      Array.from({ length: 25 }, (_, i) => {
+        const level = i + 1
+        let minBusiness = 0
+        if (level === 1) minBusiness = 0
+        else if (level === 2) minBusiness = 100000
+        else if (level === 3) minBusiness = 200000
+        else if (level === 4) minBusiness = 350000
+        else if (level === 5) minBusiness = 500000
+        else if (level === 6) minBusiness = 700000
+        else if (level === 7) minBusiness = 900000
+        else if (level === 8) minBusiness = 1200000
+        else if (level === 9) minBusiness = 1500000
+        else if (level === 10) minBusiness = 1800000
+        else minBusiness = 1800000 + (level - 10) * 400000
+        return { level, minBusiness, isActive: true }
+      })
+    )
 
     // ─── Platform Configs ───
     const configs: Array<{

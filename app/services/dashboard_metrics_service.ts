@@ -127,27 +127,21 @@ export default class DashboardMetricsService {
     if (power === 0 || weaker === 0) return 'N/A'
     const total = power + weaker
     const descending = [
-      { designation: 'King', criteria: 100000000000 },
-      { designation: 'Emperor', criteria: 80000000000 },
-      { designation: 'Master', criteria: 50000000000 },
-      { designation: 'Supreme', criteria: 35000000000 },
-      { designation: 'Legend', criteria: 25000000000 },
       { designation: 'Elite', criteria: 17000000000 },
       { designation: 'Royal', criteria: 12000000000 },
       { designation: 'Crown', criteria: 8000000000 },
       { designation: 'R Diamond', criteria: 3000000000 },
       { designation: 'C Diamond', criteria: 1000000000 },
       { designation: 'B Diamond', criteria: 500000000 },
-      { designation: 'Diamond', criteria: 200000000 },
+      { designation: 'Diamond', criteria: 250000000 },
       { designation: 'Topaz', criteria: 100000000 },
       { designation: 'Sapphire', criteria: 50000000 },
       { designation: 'Ruby', criteria: 30000000 },
       { designation: 'Emerald', criteria: 10000000 },
-      { designation: 'Platinum', criteria: 5000000 },
-      { designation: 'Gold', criteria: 2500000 },
-      { designation: 'Silver', criteria: 1000000 },
-      { designation: 'Bronze', criteria: 500000 },
-      { designation: 'Starter', criteria: 200000 },
+      { designation: 'Gold', criteria: 5000000 },
+      { designation: 'Silver', criteria: 2500000 },
+      { designation: 'Bronze', criteria: 1000000 },
+      { designation: 'Starter', criteria: 500000 },
     ]
     for (const rank of descending) {
       if (total >= rank.criteria && power >= rank.criteria * 0.6 && weaker >= rank.criteria * 0.4)

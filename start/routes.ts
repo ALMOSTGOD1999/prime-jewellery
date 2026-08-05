@@ -498,6 +498,9 @@ router
       .post('/level-income', [BusinessEngineController, 'upsertLevelIncome'])
       .as('level-income.upsert')
     router
+      .post('/team-business-level', [BusinessEngineController, 'upsertTeamBusinessLevel'])
+      .as('team-business-level.upsert')
+    router
       .post('/performance-incentive', [BusinessEngineController, 'upsertPerformanceIncentive'])
       .as('performance-incentive.upsert')
     router
