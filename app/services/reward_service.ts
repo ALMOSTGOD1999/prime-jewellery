@@ -764,7 +764,7 @@ export default class RewardService {
         if (cumulativeAmount === 0) continue
 
         // Daily level reward = cumulative amount × percentage × 12 / 365
-        const dailyLevelReward = (cumulativeAmount * percentage * 12) / 365
+        const dailyLevelReward = (cumulativeAmount * (percentage / 100) * 12) / 365
         const dateKey = date.toISODate()!
 
         levelRewardsMap.set(dateKey, (levelRewardsMap.get(dateKey) || 0) + dailyLevelReward)
@@ -944,7 +944,7 @@ export default class RewardService {
 
       if (cumulativeAmount === 0) continue
 
-      const dailyReward = (cumulativeAmount * percentage * 12) / 365
+      const dailyReward = (cumulativeAmount * (percentage / 100) * 12) / 365
 
       if (!levelBreakdown.has(depth)) {
         levelBreakdown.set(depth, { level: depth, amount: 0, memberCount: 0, members: [] })
@@ -1143,7 +1143,7 @@ export default class RewardService {
         if (cumulativeAmount === 0) continue
 
         // Daily level reward = cumulative amount × percentage × 12 / 365
-        const dailyLevelReward = (cumulativeAmount * percentage * 12) / 365
+        const dailyLevelReward = (cumulativeAmount * (percentage / 100) * 12) / 365
         const dateKey = date.toISODate()!
 
         levelRewardsMap.set(dateKey, (levelRewardsMap.get(dateKey) || 0) + dailyLevelReward)
@@ -1323,7 +1323,7 @@ export default class RewardService {
 
       if (cumulativeAmount === 0) continue
 
-      const dailyReward = (cumulativeAmount * percentage * 12) / 365
+      const dailyReward = (cumulativeAmount * (percentage / 100) * 12) / 365
 
       if (!levelBreakdown.has(depth)) {
         levelBreakdown.set(depth, { level: depth, amount: 0, memberCount: 0, members: [] })

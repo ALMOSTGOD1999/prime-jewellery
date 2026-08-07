@@ -3,6 +3,7 @@ import { DateTime } from 'luxon'
 import Investment from '#models/investment'
 import InvestmentPackage from '#models/investment_package'
 import InvestmentReturnDistribution from '#models/investment_return_distribution'
+import Purchase from '#models/purchase'
 import User from '#models/user'
 import Withdrawl from '#models/withdrawl'
 import WalletService from '#services/wallet_service'
@@ -55,10 +56,31 @@ export default class InvestmentService {
   }
 
   /**
+   * Resolve the CURRENT amount of a self-investment. A gold purchase and an
+   * investment are the same thing — every approved purchase is the underlying
+   * self-investment, and the admin may reduce or add to it after the fact. The
+   * linked purchase record is the source of truth, so its current amount is
+   * used for the return calculation (falls back to the investment record).
+   */
+  static async getEffectiveAmount(investment: Investment): Promise<number> {
+    if (investment.purchaseId) {
+      const purchase = await Purchase.query()
+        .select('amount', 'approvedAt', 'cancelledAt', 'stoppedAt')
+        .where('id', investment.purchaseId)
+        .first()
+      if (purchase && purchase.approvedAt && !purchase.cancelledAt && !purchase.stoppedAt) {
+        return Number(purchase.amount)
+      }
+    }
+    return Number(investment.amount)
+  }
+
+  /**
    * Check if investment has reached its maximum return cap (e.g. 100% of investment)
    */
   static async hasReachedMaxReturn(investment: Investment): Promise<boolean> {
-    const pkg = await InvestmentPackage.findPackageForAmount(investment.amount)
+    const effectiveAmount = await this.getEffectiveAmount(investment)
+    const pkg = await InvestmentPackage.findPackageForAmount(effectiveAmount)
     if (!pkg) return true
 
     const maxReturnPercent = pkg.maxReturnPercent
@@ -68,7 +90,7 @@ export default class InvestmentService {
       .first()
 
     const totalReturnAmount = Number(totalReturned?.$extras?.total || 0)
-    const maxReturnAmount = this.roundMoney((Number(investment.amount) * maxReturnPercent) / 100)
+    const maxReturnAmount = this.roundMoney((effectiveAmount * maxReturnPercent) / 100)
 
     return totalReturnAmount >= maxReturnAmount
   }
@@ -231,7 +253,7 @@ export default class InvestmentService {
       }
 
       const rate = Number(investment.monthlyReturnRate) || 3
-      const investmentAmount = Number(investment.amount)
+      const investmentAmount = await this.getEffectiveAmount(investment)
 
       // Prorate return based on days active in the month. `started_at` is a
       // timezone-less `timestamp` whose wall-clock value is the UTC wall time
@@ -254,7 +276,7 @@ export default class InvestmentService {
         investmentId: investment.id,
         userId: investment.userId,
         periodMonth: period,
-        investmentAmount: investment.amount,
+        investmentAmount,
         returnAmount,
         incomeAmount,
         goldAmount: repurchaseAmount,
