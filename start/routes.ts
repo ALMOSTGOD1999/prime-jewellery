@@ -69,9 +69,6 @@ router.get('tree', [MembersController, 'tree']).as('tree').use(middleware.auth()
 const SettingsController = () => import('#controllers/settings_controller')
 router
   .group(() => {
-    router.get('activate', [SettingsController, 'activatePage']).as('activate.page')
-    router.post('activate', [SettingsController, 'activate']).as('activate')
-
     router.get('profile', [SettingsController, 'profile']).as('profile.page')
     router.patch('profile', [SettingsController, 'updateProfile']).as('profile')
     router.patch('profile/password', [SettingsController, 'updatePassword']).as('profile.password')
@@ -95,9 +92,7 @@ const GoldController = () => import('#controllers/golds_controller')
 router
   .group(() => {
     router.get('purchase', [GoldController, 'purchasePage']).as('purchase.page')
-    router.post('purchase', [GoldController, 'purchase']).as('purchase')
     router.get('purchase/:id/bill', [GoldController, 'downloadPurchaseBill']).as('purchase.bill')
-    router.get('customers/search', [GoldController, 'searchCustomers']).as('customers.search')
   })
   .use(middleware.auth())
   .use(middleware.activeUser())
@@ -113,45 +108,12 @@ const InvestmentsController = () => import('#controllers/investments_controller'
 router
   .group(() => {
     router.get('investments', [InvestmentsController, 'index']).as('investments.index')
-    router.post('investments', [InvestmentsController, 'store']).as('investments.store')
     router
       .post('investments/withdraw-income', [InvestmentsController, 'withdrawIncome'])
       .as('investments.withdrawIncome')
   })
   .as('investments')
   .use(middleware.auth())
-
-/*
-|--------------------------------------------------------------------------
-| Wallet
-|--------------------------------------------------------------------------
-*/
-const WalletController = () => import('#controllers/wallet_controller')
-router
-  .group(() => {
-    router.get('/', [WalletController, 'page']).as('page')
-    router.get('send', [WalletController, 'sendPage']).as('send.page')
-    router.post('transfer', [WalletController, 'transfer']).as('transfer')
-    router.get('search', [WalletController, 'search']).as('search')
-
-    // Admin: add balance to any user
-    router
-      .post('add-balance', [WalletController, 'addBalance'])
-      .as('add.balance')
-      .use(middleware.admin())
-
-    // Admin: view specific user's wallet history
-    router
-      .get('users/:userId', [WalletController, 'userHistory'])
-      .as('user.history')
-      .use(middleware.admin())
-
-    // Self-activation using wallet balance (min ₹1000)
-    router.post('activate', [WalletController, 'activateAccount']).as('activate')
-  })
-  .as('wallet')
-  .use(middleware.auth())
-  .prefix('wallet')
 
 /*
 |--------------------------------------------------------------------------
@@ -203,7 +165,6 @@ const AdminPurchaseController = () => import('#controllers/admin/purchase_contro
 const AdminWithdrawalController = () => import('#controllers/admin/withdrawal_controller')
 const AdminSettingsController = () => import('#controllers/admin/settings_controller')
 const AdminAchievementsController = () => import('#controllers/admin/achievements_controller')
-const AdminWalletController = () => import('#controllers/admin/wallet_controller')
 const AdminStatementController = () => import('#controllers/admin/statement_controller')
 const ActivationController = () => import('#controllers/activation_controller')
 router
@@ -302,19 +263,6 @@ router
       })
       .prefix('achievements')
       .as('achievements')
-
-    ////// Wallet
-    router
-      .group(() => {
-        router.get('/', [AdminWalletController, 'index']).as('page')
-        router.post('/add-balance', [AdminWalletController, 'addBalance']).as('add.balance')
-        router
-          .post('/add-own-balance', [AdminWalletController, 'addOwnBalance'])
-          .as('add.own.balance')
-        router.get('/users/:userId', [AdminWalletController, 'history']).as('user.history')
-      })
-      .prefix('wallet')
-      .as('wallet')
 
     ////// Settings - Password Change
     router

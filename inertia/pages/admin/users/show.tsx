@@ -19,7 +19,6 @@ import {
   Structure01Icon,
   Tick02Icon,
   UserGroupIcon,
-  Wallet01Icon,
 } from '@hugeicons/core-free-icons'
 
 import { formatDateWithRelative } from '~/lib/format'
@@ -497,14 +496,6 @@ export default function MemberShow({ member }: InferPageProps<AdminUsersControll
                 >
                   <HugeiconsIcon icon={Structure01Icon} className="h-4 w-4 mr-2" />
                   View Tree
-                </Link>
-
-                <Link
-                  href={route('admin.wallet.user.history', { params: { userId: member.id } })}
-                  className={buttonVariants({ variant: 'outline' })}
-                >
-                  <HugeiconsIcon icon={Wallet01Icon} className="h-4 w-4 mr-2" />
-                  Wallet History
                 </Link>
 
                 <Link

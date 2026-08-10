@@ -5,7 +5,6 @@ import {
   Search01Icon,
   Loading01Icon,
   ShoppingBag03Icon,
-  Wallet01Icon,
   Cancel01Icon,
 } from '@hugeicons/core-free-icons'
 
@@ -24,7 +23,6 @@ interface SearchResult {
   name: string
   email: string
   phone: string
-  walletBalance: number
 }
 
 interface GoldPackage {
@@ -79,9 +77,11 @@ export default function AdminPurchasePage({ goldPackages }: { goldPackages?: Gol
     }
     setSearching(true)
     try {
-      const response = await fetch(`/wallet/search?q=${encodeURIComponent(query)}`)
+      const response = await fetch(
+        `/admin/users/lookup-users?search=${encodeURIComponent(query)}`
+      )
       const data = await response.json()
-      setSearchResults(data.error ? [] : data.data || [])
+      setSearchResults(data.error ? [] : data.users || [])
     } catch {
       setSearchResults([])
     } finally {
@@ -163,9 +163,6 @@ export default function AdminPurchasePage({ goldPackages }: { goldPackages?: Gol
                           ID: {user.id} · {user.email} · {user.phone}
                         </p>
                       </div>
-                      <Badge variant="secondary">
-                        ₹{user.walletBalance.toLocaleString('en-IN')}
-                      </Badge>
                     </button>
                   ))}
                 </div>
@@ -207,13 +204,6 @@ export default function AdminPurchasePage({ goldPackages }: { goldPackages?: Gol
                         <HugeiconsIcon icon={Cancel01Icon} className="h-4 w-4" />
                       </Button>
                     </div>
-                    <div className="mt-2 flex items-center gap-2">
-                      <HugeiconsIcon icon={Wallet01Icon} className="h-4 w-4 text-primary" />
-                      <span className="text-sm">
-                        Wallet Balance:{' '}
-                        <strong>₹{selectedUser.walletBalance.toLocaleString('en-IN')}</strong>
-                      </span>
-                    </div>
                   </div>
 
                   {/* Amount */}
@@ -232,7 +222,7 @@ export default function AdminPurchasePage({ goldPackages }: { goldPackages?: Gol
                       <p className="text-sm text-destructive">{purchaseForm.errors.amount}</p>
                     )}
                     <p className="text-xs text-muted-foreground">
-                      Admin purchase — no wallet deduction required.
+                      Admin purchase — recorded directly against the user's investment.
                     </p>
                   </div>
 

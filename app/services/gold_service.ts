@@ -5,7 +5,6 @@ import Purchase from '#models/purchase'
 import Investment from '#models/investment'
 import InvestmentPackage from '#models/investment_package'
 import PlatformConfig from '#models/platform_config'
-import WalletService from '#services/wallet_service'
 import CalculateAchievement from '#jobs/calculate_achievement'
 import { TransactionTypeEnum } from '#enums/transaction'
 
@@ -101,10 +100,7 @@ export default class GoldService {
       user.related('purchases').query().whereNotNull('rejectedAt').count('* as total').first(),
     ])
 
-    const balance = Number(user.walletBalance ?? 0)
-
     return {
-      balance,
       purchases,
       counts: {
         total:
@@ -116,55 +112,6 @@ export default class GoldService {
         rejected: Number(rejectedCount?.$extras.total || 0),
       },
     }
-  }
-
-  static async purchaseGold(
-    user: User,
-    data: {
-      amount: number
-      goldWeight?: number
-      goldCarat?: string
-      goldRate?: number
-      goldPrice?: number
-      makingCharges?: number
-      gstAmount?: number
-      hallmarkAdditional?: number
-      totalItems?: number
-      remark?: string
-    }
-  ) {
-    const walletBalance = Number(user.walletBalance ?? 0)
-
-    if (walletBalance < data.amount) {
-      throw new Error('Insufficient wallet balance')
-    }
-
-    if (data.amount < 10000) {
-      throw new Error('Minimum purchase amount is ₹10,000')
-    }
-
-    // Deduct amount from wallet balance
-    await WalletService.debitWallet(user.id, data.amount, 'Gold purchase')
-
-    // Create purchase record with auto-approval
-    const purchase = await user.related('purchases').create({
-      amount: data.amount,
-      approvedAt: DateTime.now(),
-      goldWeight: data.goldWeight ?? null,
-      goldCarat: data.goldCarat ?? null,
-      goldRate: data.goldRate ?? null,
-      goldPrice: data.goldPrice ?? null,
-      makingCharges: data.makingCharges ?? null,
-      gstAmount: data.gstAmount ?? null,
-      hallmarkCharges: data.hallmarkAdditional ?? null,
-      totalItems: data.totalItems ?? null,
-      remark: data.remark ?? null,
-    })
-
-    // Every approved purchase is an investment — register it for monthly returns.
-    await this.ensureInvestmentForPurchase(purchase)
-
-    return purchase
   }
 
   /**

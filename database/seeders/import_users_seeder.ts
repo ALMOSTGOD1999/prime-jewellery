@@ -83,9 +83,8 @@ export default class ImportUsersSeeder extends BaseSeeder {
         const stateStr = this.getField(row, header, 'state')
         user.state = this.mapState(stateStr) as any
 
-        // Wallet/Investment
+        // Investment
         if (totalPurchase > 0) {
-          user.walletBalance = totalPurchase
           user.totalInvested = totalPurchase
         }
 

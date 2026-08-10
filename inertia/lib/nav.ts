@@ -43,13 +43,6 @@ export const getAppNav = (user: ReturnType<typeof useUser>, stats: AdminSidebarS
       icon: Icon(Book01Icon),
     },
   ]
-  if (!user?.activatedAt && user?.role !== UserRoleEnum.ADMIN) {
-    settingsItems.unshift({
-      title: 'Activate',
-      url: '/settings/activate',
-      icon: Icon(SecurityCheckIcon),
-    })
-  }
 
   /*
   |--------------------------------------------------------------------------
@@ -61,11 +54,6 @@ export const getAppNav = (user: ReturnType<typeof useUser>, stats: AdminSidebarS
       title: 'Dashboard',
       url: '/dashboard',
       icon: Icon(DashboardSquare02Icon),
-    },
-    {
-      title: 'Wallet',
-      url: '/wallet',
-      icon: Icon(Wallet01Icon),
     },
     {
       title: 'Members',
@@ -170,11 +158,6 @@ export const getAppNav = (user: ReturnType<typeof useUser>, stats: AdminSidebarS
         url: '/admin/purchases',
         icon: Icon(ShoppingBag03Icon),
         badge: stats.purchaseRequests.toString(),
-      },
-      {
-        title: 'Wallet',
-        url: '/admin/wallet',
-        icon: Icon(Wallet01Icon),
       },
       {
         title: 'Statements',

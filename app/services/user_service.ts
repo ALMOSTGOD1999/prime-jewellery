@@ -4,8 +4,6 @@ import { attachmentManager } from '@jrmc/adonis-attachment'
 import { UserRoleEnum } from '#enums/user'
 import { TransactionTypeEnum } from '#enums/transaction'
 import { DateTime } from 'luxon'
-import WalletService from '#services/wallet_service'
-import { ACTIVATION_AMOUNT } from '#constants/activation'
 
 export default class UserService {
   static async getChildrenCount(user: User): Promise<number> {
@@ -425,45 +423,6 @@ export default class UserService {
       remark: adminId
         ? `Activated by admin #${adminId}${amount ? ` (₹${amount})` : ''}`
         : 'Activated manually',
-    })
-  }
-
-  static async selfActivateUser(userId: number, amount?: number) {
-    const user = await User.findOrFail(userId)
-
-    if (user.activatedAt) {
-      throw new Error('User is already activated')
-    }
-
-    const activationAmount = amount || ACTIVATION_AMOUNT
-
-    // Validate activation amount
-    if (activationAmount !== ACTIVATION_AMOUNT) {
-      throw new Error(
-        `Invalid activation amount. Activation requires ₹${ACTIVATION_AMOUNT.toLocaleString('en-IN')}.`
-      )
-    }
-
-    // Check if user has sufficient wallet balance for activation
-    const currentBalance = Number(user.walletBalance ?? 0)
-    if (currentBalance < activationAmount) {
-      throw new Error('Insufficient wallet balance for activation')
-    }
-
-    // Deduct activation amount from wallet
-    await WalletService.debitWallet(userId, activationAmount, 'Self-activation fee')
-
-    // Activate user
-    user.activatedAt = DateTime.now()
-    user.activationAmount = activationAmount
-    await user.save()
-
-    // Create activation transaction record (for history/record keeping)
-    await user.related('transactions').create({
-      utr: `SELF-${DateTime.now().toFormat('yyyyMMddHHmmss')}-${userId}`,
-      amount: activationAmount,
-      type: TransactionTypeEnum.ACTIVATION,
-      approvedAt: DateTime.now(),
     })
   }
 }

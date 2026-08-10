@@ -6,7 +6,6 @@ import InvestmentReturnDistribution from '#models/investment_return_distribution
 import Purchase from '#models/purchase'
 import User from '#models/user'
 import Withdrawl from '#models/withdrawl'
-import WalletService from '#services/wallet_service'
 import { WithdrawlStatusEnum, WithdrawlTypeEnum } from '#enums/withdrawl'
 
 const INCOME_WALLET_PERCENT = 70
@@ -93,37 +92,6 @@ export default class InvestmentService {
     const maxReturnAmount = this.roundMoney((effectiveAmount * maxReturnPercent) / 100)
 
     return totalReturnAmount >= maxReturnAmount
-  }
-
-  static async createInvestment(user: User, amount: number, remark?: string) {
-    // Check wallet balance
-    const walletBalance = Number(user.walletBalance ?? 0)
-    if (walletBalance < amount) {
-      throw new Error('Insufficient wallet balance')
-    }
-
-    if (amount < 10000) {
-      throw new Error('Minimum investment amount is ₹10,000')
-    }
-
-    // Find the appropriate package for this amount
-    const pkg = await this.findPackageForAmount(amount)
-
-    // Deduct from wallet
-    await WalletService.debitWallet(user.id, amount, 'Investment purchase')
-
-    // Update total invested for user
-    user.totalInvested = Number(user.totalInvested ?? 0) + amount
-    await user.save()
-
-    return Investment.create({
-      userId: user.id,
-      amount,
-      monthlyReturnRate: pkg.monthlyReturnPercent,
-      status: 'active',
-      startedAt: DateTime.now(),
-      remark: remark || null,
-    })
   }
 
   static async getAvailablePackages() {
@@ -255,18 +223,16 @@ export default class InvestmentService {
       const rate = Number(investment.monthlyReturnRate) || 3
       const investmentAmount = await this.getEffectiveAmount(investment)
 
-      // Prorate return based on days active in the month. `started_at` is a
-      // timezone-less `timestamp` whose wall-clock value is the UTC wall time
-      // (Lucid serializes DateTimes to UTC), so its calendar date is read in
-      // UTC. Converting through the local timezone instead (e.g. Asia/Kolkata)
-      // would shift an evening UTC timestamp to the next local day and lose a
-      // day of eligibility — e.g. a purchase recorded 2026-07-28T18:57Z would
-      // start counting from July 29 instead of July 28.
-      const startedAt = investment.startedAt.toUTC().startOf('day')
-      const daysInMonth = period.daysInMonth!
-      const startDay = startedAt.month === period.month ? startedAt.day : 1
-      const activeDays = daysInMonth - startDay + 1
-      const prorateFactor = activeDays / daysInMonth
+      // Prorate return based on days active in the month. The business rule:
+      // a "month" is 30 days; the member earns from the day of purchase
+      // (India/Asia-Kolkata calendar date) through the end of the month,
+      // inclusive. Investments started in an earlier month earn the full
+      // month. E.g. a purchase on Jul 28 18:57 UTC (Jul 29 IST) earns
+      // 3 days: Jul 29, 30, 31 → 3/30 of the monthly return.
+      const startedAt = investment.startedAt.setZone('Asia/Kolkata').startOf('day')
+      const monthEnd = period.endOf('month').setZone('Asia/Kolkata').startOf('day')
+      const activeDays = Math.min(monthEnd.diff(startedAt, 'days').days + 1, 30)
+      const prorateFactor = Math.max(activeDays, 1) / 30
 
       const returnAmount = this.roundMoney((investmentAmount * rate * prorateFactor) / 100)
       const incomeAmount = this.roundMoney((returnAmount * INCOME_WALLET_PERCENT) / 100)
