@@ -7,6 +7,7 @@ import {
   ShoppingBag03Icon,
   Wallet01Icon,
   Cancel01Icon,
+  RupeeCircleIcon,
 } from '@hugeicons/core-free-icons'
 
 import AppLayout from '~/components/app/layout'
@@ -35,11 +36,37 @@ interface GoldPackage {
   maxReturn: number
 }
 
+interface BillingRates {
+  rate18ct: number
+  rate22ct: number
+  rate24ct: number
+  jewelleryValuePercent: number
+  makingChargePercent: number
+  gstPercent: number
+  additionalChargePercent: number
+}
+
 // Default fallback slabs matching business rules
 const DEFAULT_PACKAGES: GoldPackage[] = [
   { name: 'Silver', minAmount: 10000, maxAmount: 199999, monthlyReward: 3, maxReturn: 100 },
   { name: 'Gold', minAmount: 200000, maxAmount: 499999, monthlyReward: 3.5, maxReturn: 100 },
   { name: 'Platinum', minAmount: 500000, maxAmount: null, monthlyReward: 4, maxReturn: 100 },
+]
+
+const DEFAULT_RATES: BillingRates = {
+  rate18ct: 5200,
+  rate22ct: 6200,
+  rate24ct: 6800,
+  jewelleryValuePercent: 70,
+  makingChargePercent: 37.85,
+  gstPercent: 3,
+  additionalChargePercent: 2,
+}
+
+const CARAT_OPTIONS = [
+  { value: '18ct', label: '18 CT' },
+  { value: '22ct', label: '22 CT' },
+  { value: '24ct', label: '24 CT' },
 ]
 
 function findPackage(packages: GoldPackage[], amount: number): GoldPackage | null {
@@ -54,7 +81,14 @@ function findPackage(packages: GoldPackage[], amount: number): GoldPackage | nul
   return null
 }
 
-export default function AdminPurchasePage({ goldPackages }: { goldPackages?: GoldPackage[] }) {
+export default function AdminPurchasePage({
+  billingRates: billingRatesProp,
+  goldPackages,
+}: {
+  billingRates?: BillingRates
+  goldPackages?: GoldPackage[]
+}) {
+  const billingRates = billingRatesProp ?? DEFAULT_RATES
   const packages = useMemo(() => {
     if (goldPackages && goldPackages.length > 0) return goldPackages
     return DEFAULT_PACKAGES
@@ -66,7 +100,89 @@ export default function AdminPurchasePage({ goldPackages }: { goldPackages?: Gol
 
   const purchaseForm = useForm({
     amount: '',
+    goldCarat: '22ct',
+    goldWeight: '',
+    goldRate: 0,
+    goldPrice: 0,
+    makingCharges: 0,
+    gstAmount: 0,
+    additionalCharges: 0,
+    totalItems: '1',
+    remark: '',
   })
+
+  const [calculation, setCalculation] = useState({
+    goldRate: billingRates.rate22ct,
+    goldValue: 0,
+    investment: 0,
+    jewelleryValue: 0,
+    makingCharges: 0,
+    makingChargePercent: 0,
+    gstAmount: 0,
+    additionalCharges: 0,
+    packageAmount: 0,
+  })
+
+  // Auto-calculate whenever carat or weight changes
+  useEffect(() => {
+    const weight = Number(purchaseForm.data.goldWeight)
+    const carat = purchaseForm.data.goldCarat
+
+    if (!weight || weight <= 0 || !carat) {
+      setCalculation({
+        goldRate: 0,
+        goldValue: 0,
+        investment: 0,
+        jewelleryValue: 0,
+        makingCharges: 0,
+        makingChargePercent: 0,
+        gstAmount: 0,
+        additionalCharges: 0,
+        packageAmount: 0,
+      })
+      purchaseForm.setData('amount', '')
+      return
+    }
+
+    const rate =
+      carat === '18ct'
+        ? billingRates.rate18ct
+        : carat === '24ct'
+          ? billingRates.rate24ct
+          : billingRates.rate22ct
+
+    // Gold Value = Weight × Rate
+    const goldValue = rate * weight
+
+    // Investment (Total Package) = Gold Value ÷ (jewelleryValuePercent / 100)
+    const investment = goldValue / (billingRates.jewelleryValuePercent / 100)
+
+    // GST & Additional are calculated on Gold Value only
+    const gstAmount = (goldValue * billingRates.gstPercent) / 100
+    const additionalCharges = (goldValue * billingRates.additionalChargePercent) / 100
+
+    // Making Charge is the remainder so that Total = Investment
+    const makingCharges = investment - goldValue - gstAmount - additionalCharges
+    const makingChargePercent = goldValue > 0 ? (makingCharges / goldValue) * 100 : 0
+
+    // Total Package = Investment (they are now the same)
+    const packageAmount = investment
+
+    const r = (n: number) => Math.round(n * 100) / 100
+
+    setCalculation({
+      goldRate: rate,
+      goldValue: r(goldValue),
+      investment: r(investment),
+      jewelleryValue: r(goldValue),
+      makingCharges: r(makingCharges),
+      makingChargePercent: r(makingChargePercent),
+      gstAmount: r(gstAmount),
+      additionalCharges: r(additionalCharges),
+      packageAmount: r(packageAmount),
+    })
+    purchaseForm.setData('amount', String(r(packageAmount)))
+  }, [purchaseForm.data.goldWeight, purchaseForm.data.goldCarat])
 
   const selectedAmount = Number(purchaseForm.data.amount)
   const goldPackage =
@@ -107,6 +223,12 @@ export default function AdminPurchasePage({ goldPackages }: { goldPackages?: Gol
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedUser) return
+    // Set calculated gold billing values before submitting
+    purchaseForm.setData('goldRate', calculation.goldRate)
+    purchaseForm.setData('goldPrice', calculation.goldValue)
+    purchaseForm.setData('makingCharges', calculation.makingCharges)
+    purchaseForm.setData('gstAmount', calculation.gstAmount)
+    purchaseForm.setData('additionalCharges', calculation.additionalCharges)
     purchaseForm.post(`/admin/users/${selectedUser.id}/purchase`, {
       onSuccess: () => {
         purchaseForm.reset()
@@ -216,7 +338,119 @@ export default function AdminPurchasePage({ goldPackages }: { goldPackages?: Gol
                     </div>
                   </div>
 
-                  {/* Amount */}
+                  {/* Billing Section — Fully Automatic */}
+                  <div className="space-y-4 rounded-lg border border-primary/20 bg-primary/5 p-4">
+                    <div className="flex items-center gap-2">
+                      <HugeiconsIcon icon={RupeeCircleIcon} className="h-5 w-5 text-primary" />
+                      <div>
+                        <p className="font-semibold text-sm">Billing Details</p>
+                        <p className="text-xs text-muted-foreground">
+                          Enter gold weight — all values calculate automatically using today's
+                          admin-configured rate
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Gold Carat */}
+                    <div className="space-y-2">
+                      <Label>Gold Carat</Label>
+                      <div className="flex flex-wrap gap-3">
+                        {CARAT_OPTIONS.map((carat) => (
+                          <button
+                            key={carat.value}
+                            type="button"
+                            onClick={() => purchaseForm.setData('goldCarat', carat.value)}
+                            className={`px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
+                              purchaseForm.data.goldCarat === carat.value
+                                ? 'border-primary bg-primary/10 text-primary'
+                                : 'border-border hover:border-primary/40'
+                            }`}
+                          >
+                            {carat.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Gold Weight — Only Input */}
+                    <div className="space-y-2 max-w-sm">
+                      <Label htmlFor="gold-weight">
+                        Gold Weight (grams) <span className="text-primary">*</span>
+                      </Label>
+                      <div className="relative">
+                        <Input
+                          id="gold-weight"
+                          type="number"
+                          step="0.001"
+                          min="0"
+                          value={purchaseForm.data.goldWeight}
+                          onChange={(e) => purchaseForm.setData('goldWeight', e.target.value)}
+                          placeholder="Enter weight in grams"
+                          className="pr-12 text-lg"
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-medium">
+                          gm
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Auto-calculated Summary */}
+                    {calculation.goldValue > 0 && (
+                      <div className="rounded-lg border-2 border-primary/20 bg-background/40 p-4 space-y-3">
+                        <div className="flex items-center justify-between py-1 border-b border-border/50">
+                          <span className="text-sm text-muted-foreground">
+                            Today's Gold Rate (per gram)
+                          </span>
+                          <span className="text-sm font-mono font-semibold">
+                            ₹{calculation.goldRate.toLocaleString('en-IN')}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between py-1 border-b border-border/50">
+                          <span className="text-sm text-muted-foreground">
+                            Gold Value ({purchaseForm.data.goldWeight}g × ₹
+                            {calculation.goldRate.toLocaleString('en-IN')})
+                          </span>
+                          <span className="text-sm font-mono font-semibold">
+                            ₹{formatCurrency(calculation.goldValue)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between py-1 border-b border-border/50">
+                          <span className="text-sm text-muted-foreground">Making Charge</span>
+                          <span className="text-sm font-mono">
+                            ₹{formatCurrency(calculation.makingCharges)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between py-1 border-b border-border/50">
+                          <span className="text-sm text-muted-foreground">GST</span>
+                          <span className="text-sm font-mono">
+                            ₹{formatCurrency(calculation.gstAmount)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between py-1 border-b border-border/50">
+                          <span className="text-sm text-muted-foreground">Additional Charge</span>
+                          <span className="text-sm font-mono">
+                            ₹{formatCurrency(calculation.additionalCharges)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between py-1 border-b border-border/50">
+                          <span className="text-sm text-muted-foreground">Gold Jewellery Value</span>
+                          <span className="text-sm font-mono font-semibold text-primary">
+                            ₹{formatCurrency(calculation.jewelleryValue)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between pt-2 border-t-2 border-primary/30">
+                          <span className="text-base font-bold text-foreground">
+                            Total Package Amount
+                          </span>
+                          <span className="text-lg font-bold text-primary tracking-tight">
+                            ₹{formatCurrency(calculation.packageAmount)}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Amount (auto-filled) */}
                   <div className="space-y-2">
                     <Label htmlFor="purchase-amount">Purchase Amount (₹)</Label>
                     <Input
@@ -224,7 +458,7 @@ export default function AdminPurchasePage({ goldPackages }: { goldPackages?: Gol
                       type="number"
                       min={10000}
                       step="1"
-                      placeholder="Enter amount (min ₹10,000)"
+                      placeholder="Auto-calculated from gold weight"
                       value={purchaseForm.data.amount}
                       onChange={(e) => purchaseForm.setData('amount', e.target.value)}
                     />
@@ -232,8 +466,32 @@ export default function AdminPurchasePage({ goldPackages }: { goldPackages?: Gol
                       <p className="text-sm text-destructive">{purchaseForm.errors.amount}</p>
                     )}
                     <p className="text-xs text-muted-foreground">
-                      Admin purchase — no wallet deduction required.
+                      Auto-calculated from weight. Admin purchase — no wallet deduction required.
                     </p>
+                  </div>
+
+                  {/* Items & Remarks */}
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="total-items">Total Jewellery Items</Label>
+                      <Input
+                        id="total-items"
+                        type="number"
+                        min="1"
+                        value={purchaseForm.data.totalItems}
+                        onChange={(e) => purchaseForm.setData('totalItems', e.target.value)}
+                        placeholder="Number of jewellery pieces"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="remark">Remarks</Label>
+                      <Input
+                        id="remark"
+                        value={purchaseForm.data.remark}
+                        onChange={(e) => purchaseForm.setData('remark', e.target.value)}
+                        placeholder="Optional notes about the purchase"
+                      />
+                    </div>
                   </div>
 
                   {/* Package Info */}
@@ -266,7 +524,7 @@ export default function AdminPurchasePage({ goldPackages }: { goldPackages?: Gol
                     </div>
                   )}
 
-                  {selectedAmount < 10000 && selectedAmount > 0 && (
+                  {selectedAmount > 0 && selectedAmount < 10000 && (
                     <p className="text-xs text-destructive">Minimum purchase amount is ₹10,000</p>
                   )}
 

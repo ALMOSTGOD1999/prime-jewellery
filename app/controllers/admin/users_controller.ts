@@ -324,7 +324,21 @@ export default class AdminUsersController {
   async makePurchase({ params, request, response, session, auth }: HttpContext) {
     const admin = auth.getUserOrFail()
     const user = await User.findOrFail(params.id)
-    const { amount } = request.only(['amount'])
+    const data = request.only([
+      'amount',
+      'goldWeight',
+      'goldCarat',
+      'goldRate',
+      'goldPrice',
+      'makingCharges',
+      'gstAmount',
+      'additionalCharges',
+      'hallmarkAdditional',
+      'totalItems',
+      'remark',
+    ])
+
+    const amount = Number(data.amount)
 
     if (!amount || amount <= 0) {
       session.flash('errors.amount', 'Invalid amount')
@@ -332,10 +346,24 @@ export default class AdminUsersController {
     }
 
     try {
-      await GoldService.adminPurchaseGold(user, { amount: Number(amount) }, admin.id)
+      await GoldService.adminPurchaseGold(user, {
+        amount,
+        goldWeight: data.goldWeight ? Number(data.goldWeight) : undefined,
+        goldCarat: data.goldCarat || undefined,
+        goldRate: data.goldRate ? Number(data.goldRate) : undefined,
+        goldPrice: data.goldPrice ? Number(data.goldPrice) : undefined,
+        makingCharges: data.makingCharges ? Number(data.makingCharges) : undefined,
+        gstAmount: data.gstAmount ? Number(data.gstAmount) : undefined,
+        additionalCharges: data.additionalCharges ? Number(data.additionalCharges) : undefined,
+        hallmarkAdditional: data.hallmarkAdditional
+          ? Number(data.hallmarkAdditional)
+          : undefined,
+        totalItems: data.totalItems ? Number(data.totalItems) : undefined,
+        remark: data.remark || undefined,
+      }, admin.id)
       session.flash(
         'success',
-        `Gold purchase of ₹${Number(amount).toLocaleString('en-IN')} completed for ${user.name}`
+        `Gold purchase of ₹${amount.toLocaleString('en-IN')} completed for ${user.name}`
       )
     } catch (error) {
       session.flash('errors.amount', error.message)
