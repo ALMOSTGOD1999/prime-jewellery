@@ -114,60 +114,6 @@ export default class GoldService {
     }
   }
 
-<<<<<<< HEAD
-  static async purchaseGold(
-    user: User,
-    data: {
-      amount: number
-      goldWeight?: number
-      goldCarat?: string
-      goldRate?: number
-      goldPrice?: number
-      makingCharges?: number
-      gstAmount?: number
-      additionalCharges?: number
-      hallmarkAdditional?: number
-      totalItems?: number
-      remark?: string
-    }
-  ) {
-    const walletBalance = Number(user.walletBalance ?? 0)
-
-    if (walletBalance < data.amount) {
-      throw new Error('Insufficient wallet balance')
-    }
-
-    if (data.amount < 10000) {
-      throw new Error('Minimum purchase amount is ₹10,000')
-    }
-
-    // Deduct amount from wallet balance
-    await WalletService.debitWallet(user.id, data.amount, 'Gold purchase')
-
-    // Create purchase record with auto-approval
-    const purchase = await user.related('purchases').create({
-      amount: data.amount,
-      approvedAt: DateTime.now(),
-      goldWeight: data.goldWeight ?? null,
-      goldCarat: data.goldCarat ?? null,
-      goldRate: data.goldRate ?? null,
-      goldPrice: data.goldPrice ?? null,
-      makingCharges: data.makingCharges ?? null,
-      gstAmount: data.gstAmount ?? null,
-      hallmarkCharges: data.hallmarkAdditional ?? null,
-      additionalCharges: data.additionalCharges ?? null,
-      totalItems: data.totalItems ?? null,
-      remark: data.remark ?? null,
-    })
-
-    // Every approved purchase is an investment — register it for monthly returns.
-    await this.ensureInvestmentForPurchase(purchase)
-
-    return purchase
-  }
-
-=======
->>>>>>> 6762461a558949d70f9cb400d66b6cb40d61f877
   /**
    * Admin makes a gold purchase on behalf of a user.
    * Bypasses wallet balance check and records the transaction for audit.

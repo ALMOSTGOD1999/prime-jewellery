@@ -456,11 +456,8 @@ export default function AdminPurchasePage({
                       <p className="text-sm text-destructive">{purchaseForm.errors.amount}</p>
                     )}
                     <p className="text-xs text-muted-foreground">
-<<<<<<< HEAD
-                      Auto-calculated from weight. Admin purchase — no wallet deduction required.
-=======
-                      Admin purchase — recorded directly against the user's investment.
->>>>>>> 6762461a558949d70f9cb400d66b6cb40d61f877
+                      Auto-calculated from weight. Admin purchase — recorded directly against the
+                      user's investment, no wallet deduction.
                     </p>
                   </div>
 
