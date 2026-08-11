@@ -27,15 +27,11 @@ interface EditPurchaseDialogProps {
 }
 
 export function EditPurchaseDialog({ purchase, isOpen, onOpenChange }: EditPurchaseDialogProps) {
-  const { data, setData, patch, processing, errors, reset, setError, clearErrors } = useForm({
+  const { data, setData, patch, processing, errors, reset, clearErrors } = useForm({
     amount: '',
     buyerName: '',
     quantity: '',
     createdAt: '',
-    approvedAt: '',
-    rejectedAt: '',
-    stoppedAt: '',
-    cancelledAt: '',
   })
 
   useEffect(() => {
@@ -48,66 +44,14 @@ export function EditPurchaseDialog({ purchase, isOpen, onOpenChange }: EditPurch
         createdAt: purchase.createdAt
           ? DateTime.fromISO(purchase.createdAt).toFormat("yyyy-MM-dd'T'HH:mm")
           : '',
-        approvedAt: purchase.approvedAt
-          ? DateTime.fromISO(purchase.approvedAt).toFormat("yyyy-MM-dd'T'HH:mm")
-          : '',
-        rejectedAt: purchase.rejectedAt
-          ? DateTime.fromISO(purchase.rejectedAt).toFormat("yyyy-MM-dd'T'HH:mm")
-          : '',
-        stoppedAt: purchase.stoppedAt
-          ? DateTime.fromISO(purchase.stoppedAt).toFormat("yyyy-MM-dd'T'HH:mm")
-          : '',
-        cancelledAt: purchase.cancelledAt
-          ? DateTime.fromISO(purchase.cancelledAt).toFormat("yyyy-MM-dd'T'HH:mm")
-          : '',
       })
     }
   }, [purchase, isOpen])
-
-  // Mutual Exclusion Logic
-  useEffect(() => {
-    if (data.rejectedAt) {
-      if (data.approvedAt) setData('approvedAt', '')
-      if (data.stoppedAt) setData('stoppedAt', '')
-    }
-  }, [data.rejectedAt])
-
-  useEffect(() => {
-    if (data.approvedAt) {
-      if (data.rejectedAt) setData('rejectedAt', '')
-    }
-  }, [data.approvedAt])
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
     clearErrors()
 
-    // Client-side Validation
-    let hasError = false
-
-    if (data.stoppedAt) {
-      if (!data.approvedAt) {
-        setError('stoppedAt', 'Available only for approved purchases')
-        hasError = true
-      } else if (data.stoppedAt < data.approvedAt) {
-        setError('stoppedAt', 'Cannot be before Approved Date')
-        hasError = true
-      }
-    }
-
-    if (data.cancelledAt) {
-      let refDate = ''
-      if (data.stoppedAt) refDate = data.stoppedAt
-      else if (data.approvedAt) refDate = data.approvedAt
-      else if (data.rejectedAt) refDate = data.rejectedAt
-
-      if (refDate && data.cancelledAt < refDate) {
-        setError('cancelledAt', 'Cannot be before previous status date')
-        hasError = true
-      }
-    }
-
-    if (hasError) return
     if (!purchase) return
 
     patch(route('admin.purchases.update.details', { params: { id: purchase.id } }).toString(), {
@@ -198,7 +142,8 @@ export function EditPurchaseDialog({ purchase, isOpen, onOpenChange }: EditPurch
         <DialogHeader>
           <DialogTitle>Edit Purchase Details</DialogTitle>
           <DialogDescription>
-            Update the purchase amount or timestamps. Use caution as this directly affects records.
+            Update the purchase amount or the purchase date and time. This directly affects the
+            investment records.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="grid gap-4 py-4">
@@ -254,11 +199,7 @@ export function EditPurchaseDialog({ purchase, isOpen, onOpenChange }: EditPurch
             </div>
           </div>
 
-          {renderDateField('Created At', 'createdAt')}
-          {!data.rejectedAt && renderDateField('Approved At', 'approvedAt')}
-          {!data.approvedAt && renderDateField('Rejected At', 'rejectedAt')}
-          {data.approvedAt && renderDateField('Stopped At', 'stoppedAt')}
-          {renderDateField('Cancelled At', 'cancelledAt')}
+          {renderDateField('Purchase Date', 'createdAt')}
         </form>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>

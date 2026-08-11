@@ -9,34 +9,6 @@ import BankService from '#services/bank_service'
 import KycService from '#services/kyc_service'
 
 export default class ProfilesController {
-  async activatePage({ auth, inertia, response }: HttpContext) {
-    const user = auth.getUserOrFail()
-    // Admin never needs activation
-    if (user.role === 'admin') {
-      return response.redirect('/dashboard')
-    }
-    return inertia.render('settings/activate', {
-      isActivated: !!user.activatedAt,
-      walletBalance: Number(user.walletBalance ?? 0),
-    })
-  }
-
-  async activate({ request, auth, response }: HttpContext) {
-    const user = auth.getUserOrFail()
-    const { amount } = request.only(['amount'])
-
-    try {
-      await UserService.selfActivateUser(user.id, amount ? Number(amount) : undefined)
-      return response.ok({
-        message: 'Account activated successfully',
-      })
-    } catch (error) {
-      return response.badRequest({
-        error: error.message,
-      })
-    }
-  }
-
   async profile({ inertia }: HttpContext) {
     return inertia.render('settings/profile')
   }

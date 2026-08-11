@@ -6,7 +6,6 @@ import { Link, router } from '@inertiajs/react'
 import { Button, buttonVariants } from '~/components/ui/button'
 import {
   ArrowUp01Icon,
-  Download01Icon,
   MoreHorizontalCircle01Icon,
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'

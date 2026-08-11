@@ -319,7 +319,7 @@ export default class AdminUsersController {
 
   /**
    * Admin makes a gold purchase on behalf of a user.
-   * The amount is deducted from the user's wallet.
+   * No wallet deduction — the purchase is recorded directly as an admin-led transaction.
    */
   async makePurchase({ params, request, response, session, auth }: HttpContext) {
     const admin = auth.getUserOrFail()

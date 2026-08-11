@@ -45,7 +45,7 @@ export default class DebugController {
       ),
       db.rawQuery(`SELECT count(*)::int as count FROM investments WHERE status = 'active'`),
       db.rawQuery(
-        `SELECT id, name, wallet_balance, income_wallet FROM users WHERE role = 'user' AND activated_at IS NOT NULL ORDER BY id LIMIT 5`
+        `SELECT id, name, income_wallet FROM users WHERE role = 'user' AND activated_at IS NOT NULL ORDER BY id LIMIT 5`
       ),
       // ALL June payout transactions (paginated)
       db.rawQuery(
@@ -140,7 +140,7 @@ export default class DebugController {
         if (isIncome) {
           user.incomeWallet = Number(user.incomeWallet ?? 0) - amount
         } else {
-          user.walletBalance = Number(user.walletBalance ?? 0) - amount
+          user.repurchaseWallet = Number(user.repurchaseWallet ?? 0) - amount
         }
         await user.useTransaction(trx).save()
         await Transaction.create(

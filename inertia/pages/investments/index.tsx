@@ -8,10 +8,9 @@ import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card'
 import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
-import { Textarea } from '~/components/ui/textarea'
 import { Badge } from '~/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '~/components/ui/alert'
-import { formatCurrency, numberToWords } from '~/lib/utils'
+import { formatCurrency } from '~/lib/utils'
 import { formatDateWithRelative } from '~/lib/format'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { InformationCircleIcon } from '@hugeicons/core-free-icons'
@@ -63,25 +62,9 @@ export default function InvestmentsPage({
   distributions,
   isPayoutReleased,
 }: InvestmentPageProps) {
-  const investmentForm = useForm({
-    amount: '',
-    remark: '',
-  })
   const withdrawalForm = useForm({
     amount: '',
   })
-
-  const previewAmount = Number(investmentForm.data.amount || 0)
-  const previewReturn = previewAmount * (stats.monthlyReturnPercent / 100)
-  const previewIncome = previewReturn * (stats.incomeWalletPercent / 100)
-  const previewGold = previewReturn - previewIncome
-
-  const submitInvestment = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    investmentForm.post('/investments', {
-      onSuccess: () => investmentForm.reset(),
-    })
-  }
 
   const submitWithdrawal = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -135,105 +118,47 @@ export default function InvestmentsPage({
             </Card>
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Create Investment</CardTitle>
-                <CardDescription>
-                  Monthly return is {stats.monthlyReturnPercent}%. {stats.incomeWalletPercent}% goes
-                  to Cashback Wallet and {stats.goldWalletPercent}% goes to Gold Wallet.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={submitInvestment} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="investment-amount">Investment Amount</Label>
-                    <Input
-                      id="investment-amount"
-                      type="number"
-                      min="1"
-                      value={investmentForm.data.amount}
-                      onChange={(event) => investmentForm.setData('amount', event.target.value)}
-                      placeholder="100000"
-                    />
-                    {previewAmount > 0 && (
-                      <p className="text-xs text-muted-foreground">
-                        {numberToWords(previewAmount)}
-                      </p>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="investment-remark">Remark</Label>
-                    <Textarea
-                      id="investment-remark"
-                      value={investmentForm.data.remark}
-                      onChange={(event) => investmentForm.setData('remark', event.target.value)}
-                      placeholder="Optional note"
-                    />
-                  </div>
-                  <div className="rounded-lg border bg-muted/30 p-4 text-sm space-y-2">
-                    <div className="flex justify-between">
-                      <span>Monthly Return</span>
-                      <strong>{formatCurrency(previewReturn)}</strong>
-                    </div>
-                    <div className="flex justify-between text-green-600">
-                      <span>Cashback Wallet ({stats.incomeWalletPercent}%)</span>
-                      <strong>{formatCurrency(previewIncome)}</strong>
-                    </div>
-                    <div className="flex justify-between text-yellow-600">
-                      <span>Gold Wallet ({stats.goldWalletPercent}%)</span>
-                      <strong>{formatCurrency(previewGold)}</strong>
-                    </div>
-                  </div>
-                  <Button type="submit" disabled={investmentForm.processing || previewAmount <= 0}>
-                    {investmentForm.processing ? 'Creating...' : 'Create Investment'}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Withdraw Cashback Wallet</CardTitle>
-                <CardDescription>
-                  Cashback Wallet balance can be withdrawn to your approved bank account.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={submitWithdrawal} className="space-y-4">
-                  <div className="rounded-lg border bg-muted/30 p-4">
-                    <p className="text-sm text-muted-foreground">Available Cashback Wallet</p>
-                    <p className="text-2xl font-bold">{formatCurrency(stats.availableIncome)}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Pending and approved withdrawals are deducted from this balance.
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="withdraw-amount">Withdrawal Amount</Label>
-                    <Input
-                      id="withdraw-amount"
-                      type="number"
-                      min="1"
-                      max={stats.availableIncome}
-                      value={withdrawalForm.data.amount}
-                      onChange={(event) => withdrawalForm.setData('amount', event.target.value)}
-                    />
-                  </div>
-                  <Button
-                    type="submit"
-                    disabled={
-                      !isPayoutReleased ||
-                      withdrawalForm.processing ||
-                      Number(withdrawalForm.data.amount || 0) <= 0 ||
-                      Number(withdrawalForm.data.amount || 0) > stats.availableIncome
-                    }
-                  >
-                    {withdrawalForm.processing ? 'Submitting...' : 'Request Withdrawal'}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-          </div>
+          <Card className="max-w-xl">
+            <CardHeader>
+              <CardTitle>Withdraw Cashback Wallet</CardTitle>
+              <CardDescription>
+                Cashback Wallet balance can be withdrawn to your approved bank account.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={submitWithdrawal} className="space-y-4">
+                <div className="rounded-lg border bg-muted/30 p-4">
+                  <p className="text-sm text-muted-foreground">Available Cashback Wallet</p>
+                  <p className="text-2xl font-bold">{formatCurrency(stats.availableIncome)}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Pending and approved withdrawals are deducted from this balance.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="withdraw-amount">Withdrawal Amount</Label>
+                  <Input
+                    id="withdraw-amount"
+                    type="number"
+                    min="1"
+                    max={stats.availableIncome}
+                    value={withdrawalForm.data.amount}
+                    onChange={(event) => withdrawalForm.setData('amount', event.target.value)}
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  disabled={
+                    !isPayoutReleased ||
+                    withdrawalForm.processing ||
+                    Number(withdrawalForm.data.amount || 0) <= 0 ||
+                    Number(withdrawalForm.data.amount || 0) > stats.availableIncome
+                  }
+                >
+                  {withdrawalForm.processing ? 'Submitting...' : 'Request Withdrawal'}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader>

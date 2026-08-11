@@ -80,9 +80,6 @@ export default class User extends compose(BaseModel, AuthFinder, withTimestamps(
   declare state: IndianStatesEnum | null
 
   @column()
-  declare walletBalance: number
-
-  @column()
   declare incomeWallet: number
 
   @column()

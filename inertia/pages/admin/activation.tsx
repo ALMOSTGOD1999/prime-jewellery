@@ -6,7 +6,6 @@ import {
   Loading01Icon,
   CheckmarkCircle01Icon,
   UserCheck01Icon,
-  Wallet01Icon,
   Cancel01Icon,
 } from '@hugeicons/core-free-icons'
 
@@ -17,7 +16,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
-import { Badge } from '~/components/ui/badge'
 
 const ACTIVATION_OPTIONS = [1000]
 
@@ -26,7 +24,6 @@ interface SearchResult {
   name: string
   email: string
   phone: string
-  walletBalance: number
 }
 
 export default function ActivationPage() {
@@ -47,12 +44,14 @@ export default function ActivationPage() {
 
     setSearching(true)
     try {
-      const response = await fetch(`/wallet/search?q=${encodeURIComponent(query)}`)
+      const response = await fetch(
+        `/admin/users/lookup-users?search=${encodeURIComponent(query)}`
+      )
       const data = await response.json()
       if (data.error) {
         setSearchResults([])
       } else {
-        setSearchResults(data.data || [])
+        setSearchResults(data.users || [])
       }
     } catch {
       setSearchResults([])
@@ -175,9 +174,6 @@ export default function ActivationPage() {
                           ID: {user.id} · {user.email} · {user.phone}
                         </p>
                       </div>
-                      <Badge variant="secondary">
-                        ₹{user.walletBalance.toLocaleString('en-IN')}
-                      </Badge>
                     </button>
                   ))}
                 </div>
@@ -220,13 +216,6 @@ export default function ActivationPage() {
                     >
                       <HugeiconsIcon icon={Cancel01Icon} className="h-4 w-4" />
                     </Button>
-                  </div>
-                  <div className="mt-3 flex items-center gap-2">
-                    <HugeiconsIcon icon={Wallet01Icon} className="h-4 w-4 text-primary" />
-                    <span className="text-sm">
-                      Wallet Balance:{' '}
-                      <strong>₹{selectedUser.walletBalance.toLocaleString('en-IN')}</strong>
-                    </span>
                   </div>
                 </div>
 

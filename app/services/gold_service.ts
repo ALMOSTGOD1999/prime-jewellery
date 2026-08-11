@@ -5,7 +5,6 @@ import Purchase from '#models/purchase'
 import Investment from '#models/investment'
 import InvestmentPackage from '#models/investment_package'
 import PlatformConfig from '#models/platform_config'
-import WalletService from '#services/wallet_service'
 import CalculateAchievement from '#jobs/calculate_achievement'
 import { TransactionTypeEnum } from '#enums/transaction'
 
@@ -101,10 +100,7 @@ export default class GoldService {
       user.related('purchases').query().whereNotNull('rejectedAt').count('* as total').first(),
     ])
 
-    const balance = Number(user.walletBalance ?? 0)
-
     return {
-      balance,
       purchases,
       counts: {
         total:
@@ -118,6 +114,7 @@ export default class GoldService {
     }
   }
 
+<<<<<<< HEAD
   static async purchaseGold(
     user: User,
     data: {
@@ -169,6 +166,8 @@ export default class GoldService {
     return purchase
   }
 
+=======
+>>>>>>> 6762461a558949d70f9cb400d66b6cb40d61f877
   /**
    * Admin makes a gold purchase on behalf of a user.
    * Bypasses wallet balance check and records the transaction for audit.
