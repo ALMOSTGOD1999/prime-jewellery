@@ -8,6 +8,13 @@ import { ToWords } from 'to-words'
 import { IndianStatesEnum } from '#enums/settings'
 import GoldBillingConfig from '#services/gold_billing_config'
 
+// Company identity shown on invoices
+const COMPANY_NAME = 'Prime Jewellery'
+const COMPANY_GSTIN = '19AARCP2829A1ZA'
+const COMPANY_CIN = 'U47733WB2026PTC288847'
+const COMPANY_ADDRESS = 'Millenia, 1st Floor, Ramkrishna Pally, Kaikhali, Kolkata, West Bengal 700052'
+const COMPANY_LOGO_URL = 'https://cdn.imgchest.com/files/d7d2a3846fe3.jpeg'
+
 interface InvoiceData {
   slNo: string
   invoiceNo: string
@@ -191,6 +198,17 @@ export default class InvoiceService {
     pdf.setTitle(`Gold Purchase Invoice ${data.invoiceNo}`)
 
     const page = pdf.addPage({ size: 'a4' })
+
+    // Fetch and embed company logo (falls back to text-only header if unavailable)
+    let logoImage = null
+    try {
+      const logoResponse = await fetch(COMPANY_LOGO_URL)
+      const logoBytes = new Uint8Array(await logoResponse.arrayBuffer())
+      logoImage = pdf.embedPng(logoBytes)
+    } catch (error) {
+      console.error('Failed to load logo:', error)
+    }
+
     const { width, height } = page
     const margin = 44
     const gold = rgb(0.82, 0.58, 0.18)
@@ -206,22 +224,53 @@ export default class InvoiceService {
     const displayPercent = await this.getGoldBreakup()
     const r = displayPercent
 
-    page.drawRectangle({ x: 0, y: height - 118, width, height: 118, color: softGold })
-    page.drawRectangle({ x: 0, y: height - 122, width, height: 4, color: gold })
+    const headerHeight = 150
+    page.drawRectangle({
+      x: 0,
+      y: height - headerHeight,
+      width,
+      height: headerHeight,
+      color: softGold,
+    })
+    page.drawRectangle({ x: 0, y: height - headerHeight - 4, width, height: 4, color: gold })
 
-    page.drawText('Prime Jewellers', {
-      x: margin,
+    // Company identity: logo + name + GSTIN/CIN/address
+    if (logoImage) {
+      page.drawImage(logoImage, { x: margin, y: height - 58, width: 42, height: 42 })
+    }
+    page.drawText(COMPANY_NAME, {
+      x: margin + 54,
       y,
-      size: 28,
+      size: 26,
       font: 'Helvetica-Bold',
       color: dark,
     })
-    y -= 24
     page.drawText('Gold Purchase Invoice', {
-      x: margin,
-      y,
+      x: margin + 54,
+      y: y - 24,
       size: 13,
       font: 'Helvetica-Bold',
+      color: muted,
+    })
+    page.drawText(`GSTIN: ${COMPANY_GSTIN}`, {
+      x: margin + 54,
+      y: y - 46,
+      size: 9,
+      font: 'Helvetica',
+      color: muted,
+    })
+    page.drawText(`CIN: ${COMPANY_CIN}`, {
+      x: margin + 54,
+      y: y - 60,
+      size: 9,
+      font: 'Helvetica',
+      color: muted,
+    })
+    page.drawText(COMPANY_ADDRESS, {
+      x: margin + 54,
+      y: y - 74,
+      size: 8.5,
+      font: 'Helvetica',
       color: muted,
     })
     page.drawText(`Invoice No: ${data.invoiceNo}`, {
@@ -239,7 +288,7 @@ export default class InvoiceService {
       color: muted,
     })
 
-    y = height - 155
+    y = height - 172
     page.drawRectangle({
       x: margin,
       y: y - 78,
@@ -394,7 +443,7 @@ export default class InvoiceService {
       font: 'Helvetica-Bold',
       color: dark,
     })
-    page.drawText('Thank you for purchasing gold with Prime Jewellers.', {
+    page.drawText('Thank you for purchasing gold with Prime Jewellery.', {
       x: margin,
       y: 74,
       size: 9,
@@ -403,18 +452,6 @@ export default class InvoiceService {
     })
 
     return pdf.save()
-  }
-
-  private static async calculateGoldPurchaseBreakup(totalAmount: number) {
-    const rates = await this.getGoldBreakup()
-    return {
-      goldValue: totalAmount * rates.gold,
-      cgst: totalAmount * rates.cgst,
-      sgst: totalAmount * rates.sgst,
-      additionalCharges: totalAmount * rates.additional,
-      makingCharges: totalAmount * rates.making,
-      rates,
-    }
   }
 
   private static drawGoldPurchaseRow(
@@ -588,7 +625,7 @@ export default class InvoiceService {
     // Fetch and embed logo
     let logoImage = null
     try {
-      const logoUrl = 'https://cdn.imgchest.com/files/d7d2a3846fe3.jpeg'
+      const logoUrl = COMPANY_LOGO_URL
       const logoResponse = await fetch(logoUrl)
       const logoBytes = new Uint8Array(await logoResponse.arrayBuffer())
       logoImage = pdf.embedPng(logoBytes)
@@ -670,7 +707,7 @@ export default class InvoiceService {
     }
 
     // Company Name - larger font
-    page.drawText('PRIME JEWELLERY PRIVATE LIMITED', {
+    page.drawText(COMPANY_NAME, {
       x: width / 2 - 150,
       y: yPos,
       size: 18,
@@ -679,7 +716,7 @@ export default class InvoiceService {
 
     yPos -= 18
 
-    page.drawText('Unit of Hamare Sapne Marketing LLP', {
+    page.drawText(`CIN: ${COMPANY_CIN}`, {
       x: width / 2 - 110,
       y: yPos,
       size: 10,
@@ -697,7 +734,7 @@ export default class InvoiceService {
     width: number,
     margin: number
   ): number {
-    page.drawText('Address: Kolkata, West Bengal', {
+    page.drawText(`Address: ${COMPANY_ADDRESS}`, {
       x: margin,
       y: yPos,
       size: 9,
@@ -716,7 +753,7 @@ export default class InvoiceService {
     yPos -= 22
 
     // GST and PAN
-    const gstNumber = env.get('GST_NUMBER', '1234567890')
+    const gstNumber = COMPANY_GSTIN
     const panNumber = env.get('PAN_NUMBER', '1234567890')
     const currentDate = DateTime.now().toFormat('dd/MM/yyyy')
 
@@ -1321,7 +1358,7 @@ export default class InvoiceService {
       font: 'Helvetica',
     })
 
-    page.drawText('For PRIME JEWELLERY PRIVATE LIMITED', {
+    page.drawText('For PRIME JEWELLERY', {
       x: width - margin - 200,
       y: footerY + 20,
       size: 8,

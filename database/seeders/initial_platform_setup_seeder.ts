@@ -247,18 +247,23 @@ export default class extends BaseSeeder {
       },
     ])
 
-    // ─── Membership Level Income (10 levels) ───
+    // ─── Membership Level Income (15 levels) ───
     await MembershipLevelIncome.createMany([
       { level: 1, percentage: 10, isActive: true },
       { level: 2, percentage: 5, isActive: true },
-      { level: 3, percentage: 1, isActive: true },
+      { level: 3, percentage: 2, isActive: true },
       { level: 4, percentage: 1, isActive: true },
       { level: 5, percentage: 0.5, isActive: true },
       { level: 6, percentage: 0.5, isActive: true },
-      { level: 7, percentage: 1, isActive: true },
-      { level: 8, percentage: 0.5, isActive: true },
-      { level: 9, percentage: 0.5, isActive: true },
-      { level: 10, percentage: 0.5, isActive: true },
+      { level: 7, percentage: 0.25, isActive: true },
+      { level: 8, percentage: 0.25, isActive: true },
+      { level: 9, percentage: 0.25, isActive: true },
+      { level: 10, percentage: 0.25, isActive: true },
+      { level: 11, percentage: 0.1, isActive: true },
+      { level: 12, percentage: 0.1, isActive: true },
+      { level: 13, percentage: 0.1, isActive: true },
+      { level: 14, percentage: 0.1, isActive: true },
+      { level: 15, percentage: 0.1, isActive: true },
     ])
 
     // ─── Level Income System (24 levels, unlocked by direct referrals + team business) ───

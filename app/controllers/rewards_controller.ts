@@ -5,6 +5,7 @@ import { filterValidator, paginationValidator } from '#validators/common_validat
 import { DateTime } from 'luxon'
 import env from '#start/env'
 import { WithdrawlStatusEnum, WithdrawlTypeEnum } from '#enums/withdrawl'
+import { TransactionTypeEnum } from '#enums/transaction'
 import { WITHDRAWAL_DATES } from '#constants/withdrawal'
 
 export default class RewardsController {
@@ -388,6 +389,59 @@ export default class RewardsController {
 
   async rewardAwardPage({ inertia }: HttpContext) {
     return inertia.render('rewards/reward-award')
+  }
+
+  async membershipLevelIncomePage({ auth, inertia, request }: HttpContext) {
+    const user = auth.getUserOrFail()
+    const { page = 1, limit = 10 } = await paginationValidator.validate(request.qs())
+
+    const baseQuery = user
+      .related('transactions')
+      .query()
+      .where('type', TransactionTypeEnum.WALLET_CREDIT)
+      .where('remark', 'like', 'Membership Level Income %')
+      .orderBy('createdAt', 'desc')
+
+    const totalResult = await baseQuery.clone().sum('amount as total').first()
+    const totalIncome = Number(totalResult?.$extras.total ?? 0)
+
+    const paginated = await baseQuery.clone().paginate(page, limit)
+
+    const data = paginated.map((t) => {
+      const match = t.remark?.match(/\(Level (\d+)\) from (.+) \(ID (\d+)\)/)
+      return {
+        id: t.id,
+        date: t.createdAt
+          ? DateTime.fromJSDate(t.createdAt.toJSDate())
+              .setZone(env.get('TZ'))
+              .toFormat('dd-MM-yyyy')
+          : null,
+        level: match ? Number(match[1]) : null,
+        memberName: match ? match[2] : t.remark,
+        amount: t.amount,
+      }
+    })
+
+    return inertia.render('rewards/membership-level-income', {
+      membershipIncome: {
+        meta: {
+          total: paginated.total,
+          per_page: paginated.perPage,
+          current_page: paginated.currentPage,
+          last_page: paginated.lastPage,
+          first_page: 1,
+          first_page_url: '/?page=1',
+          last_page_url: `/?page=${paginated.lastPage}`,
+          next_page_url:
+            paginated.currentPage < paginated.lastPage
+              ? `/?page=${paginated.currentPage + 1}`
+              : null,
+          previous_page_url: paginated.currentPage > 1 ? `/?page=${paginated.currentPage - 1}` : null,
+        },
+        data,
+        stats: { totalIncome },
+      },
+    })
   }
 
   async levelIncomePage({ auth, inertia, request }: HttpContext) {

@@ -16,6 +16,14 @@ import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
 import { Badge } from '~/components/ui/badge'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '~/components/ui/select'
 import { formatCurrency } from '~/lib/utils'
 
 interface SearchResult {
@@ -33,12 +41,26 @@ interface GoldPackage {
   maxReturn: number
 }
 
+interface BillingRates {
+  rate18ct: number
+  rate22ct: number
+  rate24ct: number
+  jewelleryValuePercent: number
+  makingChargePercent: number
+  gstPercent: number
+  additionalChargePercent: number
+}
+
 // Default fallback slabs matching business rules
 const DEFAULT_PACKAGES: GoldPackage[] = [
   { name: 'Silver', minAmount: 10000, maxAmount: 199999, monthlyReward: 3, maxReturn: 100 },
   { name: 'Gold', minAmount: 200000, maxAmount: 499999, monthlyReward: 3.5, maxReturn: 100 },
   { name: 'Platinum', minAmount: 500000, maxAmount: null, monthlyReward: 4, maxReturn: 100 },
 ]
+
+const CARATS = ['18ct', '22ct', '24ct'] as const
+const MIN_PURCHASE_AMOUNT = 10000
+const r2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100
 
 function findPackage(packages: GoldPackage[], amount: number): GoldPackage | null {
   // Slabs are sorted by minAmount asc; find first slab where minAmount <= amount
@@ -52,7 +74,13 @@ function findPackage(packages: GoldPackage[], amount: number): GoldPackage | nul
   return null
 }
 
-export default function AdminPurchasePage({ goldPackages }: { goldPackages?: GoldPackage[] }) {
+export default function AdminPurchasePage({
+  goldPackages,
+  billingRates,
+}: {
+  goldPackages?: GoldPackage[]
+  billingRates?: BillingRates
+}) {
   const packages = useMemo(() => {
     if (goldPackages && goldPackages.length > 0) return goldPackages
     return DEFAULT_PACKAGES
@@ -63,12 +91,46 @@ export default function AdminPurchasePage({ goldPackages }: { goldPackages?: Gol
   const [selectedUser, setSelectedUser] = useState<SearchResult | null>(null)
 
   const purchaseForm = useForm({
-    amount: '',
+    carat: '22ct',
+    weight: '',
   })
 
-  const selectedAmount = Number(purchaseForm.data.amount)
+  // Auto-filled breakdown from the current admin-set gold rates (same formula as the user page)
+  const breakdown = useMemo(() => {
+    const grams = Number(purchaseForm.data.weight)
+    if (!billingRates || !grams || grams <= 0) return null
+
+    const rate =
+      purchaseForm.data.carat === '18ct'
+        ? billingRates.rate18ct
+        : purchaseForm.data.carat === '24ct'
+          ? billingRates.rate24ct
+          : billingRates.rate22ct
+
+    const goldValue = r2(grams * rate)
+    const investment = r2(goldValue / (billingRates.jewelleryValuePercent / 100))
+    const gstAmount = r2((goldValue * billingRates.gstPercent) / 100)
+    const additionalCharges = r2((goldValue * billingRates.additionalChargePercent) / 100)
+    const makingCharges = r2(investment - goldValue - gstAmount - additionalCharges)
+    const makingPercent = goldValue > 0 ? r2((makingCharges / goldValue) * 100) : 0
+
+    return {
+      rate,
+      goldValue,
+      investment,
+      gstAmount,
+      additionalCharges,
+      makingCharges,
+      makingPercent,
+    }
+  }, [purchaseForm.data.carat, purchaseForm.data.weight, billingRates])
+
+  const selectedAmount = breakdown ? breakdown.investment : 0
   const goldPackage =
-    selectedUser && selectedAmount >= 10000 ? findPackage(packages, selectedAmount) : null
+    selectedUser && selectedAmount >= MIN_PURCHASE_AMOUNT
+      ? findPackage(packages, selectedAmount)
+      : null
+  const belowMinimum = breakdown !== null && breakdown.investment < MIN_PURCHASE_AMOUNT
 
   const performSearch = useCallback(async (query: string) => {
     if (!query.trim()) {
@@ -106,13 +168,21 @@ export default function AdminPurchasePage({ goldPackages }: { goldPackages?: Gol
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!selectedUser) return
+    if (!selectedUser || !breakdown || belowMinimum) return
     purchaseForm.post(`/admin/users/${selectedUser.id}/purchase`, {
+      preserveScroll: true,
       onSuccess: () => {
-        purchaseForm.reset()
+        purchaseForm.setData('weight', '')
       },
     })
   }
+
+  const breakdownRow = (label: string, value: string, accent = false) => (
+    <div className="flex items-center justify-between py-1.5">
+      <span className="text-sm text-muted-foreground">{label}</span>
+      <span className={`text-sm font-medium ${accent ? 'text-primary' : ''}`}>{value}</span>
+    </div>
+  )
 
   return (
     <>
@@ -206,24 +276,94 @@ export default function AdminPurchasePage({ goldPackages }: { goldPackages?: Gol
                     </div>
                   </div>
 
-                  {/* Amount */}
-                  <div className="space-y-2">
-                    <Label htmlFor="purchase-amount">Purchase Amount (₹)</Label>
-                    <Input
-                      id="purchase-amount"
-                      type="number"
-                      min={10000}
-                      step="1"
-                      placeholder="Enter amount (min ₹10,000)"
-                      value={purchaseForm.data.amount}
-                      onChange={(e) => purchaseForm.setData('amount', e.target.value)}
-                    />
-                    {purchaseForm.errors.amount && (
-                      <p className="text-sm text-destructive">{purchaseForm.errors.amount}</p>
+                  {/* Carat + Weight */}
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="purchase-carat">Gold Carat</Label>
+                      <Select
+                        value={purchaseForm.data.carat}
+                        onValueChange={(val) => purchaseForm.setData('carat', val || '22ct')}
+                      >
+                        <SelectTrigger id="purchase-carat" className="w-full">
+                          <SelectValue placeholder="Select carat" className="capitalize" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectGroup>
+                            {CARATS.map((c) => (
+                              <SelectItem key={c} value={c}>
+                                {c.toUpperCase()}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="purchase-weight">Gold Weight (grams)</Label>
+                      <Input
+                        id="purchase-weight"
+                        type="number"
+                        min="0.001"
+                        step="0.001"
+                        inputMode="decimal"
+                        placeholder="e.g. 10.500"
+                        value={purchaseForm.data.weight}
+                        onChange={(e) => purchaseForm.setData('weight', e.target.value)}
+                      />
+                      {purchaseForm.errors.weight && (
+                        <p className="text-sm text-destructive">
+                          {purchaseForm.errors.weight}
+                        </p>
+                      )}
+                      {(purchaseForm.errors as any).amount && (
+                        <p className="text-sm text-destructive">
+                          {(purchaseForm.errors as any).amount}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Auto-filled breakdown */}
+                  <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+                    {breakdown ? (
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between border-b border-primary/10 pb-2">
+                          <span className="text-sm text-muted-foreground">
+                            Gold Rate ({purchaseForm.data.carat.toUpperCase()})
+                          </span>
+                          <span className="text-sm font-semibold">
+                            {formatCurrency(breakdown.rate)}/gm
+                          </span>
+                        </div>
+                        {breakdownRow(
+                          'Gold Value (Weight × Rate)',
+                          formatCurrency(breakdown.goldValue)
+                        )}
+                        {breakdownRow(
+                          'Making Charges',
+                          `${formatCurrency(breakdown.makingCharges)} (${breakdown.makingPercent}%)`
+                        )}
+                        {breakdownRow(
+                          'GST',
+                          `${formatCurrency(breakdown.gstAmount)} (${billingRates?.gstPercent}%)`
+                        )}
+                        {breakdownRow(
+                          'Additional Charges',
+                          `${formatCurrency(breakdown.additionalCharges)} (${billingRates?.additionalChargePercent}%)`
+                        )}
+                        <div className="flex items-center justify-between border-t border-primary/10 pt-2">
+                          <span className="text-sm font-semibold">Total Package</span>
+                          <span className="text-base font-bold text-primary">
+                            {formatCurrency(breakdown.investment)}
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="py-3 text-center text-sm text-muted-foreground">
+                        Enter a gold weight above to see the auto-filled breakdown.
+                      </p>
                     )}
-                    <p className="text-xs text-muted-foreground">
-                      Admin purchase — recorded directly against the user's investment.
-                    </p>
                   </div>
 
                   {/* Package Info */}
@@ -256,25 +396,31 @@ export default function AdminPurchasePage({ goldPackages }: { goldPackages?: Gol
                     </div>
                   )}
 
-                  {selectedAmount < 10000 && selectedAmount > 0 && (
-                    <p className="text-xs text-destructive">Minimum purchase amount is ₹10,000</p>
+                  {belowMinimum && (
+                    <p className="text-xs text-destructive">
+                      Minimum purchase amount is {formatCurrency(MIN_PURCHASE_AMOUNT)} — please
+                      enter a higher gold weight.
+                    </p>
                   )}
 
                   <Button
                     type="submit"
                     className="w-full"
                     size="lg"
-                    disabled={!goldPackage || purchaseForm.processing}
+                    disabled={!breakdown || belowMinimum || purchaseForm.processing}
                   >
                     {purchaseForm.processing ? (
                       <>
-                        <HugeiconsIcon icon={Loading01Icon} className="mr-2 h-4 w-4 animate-spin" />
+                        <HugeiconsIcon
+                          icon={Loading01Icon}
+                          className="mr-2 h-4 w-4 animate-spin"
+                        />
                         Processing...
                       </>
                     ) : (
                       <>
                         <HugeiconsIcon icon={ShoppingBag03Icon} className="mr-2 h-4 w-4" />
-                        Purchase ₹{formatCurrency(selectedAmount)} for {selectedUser.name}
+                        Purchase {formatCurrency(selectedAmount)} for {selectedUser.name}
                       </>
                     )}
                   </Button>

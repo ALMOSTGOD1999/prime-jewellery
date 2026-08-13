@@ -3,6 +3,7 @@ import { filterValidator, paginationValidator } from '#validators/common_validat
 import GoldService from '#services/gold_service'
 import GoldBillingConfig from '#services/gold_billing_config'
 import InvoiceService from '#services/invoice_service'
+import { purchaseRequestValidator } from '#validators/gold_validator'
 
 export default class GoldsController {
   async purchasePage({ auth, inertia, request }: HttpContext) {
@@ -56,6 +57,23 @@ export default class GoldsController {
         counts,
       },
     })
+  }
+
+  async storePurchase({ auth, request, response, session }: HttpContext) {
+    const user = auth.getUserOrFail()
+    const { carat, weight } = await request.validateUsing(purchaseRequestValidator)
+
+    try {
+      const purchase = await GoldService.createUserPurchaseRequest(user, { carat, weight })
+      session.flash(
+        'success',
+        `Gold purchase request of ₹${Number(purchase.amount).toLocaleString('en-IN')} submitted — awaiting admin approval`
+      )
+    } catch (error) {
+      session.flash('error', error.message)
+    }
+
+    return response.redirect().back()
   }
 
   async downloadPurchaseBill({ auth, params, response }: HttpContext) {

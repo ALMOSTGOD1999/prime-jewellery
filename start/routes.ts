@@ -92,6 +92,7 @@ const GoldController = () => import('#controllers/golds_controller')
 router
   .group(() => {
     router.get('purchase', [GoldController, 'purchasePage']).as('purchase.page')
+    router.post('purchase', [GoldController, 'storePurchase']).as('purchase.store')
     router.get('purchase/:id/bill', [GoldController, 'downloadPurchaseBill']).as('purchase.bill')
   })
   .use(middleware.auth())
@@ -137,6 +138,9 @@ router
     router.get('cashback', [RewardsController, 'cashbackPage']).as('cashback.page')
     router.get('salaries', [RewardsController, 'salaryPage']).as('salary.page')
     router.get('level-income', [RewardsController, 'levelIncomePage']).as('level.income.page')
+    router
+      .get('membership-level-income', [RewardsController, 'membershipLevelIncomePage'])
+      .as('membership.level.income.page')
     router.get('reward-award', [RewardsController, 'rewardAwardPage']).as('reward.award.page')
     router.get('withdrawal', [WithdrawalsController, 'index']).as('withdrawal.page')
 
@@ -278,6 +282,9 @@ router
         const investmentPackageModule = await import('#models/investment_package')
         const InvestmentPackage = investmentPackageModule.default
         const packages = await InvestmentPackage.getActivePackages()
+        const goldBillingConfigModule = await import('#services/gold_billing_config')
+        const GoldBillingConfig = goldBillingConfigModule.default
+        const billingRates = await GoldBillingConfig.getRates()
         return inertia.render('admin/purchase', {
           goldPackages: packages.map((p) => ({
             name: p.name,
@@ -286,6 +293,7 @@ router
             monthlyReward: Number(p.monthlyReturnPercent),
             maxReturn: Number(p.maxReturnPercent),
           })),
+          billingRates,
         })
       })
       .as('purchase.page')

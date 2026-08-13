@@ -1,6 +1,7 @@
 import Transaction from '#models/transaction'
 import User from '#models/user'
 import { TransactionTypeEnum } from '#enums/transaction'
+import MembershipLevelIncomeService from '#services/membership_level_income_service'
 import { DateTime } from 'luxon'
 import { attachmentManager } from '@jrmc/adonis-attachment'
 import db from '@adonisjs/lucid/services/db'
@@ -233,6 +234,11 @@ export default class TransactionService {
     }
     await transaction.save()
     await user.save()
+
+    // Grant one-time Membership Level Income to activated uplines (config-driven)
+    if (status === 'approved') {
+      await MembershipLevelIncomeService.grantForActivation(user)
+    }
   }
 
   static async requestActivation(user: User, data: { utr: string; proof: any }) {

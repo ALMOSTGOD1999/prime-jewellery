@@ -6,6 +6,7 @@ import Investment from '#models/investment'
 import InvestmentPackage from '#models/investment_package'
 import PlatformConfig from '#models/platform_config'
 import CalculateAchievement from '#jobs/calculate_achievement'
+import GoldBillingConfig from '#services/gold_billing_config'
 import { TransactionTypeEnum } from '#enums/transaction'
 
 export default class GoldService {
@@ -166,6 +167,74 @@ export default class GoldService {
     await this.ensureInvestmentForPurchase(purchase)
 
     return purchase
+  }
+
+  /**
+   * Admin makes a weight-based gold purchase on behalf of a user.
+   * Carat + weight are entered; every billing value is computed automatically
+   * from the current admin-set gold rates (GoldBillingConfig).
+   */
+  static async adminPurchaseGoldByWeight(
+    user: User,
+    data: { carat: string; weight: number },
+    adminId: number
+  ) {
+    const rates = await GoldBillingConfig.getRates()
+    const calc = GoldBillingConfig.calculate(rates, data.carat, data.weight)
+
+    if (calc.packageAmount < 10000) {
+      throw new Error('Minimum purchase amount is ₹10,000 — please enter a higher gold weight')
+    }
+
+    return this.adminPurchaseGold(
+      user,
+      {
+        amount: calc.packageAmount,
+        goldWeight: data.weight,
+        goldCarat: data.carat,
+        goldRate: calc.goldRate,
+        goldPrice: calc.goldValue,
+        makingCharges: calc.makingCharges,
+        gstAmount: calc.gstAmount,
+        hallmarkAdditional: calc.additionalCharges,
+        totalItems: 1,
+        remark: `Admin purchase by #${adminId} (${data.carat}, ${data.weight}g)`,
+      },
+      adminId
+    )
+  }
+
+  /**
+   * User submits a gold purchase request. Only weight (and carat) are entered;
+   * every other billing value is computed automatically from the current
+   * admin-set gold rates (GoldBillingConfig). The purchase stays pending until
+   * an admin approves it.
+   */
+  static async createUserPurchaseRequest(
+    user: User,
+    data: { carat: string; weight: number }
+  ): Promise<Purchase> {
+    const rates = await GoldBillingConfig.getRates()
+    const calc = GoldBillingConfig.calculate(rates, data.carat, data.weight)
+
+    if (calc.packageAmount < 10000) {
+      throw new Error('Minimum purchase amount is ₹10,000 — please enter a higher gold weight')
+    }
+
+    return user.related('purchases').create({
+      amount: calc.packageAmount,
+      buyerName: user.name,
+      quantity: data.weight,
+      goldWeight: data.weight,
+      goldCarat: data.carat,
+      goldRate: calc.goldRate,
+      goldPrice: calc.goldValue,
+      makingCharges: calc.makingCharges,
+      gstAmount: calc.gstAmount,
+      additionalCharges: calc.additionalCharges,
+      totalItems: 1,
+      remark: `Purchase request (${data.carat}, ${data.weight}g) — awaiting admin approval`,
+    })
   }
 
   static async getAdminPurchases(filters: {

@@ -324,19 +324,42 @@ export default class AdminUsersController {
   async makePurchase({ params, request, response, session, auth }: HttpContext) {
     const admin = auth.getUserOrFail()
     const user = await User.findOrFail(params.id)
-    const { amount } = request.only(['amount'])
-
-    if (!amount || amount <= 0) {
-      session.flash('errors.amount', 'Invalid amount')
-      return response.redirect().back()
-    }
+    const { amount, carat, weight } = request.only(['amount', 'carat', 'weight'])
 
     try {
-      await GoldService.adminPurchaseGold(user, { amount: Number(amount) }, admin.id)
-      session.flash(
-        'success',
-        `Gold purchase of ₹${Number(amount).toLocaleString('en-IN')} completed for ${user.name}`
-      )
+      if (carat && weight) {
+        // Weight-based purchase: billing computed from current admin-set gold rates
+        if (!['18ct', '22ct', '24ct'].includes(carat)) {
+          session.flash('errors.amount', 'Invalid gold carat')
+          return response.redirect().back()
+        }
+        if (Number(weight) <= 0) {
+          session.flash('errors.amount', 'Invalid gold weight')
+          return response.redirect().back()
+        }
+
+        await GoldService.adminPurchaseGoldByWeight(
+          user,
+          { carat, weight: Number(weight) },
+          admin.id
+        )
+        session.flash(
+          'success',
+          `Gold purchase of ${weight}g (${carat}) completed for ${user.name}`
+        )
+      } else {
+        // Amount-based purchase (legacy)
+        if (!amount || amount <= 0) {
+          session.flash('errors.amount', 'Invalid amount')
+          return response.redirect().back()
+        }
+
+        await GoldService.adminPurchaseGold(user, { amount: Number(amount) }, admin.id)
+        session.flash(
+          'success',
+          `Gold purchase of ₹${Number(amount).toLocaleString('en-IN')} completed for ${user.name}`
+        )
+      }
     } catch (error) {
       session.flash('errors.amount', error.message)
     }
