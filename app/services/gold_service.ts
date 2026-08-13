@@ -198,7 +198,7 @@ export default class GoldService {
         goldPrice: calc.goldValue,
         makingCharges: calc.makingCharges,
         gstAmount: calc.gstAmount,
-        hallmarkAdditional: calc.additionalCharges,
+        additionalCharges: calc.additionalCharges,
         totalItems: 1,
         remark: `Admin purchase by #${adminId} (${data.carat}, ${data.weight}g)`,
       },

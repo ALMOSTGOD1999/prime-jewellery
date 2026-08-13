@@ -284,11 +284,6 @@ router
         const goldBillingConfigModule = await import('#services/gold_billing_config')
         const GoldBillingConfig = goldBillingConfigModule.default
         const packages = await InvestmentPackage.getActivePackages()
-<<<<<<< HEAD
-        const goldBillingConfigModule = await import('#services/gold_billing_config')
-        const GoldBillingConfig = goldBillingConfigModule.default
-=======
->>>>>>> cbdf252db9f42396d2e491ac3c1f53caa070e4ac
         const billingRates = await GoldBillingConfig.getRates()
         return inertia.render('admin/purchase', {
           billingRates,
@@ -299,7 +294,6 @@ router
             monthlyReward: Number(p.monthlyReturnPercent),
             maxReturn: Number(p.maxReturnPercent),
           })),
-          billingRates,
         })
       })
       .as('purchase.page')

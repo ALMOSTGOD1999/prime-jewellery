@@ -107,7 +107,7 @@ export default class AdminUsersController {
       }
     }
 
-    // Create user (NOT auto-activated — admin must activate separately)
+    // Create user (NOT auto-activated ΓÇö admin must activate separately)
     const user = await User.create({
       name: data.name,
       email: data.email,
@@ -269,14 +269,14 @@ export default class AdminUsersController {
     if (Number(childrenCount?.$extras.total || 0) > 0) {
       session.flash(
         'error',
-        `Cannot delete ${user.name} — they have team members. Remove them first.`
+        `Cannot delete ${user.name} ΓÇö they have team members. Remove them first.`
       )
       return response.redirect().back()
     }
 
     const purchaseCount = await user.related('purchases').query().count('* as total').first()
     if (Number(purchaseCount?.$extras.total || 0) > 0) {
-      session.flash('error', `Cannot delete ${user.name} — they have purchase history.`)
+      session.flash('error', `Cannot delete ${user.name} ΓÇö they have purchase history.`)
       return response.redirect().back()
     }
 
@@ -299,7 +299,7 @@ export default class AdminUsersController {
    */
   async lookup({ params, response }: HttpContext) {
     const rawId = String(params.id)
-    // Strip prefix (e.g. PJ000135 → 000135)
+    // Strip prefix (e.g. PJ000135 ΓåÆ 000135)
     const cleanId = rawId.replace(/^[a-zA-Z]+/i, '')
     const userId = Number(cleanId)
     if (!userId) {
@@ -319,12 +319,11 @@ export default class AdminUsersController {
 
   /**
    * Admin makes a gold purchase on behalf of a user.
-   * No wallet deduction — the purchase is recorded directly as an admin-led transaction.
+   * No wallet deduction ΓÇö the purchase is recorded directly as an admin-led transaction.
    */
   async makePurchase({ params, request, response, session, auth }: HttpContext) {
     const admin = auth.getUserOrFail()
     const user = await User.findOrFail(params.id)
-<<<<<<< HEAD
     const { amount, carat, weight } = request.only(['amount', 'carat', 'weight'])
 
     try {
@@ -358,52 +357,9 @@ export default class AdminUsersController {
         await GoldService.adminPurchaseGold(user, { amount: Number(amount) }, admin.id)
         session.flash(
           'success',
-          `Gold purchase of ₹${Number(amount).toLocaleString('en-IN')} completed for ${user.name}`
+          `Gold purchase of Γé╣${Number(amount).toLocaleString('en-IN')} completed for ${user.name}`
         )
       }
-=======
-    const data = request.only([
-      'amount',
-      'goldWeight',
-      'goldCarat',
-      'goldRate',
-      'goldPrice',
-      'makingCharges',
-      'gstAmount',
-      'additionalCharges',
-      'hallmarkAdditional',
-      'totalItems',
-      'remark',
-    ])
-
-    const amount = Number(data.amount)
-
-    if (!amount || amount <= 0) {
-      session.flash('errors.amount', 'Invalid amount')
-      return response.redirect().back()
-    }
-
-    try {
-      await GoldService.adminPurchaseGold(user, {
-        amount,
-        goldWeight: data.goldWeight ? Number(data.goldWeight) : undefined,
-        goldCarat: data.goldCarat || undefined,
-        goldRate: data.goldRate ? Number(data.goldRate) : undefined,
-        goldPrice: data.goldPrice ? Number(data.goldPrice) : undefined,
-        makingCharges: data.makingCharges ? Number(data.makingCharges) : undefined,
-        gstAmount: data.gstAmount ? Number(data.gstAmount) : undefined,
-        additionalCharges: data.additionalCharges ? Number(data.additionalCharges) : undefined,
-        hallmarkAdditional: data.hallmarkAdditional
-          ? Number(data.hallmarkAdditional)
-          : undefined,
-        totalItems: data.totalItems ? Number(data.totalItems) : undefined,
-        remark: data.remark || undefined,
-      }, admin.id)
-      session.flash(
-        'success',
-        `Gold purchase of ₹${amount.toLocaleString('en-IN')} completed for ${user.name}`
-      )
->>>>>>> cbdf252db9f42396d2e491ac3c1f53caa070e4ac
     } catch (error) {
       session.flash('errors.amount', error.message)
     }
