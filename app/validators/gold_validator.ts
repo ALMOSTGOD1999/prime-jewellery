@@ -9,6 +9,7 @@ export const purchaseValidator = vine.compile(
     goldPrice: vine.number().min(0).optional(),
     makingCharges: vine.number().min(0).optional(),
     gstAmount: vine.number().min(0).optional(),
+    additionalCharges: vine.number().min(0).optional(),
     hallmarkAdditional: vine.number().min(0).optional(),
     totalItems: vine.number().min(1).optional(),
     remark: vine.string().maxLength(500).optional(),

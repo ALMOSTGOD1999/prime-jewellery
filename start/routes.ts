@@ -281,11 +281,17 @@ router
       .get('/purchase', async ({ inertia }) => {
         const investmentPackageModule = await import('#models/investment_package')
         const InvestmentPackage = investmentPackageModule.default
-        const packages = await InvestmentPackage.getActivePackages()
         const goldBillingConfigModule = await import('#services/gold_billing_config')
         const GoldBillingConfig = goldBillingConfigModule.default
+        const packages = await InvestmentPackage.getActivePackages()
+<<<<<<< HEAD
+        const goldBillingConfigModule = await import('#services/gold_billing_config')
+        const GoldBillingConfig = goldBillingConfigModule.default
+=======
+>>>>>>> cbdf252db9f42396d2e491ac3c1f53caa070e4ac
         const billingRates = await GoldBillingConfig.getRates()
         return inertia.render('admin/purchase', {
+          billingRates,
           goldPackages: packages.map((p) => ({
             name: p.name,
             minAmount: Number(p.minAmount),

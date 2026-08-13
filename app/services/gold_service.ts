@@ -129,6 +129,7 @@ export default class GoldService {
       goldPrice?: number
       makingCharges?: number
       gstAmount?: number
+      additionalCharges?: number
       hallmarkAdditional?: number
       totalItems?: number
       remark?: string
@@ -150,6 +151,7 @@ export default class GoldService {
       makingCharges: data.makingCharges ?? null,
       gstAmount: data.gstAmount ?? null,
       hallmarkCharges: data.hallmarkAdditional ?? null,
+      additionalCharges: data.additionalCharges ?? null,
       totalItems: data.totalItems ?? null,
       remark: data.remark ?? `Admin purchase by #${adminId}`,
     })
