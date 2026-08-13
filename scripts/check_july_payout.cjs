@@ -1,169 +1,95 @@
 const { Client } = require('pg')
-const fs = require('fs')
 require('dotenv').config()
 
-const outFile = 'scripts/july_payout_out.txt'
-fs.writeFileSync(outFile, '')
-const log = (...a) => {
-  fs.appendFileSync(outFile, a.join(' ') + '\n')
-  console.log(...a)
-}
-
-const ids = [
-  63896, 67819, 139063, 150228, 245303, 278356, 331062, 499862, 533697, 617173, 644117, 698847,
-  698875, 722361, 776339, 780949, 932914, 5937652, 7943738, 884535, 236641, 18168, 426687, 165958,
-  295975,
-]
-
-const fmt = (n) =>
-  n === null || n === undefined
-    ? '—'
-    : Number(n).toLocaleString('en-IN', { maximumFractionDigits: 2 })
+// July 2026 payout check (read-only) for all eligible users.
+// For every user with income_wallet > 0 OR with any July/MLI income:
+//   expected = July distribution income (rule-B, ALREADY includes top-ups)
+//            + MLI credits   (do NOT add top-ups separately - rows were updated
+//              to rule-B which equals original credit + top-up)
+//   leftover = stored - expected  (should be 0; June leftovers show as > 0)
 
 async function main() {
   const client = new Client({ connectionString: process.env.DATABASE_URL })
   await client.connect()
 
-  // 1. Payout month configs
-  const cfg = await client.query(
-    `SELECT key, value, updated_at FROM platform_configs
-     WHERE key IN ('income_wallet_payout_month', 'working_wallet_payout_month')`
+  // July period distributions (paid, income side, rule-B stored values)
+  const july = await client.query(
+    `SELECT d.user_id, SUM(d.income_amount)::float AS july_income
+     FROM investment_return_distributions d
+     WHERE d.period_month = '2026-07-01' AND d.paid_out_at IS NOT NULL
+     GROUP BY d.user_id`
   )
-  log('\n=== PAYOUT CONFIG (platform_configs) ===')
-  for (const c of cfg.rows) {
-    log(`${c.key} = ${c.value}  (updated ${c.updated_at})`)
-  }
 
-  // 2. Users
+  // July top-ups (31-day rule correction, income side)
+  const topups = await client.query(
+    `SELECT user_id, SUM(amount)::float AS topup_income
+     FROM transactions
+     WHERE type = 'wallet_credit'
+       AND remark LIKE 'Cashback wallet top-up (70%) for July 2026%'
+     GROUP BY user_id`
+  )
+
+  // MLI credits (one-time membership level income)
+  const mli = await client.query(
+    `SELECT user_id, SUM(amount)::float AS mli_total, COUNT(*)::int AS mli_count
+     FROM transactions
+     WHERE type = 'wallet_credit' AND remark LIKE 'Membership Level Income %'
+     GROUP BY user_id`
+  )
+
+  const julyMap = new Map(july.rows.map((r) => [r.user_id, Number(r.july_income)]))
+  const topupMap = new Map(topups.rows.map((r) => [r.user_id, Number(r.topup_income)]))
+  const mliMap = new Map(mli.rows.map((r) => [r.user_id, { total: Number(r.mli_total), count: r.mli_count }]))
+
+  const allIds = new Set([...julyMap.keys(), ...topupMap.keys(), ...mliMap.keys()])
+
   const users = await client.query(
-    `SELECT id, name, status, income_wallet, working_wallet, repurchase_wallet
-     FROM users WHERE id = ANY($1)`,
-    [ids]
+    `SELECT id, name, income_wallet FROM users WHERE id = ANY($1::int[])`,
+    [[...allIds]]
   )
-  const userMap = new Map(users.rows.map((u) => [u.id, u]))
-  log(`\n=== USERS FOUND: ${users.rows.length}/${ids.length} ===`)
+  const balMap = new Map(users.rows.map((r) => [r.id, { name: r.name, bal: Number(r.income_wallet) }]))
 
-  // 3. July investment return distributions (income/cashback payout)
-  const dists = await client.query(
-    `SELECT * FROM investment_return_distributions
-     WHERE user_id = ANY($1) AND period_month = '2026-07-01'
-     ORDER BY user_id`,
-    [ids]
+  console.log('=== JULY 2026 PAYOUT + MLI CHECK (all eligible users) ===')
+  console.log(
+    'user_id | name | july | topup(info) | mli | expected | stored | leftover'
   )
-  const distMap = new Map()
-  for (const d of dists.rows) {
-    if (!distMap.has(d.user_id)) distMap.set(d.user_id, [])
-    distMap.get(d.user_id).push(d)
-  }
 
-  // 4. July monthly income snapshots (working payout)
-  const snaps = await client.query(
-    `SELECT * FROM monthly_income_snapshots
-     WHERE user_id = ANY($1) AND month = '2026-07-01'
-     ORDER BY user_id`,
-    [ids]
-  )
-  const snapMap = new Map()
-  for (const s of snaps.rows) {
-    if (!snapMap.has(s.user_id)) snapMap.set(s.user_id, [])
-    snapMap.get(s.user_id).push(s)
-  }
+  let totJuly = 0, totTopup = 0, totMli = 0, totExpected = 0, totStored = 0
+  const flagged = []
 
-  // 5. July wallet credit transactions
-  const txns = await client.query(
-    `SELECT id, user_id, amount, remark, approved_at, created_at
-     FROM transactions
-     WHERE user_id = ANY($1) AND type = 'wallet_credit'
-       AND remark ILIKE '%July 2026%'
-     ORDER BY user_id, created_at`,
-    [ids]
-  )
-  const txnMap = new Map()
-  for (const t of txns.rows) {
-    if (!txnMap.has(t.user_id)) txnMap.set(t.user_id, [])
-    txnMap.get(t.user_id).push(t)
-  }
-
-  // 6. July wallet debit / reversal transactions
-  const debits = await client.query(
-    `SELECT id, user_id, amount, remark, approved_at, created_at
-     FROM transactions
-     WHERE user_id = ANY($1) AND type = 'wallet_debit'
-       AND (remark ILIKE '%July 2026%' OR remark ILIKE '%REVERSAL%')
-     ORDER BY user_id, created_at`,
-    [ids]
-  )
-  const debitMap = new Map()
-  for (const d of debits.rows) {
-    if (!debitMap.has(d.user_id)) debitMap.set(d.user_id, [])
-    debitMap.get(d.user_id).push(d)
-  }
-
-  log('\n=== PER-USER JULY 2026 PAYOUT STATUS ===')
-  for (const id of ids) {
-    const u = userMap.get(id)
-    const name = u ? u.name : '(NOT FOUND)'
-    log(`\nPJ${String(id).padStart(6, '0')}  ${name}`)
-    if (!u) continue
-
-    const userDists = distMap.get(id) || []
-    const userSnaps = snapMap.get(id) || []
-    const userTxns = txnMap.get(id) || []
-    const userDebits = debitMap.get(id) || []
-
-    if (userDists.length === 0) {
-      log('  Income (cashback)  : NO distribution record for July 2026')
-    } else {
-      for (const d of userDists) {
-        const paid = d.paid_out_at ? 'PAID' : 'NOT PAID'
-        log(
-          `  Income (cashback)  : ${paid} — return ₹${fmt(d.return_amount)} → income ₹${fmt(d.income_amount)} + gold ₹${fmt(d.gold_amount)}` +
-            (d.paid_out_at ? ` at ${d.paid_out_at}` : '')
-        )
-      }
+  for (const id of [...allIds].sort((a, b) => a - b)) {
+    const j = julyMap.get(id) || 0
+    const t = topupMap.get(id) || 0
+    const m = mliMap.get(id)?.total || 0
+    const expected = j + m // topups are already inside the July row value
+    const u = balMap.get(id)
+    if (!u) {
+      flagged.push({ id, expected, stored: null, diff: null, name: 'NO USER ROW' })
+      continue
     }
-
-    if (userSnaps.length === 0) {
-      log('  Working wallet     : NO snapshot record for July 2026')
-    } else {
-      for (const s of userSnaps) {
-        const paid = s.paid_out_at ? 'PAID' : 'NOT PAID'
-        log(
-          `  Working wallet     : ${paid} — gross ₹${fmt(s.gross_amount)} → income ₹${fmt(s.income_wallet_amount)} + repurchase ₹${fmt(s.repurchase_wallet_amount)}` +
-            (s.paid_out_at ? ` at ${s.paid_out_at}` : '')
-        )
-      }
-    }
-
-    if (userTxns.length === 0) {
-      log('  Wallet credits     : NONE for July 2026')
-    } else {
-      for (const t of userTxns) {
-        log(
-          `  Wallet credit      : +₹${fmt(t.amount)}  txn#${t.id}  "${t.remark}"  (${t.created_at})`
-        )
-      }
-    }
-
-    if (userDebits.length === 0) {
-      log('  Wallet debits/rev  : NONE for July 2026')
-    } else {
-      for (const t of userDebits) {
-        log(
-          `  Wallet debit/rev   : -₹${fmt(t.amount)}  txn#${t.id}  "${t.remark}"  (${t.created_at})`
-        )
-      }
-    }
-
-    log(
-      `  Balances           : income ₹${fmt(u.income_wallet)} | working ₹${fmt(u.working_wallet)} | repurchase ₹${fmt(u.repurchase_wallet)}`
+    const stored = u.bal
+    const diff = Math.round((stored - expected) * 100) / 100
+    totJuly += j; totTopup += t; totMli += m; totExpected += expected; totStored += stored
+    const flag = Math.abs(diff) > 0.01
+    console.log(
+      `#${id} | ${(u.name || '').padEnd(20)} | ${j.toFixed(2).padStart(9)} | ${t.toFixed(2).padStart(10)} | ${m.toFixed(2).padStart(8)} | ${expected.toFixed(2).padStart(10)} | ${stored.toFixed(2).padStart(10)} | ${diff.toFixed(2).padStart(9)}${flag ? '   <-- FLAG' : ''}`
     )
+    if (flag) flagged.push({ id, name: u.name, expected, stored, diff })
+  }
+
+  console.log('\n=== TOTALS ===')
+  console.log(
+    `July income ${totJuly.toFixed(2)} | top-up ${totTopup.toFixed(2)} | MLI ${totMli.toFixed(2)} | expected ${totExpected.toFixed(2)} | stored ${totStored.toFixed(2)} | diff ${(totStored - totExpected).toFixed(2)}`
+  )
+  console.log(`\nFlagged (diff > 0.01): ${flagged.length}`)
+  for (const f of flagged) {
+    console.log(`  #${f.id} ${f.name || ''} expected ${f.expected?.toFixed(2)} stored ${f.stored?.toFixed(2)} diff ${f.diff?.toFixed(2)}`)
   }
 
   await client.end()
 }
 
 main().catch((e) => {
-  log('ERROR:', e.message)
-  process.exit(1)
+  console.error(e.message)
+  process.exitCode = 1
 })
