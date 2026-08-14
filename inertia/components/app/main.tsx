@@ -1,12 +1,8 @@
-import { Link } from '@inertiajs/react'
-import { route } from '@izzyjs/route/client'
-
 import type React from 'react'
 
 import { cn } from '~/lib/utils'
 import { Alert, AlertDescription, AlertTitle } from '~/components/ui/alert'
 import useUser from '~/hooks/use-user'
-import { Button } from '~/components/ui/button'
 
 import { UserRoleEnum } from '#enums/user'
 
@@ -27,21 +23,19 @@ export const Main = ({ fixed, className, children, ...props }: MainProps) => {
       )}
       {...props}
     >
-      {!user.activatedAt &&
-        user.role === UserRoleEnum.USER &&
-        !route().current('settings.activate.page') && (
-          <Alert variant="destructive" className="mb-4 flex items-center justify-between rounded-lg bg-destructive/10 border-destructive/30">
-            <div>
-              <AlertTitle className="text-destructive font-semibold">Account Not Active</AlertTitle>
-              <AlertDescription className="text-destructive/80">
-                Please activate your account to access all features.
-              </AlertDescription>
-            </div>
-            <Button variant="outline" size="sm" className="border-destructive/50 text-destructive hover:bg-destructive/10">
-              <Link href={route('settings.activate.page')}>Activate Now</Link>
-            </Button>
-          </Alert>
-        )}
+      {!user.activatedAt && user.role === UserRoleEnum.USER && (
+        <Alert
+          variant="destructive"
+          className="mb-4 flex items-center justify-between rounded-lg bg-destructive/10 border-destructive/30"
+        >
+          <div>
+            <AlertTitle className="text-destructive font-semibold">Account Not Active</AlertTitle>
+            <AlertDescription className="text-destructive/80">
+              Your account is pending activation by the admin. Some features are limited until then.
+            </AlertDescription>
+          </div>
+        </Alert>
+      )}
       {children}
     </main>
   )
