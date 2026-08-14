@@ -15,3 +15,11 @@ export const purchaseValidator = vine.compile(
     remark: vine.string().maxLength(500).optional(),
   })
 )
+
+/** User-facing purchase request: only weight + carat are entered by the user. */
+export const purchaseRequestValidator = vine.compile(
+  vine.object({
+    carat: vine.string().in(['18ct', '22ct', '24ct']),
+    weight: vine.number().min(0.001).max(1000),
+  })
+)

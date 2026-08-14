@@ -6,7 +6,6 @@ import {
   Loading01Icon,
   ShoppingBag03Icon,
   Cancel01Icon,
-  RupeeCircleIcon,
 } from '@hugeicons/core-free-icons'
 
 import AppLayout from '~/components/app/layout'
@@ -17,6 +16,14 @@ import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
 import { Badge } from '~/components/ui/badge'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '~/components/ui/select'
 import { formatCurrency } from '~/lib/utils'
 
 interface SearchResult {
@@ -51,21 +58,9 @@ const DEFAULT_PACKAGES: GoldPackage[] = [
   { name: 'Platinum', minAmount: 500000, maxAmount: null, monthlyReward: 4, maxReturn: 100 },
 ]
 
-const DEFAULT_RATES: BillingRates = {
-  rate18ct: 5200,
-  rate22ct: 6200,
-  rate24ct: 6800,
-  jewelleryValuePercent: 70,
-  makingChargePercent: 37.85,
-  gstPercent: 3,
-  additionalChargePercent: 2,
-}
-
-const CARAT_OPTIONS = [
-  { value: '18ct', label: '18 CT' },
-  { value: '22ct', label: '22 CT' },
-  { value: '24ct', label: '24 CT' },
-]
+const CARATS = ['18ct', '22ct', '24ct'] as const
+const MIN_PURCHASE_AMOUNT = 10000
+const r2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100
 
 function findPackage(packages: GoldPackage[], amount: number): GoldPackage | null {
   // Slabs are sorted by minAmount asc; find first slab where minAmount <= amount
@@ -80,13 +75,12 @@ function findPackage(packages: GoldPackage[], amount: number): GoldPackage | nul
 }
 
 export default function AdminPurchasePage({
-  billingRates: billingRatesProp,
   goldPackages,
+  billingRates,
 }: {
-  billingRates?: BillingRates
   goldPackages?: GoldPackage[]
+  billingRates?: BillingRates
 }) {
-  const billingRates = billingRatesProp ?? DEFAULT_RATES
   const packages = useMemo(() => {
     if (goldPackages && goldPackages.length > 0) return goldPackages
     return DEFAULT_PACKAGES
@@ -97,94 +91,46 @@ export default function AdminPurchasePage({
   const [selectedUser, setSelectedUser] = useState<SearchResult | null>(null)
 
   const purchaseForm = useForm({
-    amount: '',
-    goldCarat: '22ct',
-    goldWeight: '',
-    goldRate: 0,
-    goldPrice: 0,
-    makingCharges: 0,
-    gstAmount: 0,
-    additionalCharges: 0,
-    totalItems: '1',
-    remark: '',
+    carat: '22ct',
+    weight: '',
   })
 
-  const [calculation, setCalculation] = useState({
-    goldRate: billingRates.rate22ct,
-    goldValue: 0,
-    investment: 0,
-    jewelleryValue: 0,
-    makingCharges: 0,
-    makingChargePercent: 0,
-    gstAmount: 0,
-    additionalCharges: 0,
-    packageAmount: 0,
-  })
-
-  // Auto-calculate whenever carat or weight changes
-  useEffect(() => {
-    const weight = Number(purchaseForm.data.goldWeight)
-    const carat = purchaseForm.data.goldCarat
-
-    if (!weight || weight <= 0 || !carat) {
-      setCalculation({
-        goldRate: 0,
-        goldValue: 0,
-        investment: 0,
-        jewelleryValue: 0,
-        makingCharges: 0,
-        makingChargePercent: 0,
-        gstAmount: 0,
-        additionalCharges: 0,
-        packageAmount: 0,
-      })
-      purchaseForm.setData('amount', '')
-      return
-    }
+  // Auto-filled breakdown from the current admin-set gold rates (same formula as the user page)
+  const breakdown = useMemo(() => {
+    const grams = Number(purchaseForm.data.weight)
+    if (!billingRates || !grams || grams <= 0) return null
 
     const rate =
-      carat === '18ct'
+      purchaseForm.data.carat === '18ct'
         ? billingRates.rate18ct
-        : carat === '24ct'
+        : purchaseForm.data.carat === '24ct'
           ? billingRates.rate24ct
           : billingRates.rate22ct
 
-    // Gold Value = Weight × Rate
-    const goldValue = rate * weight
+    const goldValue = r2(grams * rate)
+    const investment = r2(goldValue / (billingRates.jewelleryValuePercent / 100))
+    const gstAmount = r2((goldValue * billingRates.gstPercent) / 100)
+    const additionalCharges = r2((goldValue * billingRates.additionalChargePercent) / 100)
+    const makingCharges = r2(investment - goldValue - gstAmount - additionalCharges)
+    const makingPercent = goldValue > 0 ? r2((makingCharges / goldValue) * 100) : 0
 
-    // Investment (Total Package) = Gold Value ÷ (jewelleryValuePercent / 100)
-    const investment = goldValue / (billingRates.jewelleryValuePercent / 100)
+    return {
+      rate,
+      goldValue,
+      investment,
+      gstAmount,
+      additionalCharges,
+      makingCharges,
+      makingPercent,
+    }
+  }, [purchaseForm.data.carat, purchaseForm.data.weight, billingRates])
 
-    // GST & Additional are calculated on Gold Value only
-    const gstAmount = (goldValue * billingRates.gstPercent) / 100
-    const additionalCharges = (goldValue * billingRates.additionalChargePercent) / 100
-
-    // Making Charge is the remainder so that Total = Investment
-    const makingCharges = investment - goldValue - gstAmount - additionalCharges
-    const makingChargePercent = goldValue > 0 ? (makingCharges / goldValue) * 100 : 0
-
-    // Total Package = Investment (they are now the same)
-    const packageAmount = investment
-
-    const r = (n: number) => Math.round(n * 100) / 100
-
-    setCalculation({
-      goldRate: rate,
-      goldValue: r(goldValue),
-      investment: r(investment),
-      jewelleryValue: r(goldValue),
-      makingCharges: r(makingCharges),
-      makingChargePercent: r(makingChargePercent),
-      gstAmount: r(gstAmount),
-      additionalCharges: r(additionalCharges),
-      packageAmount: r(packageAmount),
-    })
-    purchaseForm.setData('amount', String(r(packageAmount)))
-  }, [purchaseForm.data.goldWeight, purchaseForm.data.goldCarat])
-
-  const selectedAmount = Number(purchaseForm.data.amount)
+  const selectedAmount = breakdown ? breakdown.investment : 0
   const goldPackage =
-    selectedUser && selectedAmount >= 10000 ? findPackage(packages, selectedAmount) : null
+    selectedUser && selectedAmount >= MIN_PURCHASE_AMOUNT
+      ? findPackage(packages, selectedAmount)
+      : null
+  const belowMinimum = breakdown !== null && breakdown.investment < MIN_PURCHASE_AMOUNT
 
   const performSearch = useCallback(async (query: string) => {
     if (!query.trim()) {
@@ -222,19 +168,21 @@ export default function AdminPurchasePage({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!selectedUser) return
-    // Set calculated gold billing values before submitting
-    purchaseForm.setData('goldRate', calculation.goldRate)
-    purchaseForm.setData('goldPrice', calculation.goldValue)
-    purchaseForm.setData('makingCharges', calculation.makingCharges)
-    purchaseForm.setData('gstAmount', calculation.gstAmount)
-    purchaseForm.setData('additionalCharges', calculation.additionalCharges)
+    if (!selectedUser || !breakdown || belowMinimum) return
     purchaseForm.post(`/admin/users/${selectedUser.id}/purchase`, {
+      preserveScroll: true,
       onSuccess: () => {
-        purchaseForm.reset()
+        purchaseForm.setData('weight', '')
       },
     })
   }
+
+  const breakdownRow = (label: string, value: string, accent = false) => (
+    <div className="flex items-center justify-between py-1.5">
+      <span className="text-sm text-muted-foreground">{label}</span>
+      <span className={`text-sm font-medium ${accent ? 'text-primary' : ''}`}>{value}</span>
+    </div>
+  )
 
   return (
     <>
@@ -282,7 +230,7 @@ export default function AdminPurchasePage({
                       <div>
                         <p className="font-medium text-sm">{user.name}</p>
                         <p className="text-xs text-muted-foreground">
-                          ID: {user.id} · {user.email} · {user.phone}
+                          ID: {user.id} ┬╖ {user.email} ┬╖ {user.phone}
                         </p>
                       </div>
                     </button>
@@ -328,161 +276,94 @@ export default function AdminPurchasePage({
                     </div>
                   </div>
 
-                  {/* Billing Section — Fully Automatic */}
-                  <div className="space-y-4 rounded-lg border border-primary/20 bg-primary/5 p-4">
-                    <div className="flex items-center gap-2">
-                      <HugeiconsIcon icon={RupeeCircleIcon} className="h-5 w-5 text-primary" />
-                      <div>
-                        <p className="font-semibold text-sm">Billing Details</p>
-                        <p className="text-xs text-muted-foreground">
-                          Enter gold weight — all values calculate automatically using today's
-                          admin-configured rate
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Gold Carat */}
-                    <div className="space-y-2">
-                      <Label>Gold Carat</Label>
-                      <div className="flex flex-wrap gap-3">
-                        {CARAT_OPTIONS.map((carat) => (
-                          <button
-                            key={carat.value}
-                            type="button"
-                            onClick={() => purchaseForm.setData('goldCarat', carat.value)}
-                            className={`px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
-                              purchaseForm.data.goldCarat === carat.value
-                                ? 'border-primary bg-primary/10 text-primary'
-                                : 'border-border hover:border-primary/40'
-                            }`}
-                          >
-                            {carat.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Gold Weight — Only Input */}
-                    <div className="space-y-2 max-w-sm">
-                      <Label htmlFor="gold-weight">
-                        Gold Weight (grams) <span className="text-primary">*</span>
-                      </Label>
-                      <div className="relative">
-                        <Input
-                          id="gold-weight"
-                          type="number"
-                          step="0.001"
-                          min="0"
-                          value={purchaseForm.data.goldWeight}
-                          onChange={(e) => purchaseForm.setData('goldWeight', e.target.value)}
-                          placeholder="Enter weight in grams"
-                          className="pr-12 text-lg"
-                        />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-medium">
-                          gm
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Auto-calculated Summary */}
-                    {calculation.goldValue > 0 && (
-                      <div className="rounded-lg border-2 border-primary/20 bg-background/40 p-4 space-y-3">
-                        <div className="flex items-center justify-between py-1 border-b border-border/50">
-                          <span className="text-sm text-muted-foreground">
-                            Today's Gold Rate (per gram)
-                          </span>
-                          <span className="text-sm font-mono font-semibold">
-                            ₹{calculation.goldRate.toLocaleString('en-IN')}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between py-1 border-b border-border/50">
-                          <span className="text-sm text-muted-foreground">
-                            Gold Value ({purchaseForm.data.goldWeight}g × ₹
-                            {calculation.goldRate.toLocaleString('en-IN')})
-                          </span>
-                          <span className="text-sm font-mono font-semibold">
-                            ₹{formatCurrency(calculation.goldValue)}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between py-1 border-b border-border/50">
-                          <span className="text-sm text-muted-foreground">Making Charge</span>
-                          <span className="text-sm font-mono">
-                            ₹{formatCurrency(calculation.makingCharges)}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between py-1 border-b border-border/50">
-                          <span className="text-sm text-muted-foreground">GST</span>
-                          <span className="text-sm font-mono">
-                            ₹{formatCurrency(calculation.gstAmount)}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between py-1 border-b border-border/50">
-                          <span className="text-sm text-muted-foreground">Additional Charge</span>
-                          <span className="text-sm font-mono">
-                            ₹{formatCurrency(calculation.additionalCharges)}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between py-1 border-b border-border/50">
-                          <span className="text-sm text-muted-foreground">Gold Jewellery Value</span>
-                          <span className="text-sm font-mono font-semibold text-primary">
-                            ₹{formatCurrency(calculation.jewelleryValue)}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between pt-2 border-t-2 border-primary/30">
-                          <span className="text-base font-bold text-foreground">
-                            Total Package Amount
-                          </span>
-                          <span className="text-lg font-bold text-primary tracking-tight">
-                            ₹{formatCurrency(calculation.packageAmount)}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Amount (auto-filled) */}
-                  <div className="space-y-2">
-                    <Label htmlFor="purchase-amount">Purchase Amount (₹)</Label>
-                    <Input
-                      id="purchase-amount"
-                      type="number"
-                      min={10000}
-                      step="1"
-                      placeholder="Auto-calculated from gold weight"
-                      value={purchaseForm.data.amount}
-                      onChange={(e) => purchaseForm.setData('amount', e.target.value)}
-                    />
-                    {purchaseForm.errors.amount && (
-                      <p className="text-sm text-destructive">{purchaseForm.errors.amount}</p>
-                    )}
-                    <p className="text-xs text-muted-foreground">
-                      Auto-calculated from weight. Admin purchase — recorded directly against the
-                      user's investment, no wallet deduction.
-                    </p>
-                  </div>
-
-                  {/* Items & Remarks */}
+                  {/* Carat + Weight */}
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="total-items">Total Jewellery Items</Label>
-                      <Input
-                        id="total-items"
-                        type="number"
-                        min="1"
-                        value={purchaseForm.data.totalItems}
-                        onChange={(e) => purchaseForm.setData('totalItems', e.target.value)}
-                        placeholder="Number of jewellery pieces"
-                      />
+                      <Label htmlFor="purchase-carat">Gold Carat</Label>
+                      <Select
+                        value={purchaseForm.data.carat}
+                        onValueChange={(val) => purchaseForm.setData('carat', val || '22ct')}
+                      >
+                        <SelectTrigger id="purchase-carat" className="w-full">
+                          <SelectValue placeholder="Select carat" className="capitalize" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectGroup>
+                            {CARATS.map((c) => (
+                              <SelectItem key={c} value={c}>
+                                {c.toUpperCase()}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
                     </div>
+
                     <div className="space-y-2">
-                      <Label htmlFor="remark">Remarks</Label>
+                      <Label htmlFor="purchase-weight">Gold Weight (grams)</Label>
                       <Input
-                        id="remark"
-                        value={purchaseForm.data.remark}
-                        onChange={(e) => purchaseForm.setData('remark', e.target.value)}
-                        placeholder="Optional notes about the purchase"
+                        id="purchase-weight"
+                        type="number"
+                        min="0.001"
+                        step="0.001"
+                        inputMode="decimal"
+                        placeholder="e.g. 10.500"
+                        value={purchaseForm.data.weight}
+                        onChange={(e) => purchaseForm.setData('weight', e.target.value)}
                       />
+                      {purchaseForm.errors.weight && (
+                        <p className="text-sm text-destructive">
+                          {purchaseForm.errors.weight}
+                        </p>
+                      )}
+                      {(purchaseForm.errors as any).amount && (
+                        <p className="text-sm text-destructive">
+                          {(purchaseForm.errors as any).amount}
+                        </p>
+                      )}
                     </div>
+                  </div>
+
+                  {/* Auto-filled breakdown */}
+                  <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+                    {breakdown ? (
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between border-b border-primary/10 pb-2">
+                          <span className="text-sm text-muted-foreground">
+                            Gold Rate ({purchaseForm.data.carat.toUpperCase()})
+                          </span>
+                          <span className="text-sm font-semibold">
+                            {formatCurrency(breakdown.rate)}/gm
+                          </span>
+                        </div>
+                        {breakdownRow(
+                          'Gold Value (Weight ├ù Rate)',
+                          formatCurrency(breakdown.goldValue)
+                        )}
+                        {breakdownRow(
+                          'Making Charges',
+                          `${formatCurrency(breakdown.makingCharges)} (${breakdown.makingPercent}%)`
+                        )}
+                        {breakdownRow(
+                          'GST',
+                          `${formatCurrency(breakdown.gstAmount)} (${billingRates?.gstPercent}%)`
+                        )}
+                        {breakdownRow(
+                          'Additional Charges',
+                          `${formatCurrency(breakdown.additionalCharges)} (${billingRates?.additionalChargePercent}%)`
+                        )}
+                        <div className="flex items-center justify-between border-t border-primary/10 pt-2">
+                          <span className="text-sm font-semibold">Total Package</span>
+                          <span className="text-base font-bold text-primary">
+                            {formatCurrency(breakdown.investment)}
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="py-3 text-center text-sm text-muted-foreground">
+                        Enter a gold weight above to see the auto-filled breakdown.
+                      </p>
+                    )}
                   </div>
 
                   {/* Package Info */}
@@ -491,7 +372,7 @@ export default function AdminPurchasePage({
                       <div className="flex items-center justify-between">
                         <Badge variant="default">{goldPackage.name}</Badge>
                         <span className="text-xs text-muted-foreground">
-                          ₹{formatCurrency(selectedAmount)}
+                          Γé╣{formatCurrency(selectedAmount)}
                         </span>
                       </div>
                       <div className="grid grid-cols-2 gap-3 text-sm">
@@ -515,25 +396,31 @@ export default function AdminPurchasePage({
                     </div>
                   )}
 
-                  {selectedAmount > 0 && selectedAmount < 10000 && (
-                    <p className="text-xs text-destructive">Minimum purchase amount is ₹10,000</p>
+                  {belowMinimum && (
+                    <p className="text-xs text-destructive">
+                      Minimum purchase amount is {formatCurrency(MIN_PURCHASE_AMOUNT)} ΓÇö please
+                      enter a higher gold weight.
+                    </p>
                   )}
 
                   <Button
                     type="submit"
                     className="w-full"
                     size="lg"
-                    disabled={!goldPackage || purchaseForm.processing}
+                    disabled={!breakdown || belowMinimum || purchaseForm.processing}
                   >
                     {purchaseForm.processing ? (
                       <>
-                        <HugeiconsIcon icon={Loading01Icon} className="mr-2 h-4 w-4 animate-spin" />
+                        <HugeiconsIcon
+                          icon={Loading01Icon}
+                          className="mr-2 h-4 w-4 animate-spin"
+                        />
                         Processing...
                       </>
                     ) : (
                       <>
                         <HugeiconsIcon icon={ShoppingBag03Icon} className="mr-2 h-4 w-4" />
-                        Purchase ₹{formatCurrency(selectedAmount)} for {selectedUser.name}
+                        Purchase {formatCurrency(selectedAmount)} for {selectedUser.name}
                       </>
                     )}
                   </Button>

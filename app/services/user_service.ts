@@ -3,6 +3,7 @@ import db from '@adonisjs/lucid/services/db'
 import { attachmentManager } from '@jrmc/adonis-attachment'
 import { UserRoleEnum } from '#enums/user'
 import { TransactionTypeEnum } from '#enums/transaction'
+import MembershipLevelIncomeService from '#services/membership_level_income_service'
 import { DateTime } from 'luxon'
 
 export default class UserService {
@@ -410,6 +411,9 @@ export default class UserService {
     user.activatedAt = DateTime.now()
     user.activationAmount = amount ?? 1000
     await user.save()
+
+    // Grant one-time Membership Level Income to activated uplines (config-driven)
+    await MembershipLevelIncomeService.grantForActivation(user)
 
     // Create activation transaction record for audit trail
     const activationAmount = amount ?? 0
