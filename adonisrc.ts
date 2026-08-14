@@ -70,7 +70,7 @@ export default defineConfig({
     },
     () => import('@adonisjs/cache/cache_provider'),
     () => import('@adonisjs/redis/redis_provider'),
-    () => import('adonis-resque/providers/resque_provider'),
+    // () => import('adonis-resque/providers/resque_provider'),
   ],
 
   /*
