@@ -66,6 +66,12 @@ export default function AdminPayoutPage({
 
   const bothPaid = incomeWalletPayoutMonth === workingWalletPayoutMonth && !!incomeWalletPayoutMonth
 
+  // A payout button stays disabled after its target month has been successfully
+  // paid. getNextPayoutMonth advances to the new month on the 1st, so the
+  // button re-enables automatically on the first day of the next month.
+  const incomeCompleted = incomeWalletPayoutMonth === nextIncomeMonth && !hasUnpaidIncome
+  const workingCompleted = workingWalletPayoutMonth === nextWorkingMonth && !hasUnpaidWorking
+
   // Month label for the diagnostic card (e.g. "July 2026") — the data always
   // belongs to the upcoming payout month, not a hardcoded month.
   const diagnosticMonthLabel = new Date(nextIncomeMonth + '-01').toLocaleString('en-US', {
@@ -182,7 +188,7 @@ export default function AdminPayoutPage({
                   </div>
                 </div>
 
-                {incomeWalletPayoutMonth === nextIncomeMonth && !hasUnpaidIncome && (
+                {incomeCompleted && (
                   <div className="flex items-center gap-2 text-sm text-green-600">
                     <HugeiconsIcon icon={CheckmarkCircle01Icon} className="h-4 w-4" />
                     <span>Payout already completed for {nextIncomeMonth}</span>
@@ -191,12 +197,14 @@ export default function AdminPayoutPage({
 
                 <Button
                   onClick={handleIncomePayout}
-                  disabled={incomeForm.processing || needsReset}
+                  disabled={incomeForm.processing || needsReset || incomeCompleted}
                   className="w-full"
                 >
                   {incomeForm.processing
                     ? 'Processing...'
-                    : `Payout Cashback Wallet for ${nextIncomeMonth}`}
+                    : incomeCompleted
+                      ? `Completed for ${nextIncomeMonth}`
+                      : `Payout Cashback Wallet for ${nextIncomeMonth}`}
                 </Button>
 
                 {/* Download Payout History — Income Wallet */}
@@ -256,7 +264,7 @@ export default function AdminPayoutPage({
                   </div>
                 </div>
 
-                {workingWalletPayoutMonth === nextWorkingMonth && !hasUnpaidWorking && (
+                {workingCompleted && (
                   <div className="flex items-center gap-2 text-sm text-green-600">
                     <HugeiconsIcon icon={CheckmarkCircle01Icon} className="h-4 w-4" />
                     <span>Payout already completed for {nextWorkingMonth}</span>
@@ -265,13 +273,15 @@ export default function AdminPayoutPage({
 
                 <Button
                   onClick={handleWorkingPayout}
-                  disabled={workingForm.processing || needsReset}
+                  disabled={workingForm.processing || needsReset || workingCompleted}
                   variant="outline"
                   className="w-full border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
                 >
                   {workingForm.processing
                     ? 'Processing...'
-                    : `Payout Working Wallet for ${nextWorkingMonth}`}
+                    : workingCompleted
+                      ? `Completed for ${nextWorkingMonth}`
+                      : `Payout Working Wallet for ${nextWorkingMonth}`}
                 </Button>
 
                 {/* Download Payout History — Working Wallet */}
