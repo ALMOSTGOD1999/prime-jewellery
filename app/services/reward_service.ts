@@ -1460,6 +1460,118 @@ export default class RewardService {
     return { power, weaker, legAmounts: childrenVolumes }
   }
 
+  /**
+   * Resolve the monthly Performance Incentive for a user for a given target
+   * month under the CURRENT rules:
+   *
+   *  - An eligible user is credited the incentive EVERY month (no pending
+   *    state; the incentive is payable immediately).
+   *  - The first credit anchors the 'qualifying business'. Within the next 3
+   *    months (i.e. by the 90th/91st day from the first credit) the user must
+   *    grow his total business by 20%. If the growth is not achieved, from the
+   *    4th month onward the user stops receiving the incentive.
+   *  - Legacy 'pending' records for the target month are converted to 'paid'
+   *    when the user is still eligible (they were owed) or 'expired' when the
+   *    growth requirement failed.
+   *
+   * Returns the resolution status: 'credited' | 'already-credited' |
+   * 'growth-failed' | 'not-eligible', plus the reward amount when applicable.
+   */
+  static async resolveMonthlySalary(
+    user: User,
+    targetMonth: DateTime,
+    { preview = false }: { preview?: boolean } = {}
+  ): Promise<{
+    status: 'credited' | 'already-credited' | 'growth-failed' | 'not-eligible'
+    reward?: number
+  }> {
+    const endDate = targetMonth.endOf('month')
+    const windowStart = targetMonth.minus({ months: 5 }).startOf('month')
+    const createdAt = targetMonth.endOf('month').set({ hour: 23, minute: 59 })
+
+    const { power, weaker, legAmounts } = await this.getPowerAndWeaker(user, endDate, windowStart)
+    const eligibleInfo = this.getSalaryInfo(legAmounts || [])
+    if (!eligibleInfo) {
+      return { status: 'not-eligible' }
+    }
+
+    const currentBusiness = (legAmounts || []).reduce((sum, val) => sum + val, 0)
+
+    const monthSalaries = await user
+      .related('salaries')
+      .query()
+      .where('created_at', '>=', targetMonth.startOf('month').toSQL()!)
+      .where('created_at', '<=', targetMonth.endOf('month').toSQL()!)
+      .orderBy('created_at', 'asc')
+
+    const monthSalary = monthSalaries[0]
+
+    // The first credit anchors the 20% growth requirement
+    const anchor = await user
+      .related('salaries')
+      .query()
+      .where('status', 'paid')
+      .whereNotNull('paid_at')
+      .orderBy('paid_at', 'asc')
+      .first()
+
+    if (anchor) {
+      const anchorPaidAt = anchor.paidAt!
+      const monthsSinceFirstCredit =
+        targetMonth.year * 12 + targetMonth.month - (anchorPaidAt.year * 12 + anchorPaidAt.month)
+      const anchorBusiness =
+        Number(anchor.qualifyingBusiness) ||
+        Math.floor(Number(anchor.power) + Number(anchor.weaker))
+
+      // From the 4th month after the first credit the user must have grown his
+      // total business by 20%; otherwise the incentive stops.
+      if (monthsSinceFirstCredit >= 4 && currentBusiness < anchorBusiness * 1.2) {
+        if (!preview && monthSalary && monthSalary.status === 'pending') {
+          monthSalary.status = 'expired'
+          monthSalary.updatedAt = createdAt
+          await monthSalary.save()
+        }
+        return { status: 'growth-failed' }
+      }
+    }
+
+    if (monthSalary && monthSalary.status === 'paid') {
+      return { status: 'already-credited', reward: monthSalary.info?.reward || eligibleInfo.reward }
+    }
+
+    if (monthSalary) {
+      if (!preview) {
+        monthSalary.status = 'paid'
+        monthSalary.paidAt = createdAt
+        monthSalary.qualifyingBusiness =
+          monthSalary.qualifyingBusiness ?? Math.floor(currentBusiness)
+        monthSalary.updatedAt = createdAt
+        await monthSalary.save()
+      }
+      return { status: 'credited', reward: monthSalary.info?.reward || eligibleInfo.reward }
+    }
+
+    if (!preview) {
+      const salary = await user.related('salaries').create({
+        power: Math.floor(power),
+        weaker: Math.floor(weaker),
+        status: 'paid',
+        qualifyingBusiness: Math.floor(currentBusiness),
+        createdAt,
+        updatedAt: createdAt,
+        paidAt: createdAt,
+      })
+
+      return { status: 'credited', reward: salary.info?.reward || eligibleInfo.reward }
+    }
+
+    return {
+      status: 'credited',
+      reward:
+        this.getSalaryInfo([Math.floor(power), Math.floor(weaker)])?.reward || eligibleInfo.reward,
+    }
+  }
+
   static async getSalaryStats(user: User) {
     // 1. Fetch all salaries
     const salaries = await user.related('salaries').query()

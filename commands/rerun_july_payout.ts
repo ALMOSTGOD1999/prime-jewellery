@@ -47,102 +47,45 @@ export default class RerunJulyPayout extends BaseCommand {
     router.commit()
 
     const targetMonth = july
-    const endDate = targetMonth.endOf('month')
-    const createdAt = targetMonth.endOf('month').set({ hour: 23, minute: 59 })
-    const windowStart = targetMonth.minus({ months: 5 }).startOf('month')
 
     const users = await User.query()
       .whereNotNull('activatedAt')
       .andWhere('role', UserRoleEnum.USER)
       .andWhere('status', 'active')
 
-    let created = 0
-    let paid = 0
-    let expired = 0
+    let incentives = 0
+    let already = 0
+    let growthFailed = 0
+    let skipped = 0
 
     for (const user of users) {
       try {
-        const { power, weaker, legAmounts } = await RewardService.getPowerAndWeaker(
-          user,
-          endDate,
-          windowStart
-        )
+        const result = await RewardService.resolveMonthlySalary(user, targetMonth)
 
-        const currentBusiness = (legAmounts || []).reduce((sum: number, v: number) => sum + v, 0)
-
-        // Phase 1: Resolve pending incentives
-        const pendingSalaries = await user
-          .related('salaries')
-          .query()
-          .where('status', 'pending')
-          .orderBy('created_at', 'asc')
-
-        for (const pending of pendingSalaries) {
-          const createdMonth = pending.createdAt.startOf('month')
-          const monthsSince = Math.floor(targetMonth.diff(createdMonth, 'months').months)
-          const qualifyingBusiness = Number(pending.qualifyingBusiness) || 0
-
-          if (qualifyingBusiness > 0 && currentBusiness >= qualifyingBusiness * 1.2) {
-            pending.status = 'paid'
-            pending.paidAt = createdAt
-            await pending.save()
-            paid++
-            this.logger.info(
-              `  Incentive PAID for user ${user.id}: ${pending.info?.designation} ` +
-                `(business ${currentBusiness} >= ${(qualifyingBusiness * 1.2).toFixed(0)})`
-            )
-          } else if (monthsSince >= 3) {
-            pending.status = 'expired'
-            await pending.save()
-            expired++
-            this.logger.info(
-              `  Incentive EXPIRED for user ${user.id}: ${pending.info?.designation} ` +
-                `(business ${currentBusiness} < ${(qualifyingBusiness * 1.2).toFixed(0)} after ${monthsSince} months)`
-            )
-          }
+        if (result.status === 'credited') {
+          incentives++
+          this.logger.info(
+            `  Incentive CREDITED for user ${user.id}: reward ${result.reward} ` +
+              `(credited to wallet via the monthly payout snapshot flow)`
+          )
+        } else if (result.status === 'already-credited') {
+          already++
+        } else if (result.status === 'growth-failed') {
+          growthFailed++
+          this.logger.info(
+            `  Incentive SKIPPED for user ${user.id}: 20% growth target not met since first credit`
+          )
+        } else {
+          skipped++
         }
-
-        // Phase 2: Create new pending incentive if eligible
-        const eligibleInfo = RewardService.getSalaryInfo(legAmounts || [])
-        if (!eligibleInfo) continue
-
-        const history = await user.related('salaries').query().orderBy('createdAt', 'desc')
-        const thisMonth = history.filter(
-          (h) => h.createdAt.startOf('month').toISODate() === targetMonth.toISODate()
-        )
-        if (thisMonth.length > 0) continue
-
-        const paidCount = history.filter(
-          (h) => h.status === 'paid' && h.info?.criteria === eligibleInfo.criteria
-        ).length
-        if (paidCount >= 6) continue
-
-        const pendingSameRank = history.some(
-          (h) => h.status === 'pending' && h.info?.criteria === eligibleInfo.criteria
-        )
-        if (pendingSameRank) continue
-
-        await user.related('salaries').create({
-          power: Math.floor(power),
-          weaker: Math.floor(weaker),
-          status: 'pending',
-          qualifyingBusiness: Math.floor(currentBusiness),
-          createdAt,
-          updatedAt: createdAt,
-        })
-
-        created++
-        this.logger.info(
-          `  Incentive PENDING for user ${user.id}: ${eligibleInfo.designation} ` +
-            `(qualifying business: ${currentBusiness}, must grow to ${(currentBusiness * 1.2).toFixed(0)} within 3 months)`
-        )
       } catch (error: any) {
         this.logger.error(`  Error for user ${user.id}: ${error.message}`)
       }
     }
 
     this.logger.info(
-      `  Salaries: ${created} pending created, ${paid} paid, ${expired} expired`
+      `  Salaries: ${incentives} credited, ${already} already credited, ` +
+        `${growthFailed} growth not met, ${skipped} not eligible`
     )
     this.logger.info('')
 
