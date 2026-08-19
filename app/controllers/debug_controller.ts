@@ -138,9 +138,9 @@ export default class DebugController {
 
       await db.transaction(async (trx) => {
         if (isIncome) {
-          user.incomeWallet = Number(user.incomeWallet ?? 0) - amount
+          user.incomeWallet = Math.max(0, Number(user.incomeWallet ?? 0) - amount)
         } else {
-          user.repurchaseWallet = Number(user.repurchaseWallet ?? 0) - amount
+          user.repurchaseWallet = Math.max(0, Number(user.repurchaseWallet ?? 0) - amount)
         }
         await user.useTransaction(trx).save()
         await Transaction.create(

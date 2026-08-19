@@ -24,50 +24,33 @@ export default class DashboardController {
       return inertia.render('admin/dashboard', { stats, goldPrice })
     }
 
-    // All independent queries run in parallel
-    const [goldPrice, metrics, isPayoutReleased, investmentReturnRes, repurchaseRes, workingRes] =
-      await Promise.all([
-        cache.getOrSet({
-          key: 'gold-price',
-          ttl: '1h',
-          grace: '2h',
-          factory: async () => GoldService.getLiveGoldPrice(),
-        }),
-        DashboardMetricsService.getMetrics(uid),
-        PayoutService.isPayoutReleased(),
-        db.rawQuery(
-          `SELECT coalesce(sum(
-             CASE
-               WHEN type = 'wallet_credit' THEN amount
-               WHEN type = 'wallet_debit' THEN -amount
-               ELSE 0
-             END
-           ), 0)::float as total
-           FROM transactions WHERE user_id = ? AND remark ILIKE '%investment return%' AND (remark ILIKE '%cashback wallet%' OR remark ILIKE '%income wallet%')`,
-          [uid]
-        ),
-        db.rawQuery(
-          `SELECT coalesce(sum(
-             CASE
-               WHEN type = 'wallet_credit' THEN amount
-               WHEN type = 'wallet_debit' THEN -amount
-               ELSE 0
-             END
-           ), 0)::float as total
-           FROM transactions WHERE user_id = ? AND remark ILIKE '%repurchase wallet%'`,
-          [uid]
-        ),
-        db.rawQuery(`SELECT working_wallet FROM users WHERE id = ?`, [uid]),
-      ])
+    // All independent queries run in parallel. Wallet balances are read
+    // directly from the users columns (the source of truth) rather than
+    // re-derived from filtered transactions, which previously double-counted
+    // membership-level income and could show a negative cashback wallet.
+    const [goldPrice, metrics, isPayoutReleased, walletRes] = await Promise.all([
+      cache.getOrSet({
+        key: 'gold-price',
+        ttl: '1h',
+        grace: '2h',
+        factory: async () => GoldService.getLiveGoldPrice(),
+      }),
+      DashboardMetricsService.getMetrics(uid),
+      PayoutService.isPayoutReleased(),
+      db.rawQuery(
+        `SELECT income_wallet, repurchase_wallet, working_wallet FROM users WHERE id = ?`,
+        [uid]
+      ),
+    ])
 
     return inertia.render('dashboard', {
       metrics,
       goldPrice,
       userId: uid,
       isPayoutReleased,
-      incomeWallet: Number(investmentReturnRes.rows[0]?.total ?? 0),
-      repurchaseWallet: Number(repurchaseRes.rows[0]?.total ?? 0),
-      workingWallet: Number(workingRes.rows[0]?.working_wallet ?? 0),
+      incomeWallet: Math.max(0, Number(walletRes.rows[0]?.income_wallet ?? 0)),
+      repurchaseWallet: Math.max(0, Number(walletRes.rows[0]?.repurchase_wallet ?? 0)),
+      workingWallet: Math.max(0, Number(walletRes.rows[0]?.working_wallet ?? 0)),
     })
   }
 }
