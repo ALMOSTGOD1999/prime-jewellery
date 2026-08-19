@@ -171,18 +171,9 @@ export default function PurchasePage({ billingRates, user, purchases }: Purchase
                         </span>
                       </div>
                       {breakdownRow('Gold Value (Weight × Rate)', formatCurrency(breakdown.goldValue))}
-                      {breakdownRow(
-                        'Making Charges',
-                        `${formatCurrency(breakdown.makingCharges)} (${breakdown.makingPercent}%)`
-                      )}
-                      {breakdownRow(
-                        'GST',
-                        `${formatCurrency(breakdown.gstAmount)} (${billingRates.gstPercent}%)`
-                      )}
-                      {breakdownRow(
-                        'Additional Charges',
-                        `${formatCurrency(breakdown.additionalCharges)} (${billingRates.additionalChargePercent}%)`
-                      )}
+                      {breakdownRow('Making Charges', formatCurrency(breakdown.makingCharges))}
+                      {breakdownRow('GST', formatCurrency(breakdown.gstAmount))}
+                      {breakdownRow('Additional Charges', formatCurrency(breakdown.additionalCharges))}
                       <div className="flex items-center justify-between border-t border-primary/10 pt-2">
                         <span className="text-sm font-semibold">Total Package</span>
                         <span className="text-base font-bold text-primary">
