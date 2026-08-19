@@ -16,15 +16,15 @@ import { TransactionTypeEnum } from '#enums/transaction'
  * correction is visible in the ledger.
  *
  * Run: node ace fix-negative-wallets
- *      node ace fix-negative-wallets PJ779764
+ *      node ace fix-negative-wallets 779764
  */
 export default class FixNegativeWallets extends BaseCommand {
   static commandName = 'fix-negative-wallets'
   static description = 'Clamp any negative wallet balance(s) back to zero'
   static options: CommandOptions = { startApp: true }
 
-  @args.string({ required: false, description: 'Restrict the fix to a single username' })
-  declare username: string
+  @args.string({ required: false, description: 'Restrict the fix to a single numeric user ID' })
+  declare userId: string
 
   async run() {
     const clampColumns = [
@@ -34,16 +34,16 @@ export default class FixNegativeWallets extends BaseCommand {
       { column: 'reward_wallet', label: 'reward' },
     ]
 
-    const username = this.username?.trim() || undefined
+    const userId = this.userId?.trim() || undefined
 
-    // Find affected users (optionally scoped to one username).
+    // Find affected users (optionally scoped to one numeric user id).
     const users = await db.rawQuery(
-      `SELECT id, username, income_wallet, repurchase_wallet, working_wallet, reward_wallet
+      `SELECT id, name, income_wallet, repurchase_wallet, working_wallet, reward_wallet
        FROM users
        WHERE role != 'admin'
          AND (income_wallet < 0 OR repurchase_wallet < 0 OR working_wallet < 0 OR reward_wallet < 0)
-         ${username ? 'AND username = ?' : ''}`,
-      username ? [username] : []
+         ${userId ? 'AND id = $1' : ''}`,
+      userId ? [Number(userId)] : []
     )
 
     const affected = users.rows
@@ -78,7 +78,7 @@ export default class FixNegativeWallets extends BaseCommand {
           )
 
           this.logger.info(
-            `  User ${row.username} (id ${row.id}): ${label} wallet −₹${abs.toFixed(2)} → 0`
+            `  User ${row.name} (id ${row.id}): ${label} wallet −₹${abs.toFixed(2)} → 0`
           )
           fixed++
         }
