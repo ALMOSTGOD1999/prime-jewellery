@@ -123,7 +123,7 @@ export default function DashboardPage({
     {
       title: 'Cashback Wallet',
       value: formatCurrency(incomeWallet || 0),
-      subtitle: '70% of monthly investment return',
+      subtitle: 'Monthly investment return',
       icon: Wallet01Icon,
       gradient: 'from-emerald/20 via-emerald/5 to-transparent',
       border: 'border-emerald/20',
@@ -133,7 +133,7 @@ export default function DashboardPage({
     {
       title: 'Repurchase Wallet',
       value: formatCurrency(repurchaseWallet || 0),
-      subtitle: '20% of investment return + working income',
+      subtitle: 'Investment return + working income',
       icon: Wallet01Icon,
       gradient: 'from-violet/20 via-violet/5 to-transparent',
       border: 'border-violet/20',
@@ -143,7 +143,7 @@ export default function DashboardPage({
     {
       title: 'Working Wallet',
       value: formatCurrency(workingWallet || 0),
-      subtitle: '70% of monthly commission income',
+      subtitle: 'Monthly commission income',
       icon: Wallet01Icon,
       gradient: 'from-purple/20 via-purple/5 to-transparent',
       border: 'border-purple/20',
