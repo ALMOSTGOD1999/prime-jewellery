@@ -412,6 +412,10 @@ router
         router
           .get('/history/download', [AdminPayoutHistoryController, 'download'])
           .as('history.download')
+        router.get('/preview', [AdminPayoutController, 'preview']).as('preview')
+        router
+          .get('/preview/download', [AdminPayoutController, 'downloadPreview'])
+          .as('preview.download')
       })
       .prefix('payout')
       .as('payout')

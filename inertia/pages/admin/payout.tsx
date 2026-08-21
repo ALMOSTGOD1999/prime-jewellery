@@ -331,6 +331,20 @@ export default function AdminPayoutPage({
           <Card>
             <CardContent className="py-4 flex items-center justify-between">
               <p className="text-sm text-muted-foreground">
+                Preview total payout breakdown per user before releasing.
+              </p>
+              <a
+                href="/admin/payout/preview"
+                className="text-sm text-primary hover:underline font-medium"
+              >
+                Total Payout Preview →
+              </a>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="py-4 flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
                 View every payout transaction with amounts per user.
               </p>
               <a

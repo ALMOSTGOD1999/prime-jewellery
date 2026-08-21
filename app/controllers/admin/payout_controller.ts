@@ -7,6 +7,7 @@ import Transaction from '#models/transaction'
 import { TransactionTypeEnum } from '#enums/transaction'
 import db from '@adonisjs/lucid/services/db'
 import { DateTime } from 'luxon'
+import { PDF, rgb } from '@libpdf/core'
 
 export default class AdminPayoutController {
   async index({ inertia }: HttpContext) {
@@ -256,5 +257,202 @@ export default class AdminPayoutController {
     )
     session.flash('success', 'All pending working wallet withdrawals approved.')
     return response.redirect().back()
+  }
+
+  // ─── Payout Preview ──────────────────────────────────────────
+
+  async preview({ inertia, request }: HttpContext) {
+    const qs = request.qs() as Record<string, string>
+    const month = qs.month
+      ? DateTime.fromISO(qs.month + '-01').startOf('month')
+      : DateTime.now().minus({ months: 1 }).startOf('month')
+
+    const result = await PayoutService.getPayoutPreview(month)
+
+    // Build last 12 months for the dropdown
+    const availableMonths: { value: string; label: string }[] = []
+    for (let i = 0; i < 12; i++) {
+      const m = DateTime.now().minus({ months: i })
+      availableMonths.push({
+        value: m.toFormat('yyyy-MM'),
+        label: m.toFormat('LLLL yyyy'),
+      })
+    }
+
+    return inertia.render('admin/payout/preview', {
+      ...result,
+      availableMonths,
+    })
+  }
+
+  async downloadPreview({ request, response }: HttpContext) {
+    const qs = request.qs() as Record<string, string>
+    if (!qs.month) {
+      return response.status(400).send('month query parameter is required (YYYY-MM).')
+    }
+
+    const month = DateTime.fromISO(qs.month + '-01').startOf('month')
+    const monthName = month.toFormat('LLLL yyyy')
+    const result = await PayoutService.getPayoutPreview(month)
+
+    if (result.users.length === 0) {
+      return response.status(404).send('No payout data found for the selected month.')
+    }
+
+    const pdf = PDF.create()
+    pdf.setTitle(`Payout Preview — ${monthName}`)
+
+    let page = pdf.addPage({ size: 'a4' })
+    const { height } = page
+    const margin = 28
+    const pageBottom = margin + 20
+    let yPos = height - margin
+
+    const dark = rgb(0.1, 0.1, 0.1)
+    const muted = rgb(0.4, 0.4, 0.4)
+    const headerBg = rgb(0.13, 0.27, 0.42)
+    const green = rgb(0.1, 0.6, 0.3)
+    const blue = rgb(0.2, 0.4, 0.7)
+    const separatorColor = rgb(0.8, 0.8, 0.8)
+
+    const drawTitle = (p: any, y: number) => {
+      p.drawText('Prime Jewellery', {
+        x: margin, y, size: 16, font: 'Helvetica-Bold', color: headerBg,
+      })
+      y -= 22
+      p.drawText(`Payout Preview — ${monthName}`, {
+        x: margin, y, size: 12, font: 'Helvetica-Bold', color: dark,
+      })
+      y -= 16
+      p.drawText(
+        `Eligible Users: ${result.summary.eligibleUsers}  |  Grand Total: ₹${result.summary.grandTotal.toLocaleString('en-IN')}  |  Generated: ${DateTime.now().toFormat('dd-MM-yyyy hh:mm a')}`,
+        { x: margin, y, size: 8, font: 'Helvetica', color: muted }
+      )
+      return y - 22
+    }
+
+    yPos = drawTitle(page, yPos)
+
+    const fmt = (n: number) => `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+
+    const drawLine = (p: any, y: number) => {
+      p.drawRectangle({
+        x: margin, y: y - 1, width: 535, height: 0.5, color: separatorColor,
+      })
+      return y - 8
+    }
+
+    const drawField = (p: any, y: number, label: string, value: string, indent: number = 0) => {
+      p.drawText(label, {
+        x: margin + indent, y, size: 7, font: 'Helvetica', color: muted,
+      })
+      p.drawText(value, {
+        x: margin + 180 + indent, y, size: 7, font: 'Helvetica-Bold', color: dark,
+      })
+      return y - 11
+    }
+
+    const drawSubtotal = (p: any, y: number, label: string, value: string) => {
+      p.drawText(label, {
+        x: margin, y, size: 7.5, font: 'Helvetica-Bold', color: blue,
+      })
+      p.drawText(value, {
+        x: margin + 180, y, size: 7.5, font: 'Helvetica-Bold', color: blue,
+      })
+      return y - 12
+    }
+
+    const ROW_BLOCK = 11 // height per field line
+
+    for (const user of result.users) {
+      // Estimate space needed for this user block
+      const fieldsNeeded = 4 + // header + separator + combined total + blank
+        (user.incomeWallet ? 8 : 0) + // income section fields
+        (user.workingWallet ? 12 : 0) // working section fields
+
+      if (yPos < pageBottom + fieldsNeeded * ROW_BLOCK) {
+        page = pdf.addPage({ size: 'a4' })
+        yPos = height - margin
+        yPos = drawTitle(page, yPos)
+      }
+
+      // User header
+      page.drawText(`${user.userName} (${user.userCode})`, {
+        x: margin, y: yPos, size: 8, font: 'Helvetica-Bold', color: headerBg,
+      })
+      yPos -= 12
+      yPos = drawLine(page, yPos)
+
+      // Income Wallet section
+      if (user.incomeWallet) {
+        page.drawText('INCOME WALLET (Cashback)', {
+          x: margin, y: yPos, size: 7.5, font: 'Helvetica-Bold', color: dark,
+        })
+        yPos -= 12
+        yPos = drawField(page, yPos, 'Investment Amount:', fmt(user.incomeWallet.investmentAmount))
+        yPos = drawField(page, yPos, 'Return Rate:', `${user.incomeWallet.returnRate}%`)
+        yPos = drawField(page, yPos, 'Return Amount:', fmt(user.incomeWallet.returnAmount))
+        page.drawText('→', { x: margin + 168, y: yPos + 11, size: 7, font: 'Helvetica-Bold', color: green })
+        yPos = drawField(page, yPos, 'Income Wallet (70%):', fmt(user.incomeWallet.incomeShare))
+        yPos = drawField(page, yPos, 'Repurchase (20%):', fmt(user.incomeWallet.repurchaseShare))
+        yPos = drawField(page, yPos, 'Admin (10%):', fmt(user.incomeWallet.adminShare))
+        yPos = drawLine(page, yPos)
+      }
+
+      // Working Wallet section
+      if (user.workingWallet) {
+        page.drawText('WORKING WALLET', {
+          x: margin, y: yPos, size: 7.5, font: 'Helvetica-Bold', color: dark,
+        })
+        yPos -= 12
+        yPos = drawField(page, yPos, 'Activation Cashback:', fmt(user.workingWallet.activationCashback))
+        yPos = drawField(page, yPos, 'Activation Sponsor:', fmt(user.workingWallet.activationSponsor))
+        yPos = drawField(page, yPos, 'Activation Level:', fmt(user.workingWallet.activationLevel))
+        yPos = drawField(page, yPos, 'Level Income:', fmt(user.workingWallet.levelIncome))
+        yPos = drawField(page, yPos, 'EMI Level Income:', fmt(user.workingWallet.emiLevelIncome))
+        yPos = drawField(page, yPos, 'Salary:', fmt(user.workingWallet.salary))
+        yPos = drawField(page, yPos, 'Gross Total:', fmt(user.workingWallet.grossTotal))
+        page.drawText('→', { x: margin + 168, y: yPos + 11, size: 7, font: 'Helvetica-Bold', color: green })
+        yPos = drawField(page, yPos, 'Working Wallet (70%):', fmt(user.workingWallet.workingShare))
+        yPos = drawField(page, yPos, 'Repurchase (20%):', fmt(user.workingWallet.repurchaseShare))
+        yPos = drawField(page, yPos, 'Admin (10%):', fmt(user.workingWallet.adminShare))
+      }
+
+      // Combined total
+      yPos -= 2
+      yPos = drawSubtotal(page, yPos, 'COMBINED TOTAL:', fmt(user.totalPayout))
+      yPos -= 6
+    }
+
+    // Grand totals footer
+    if (yPos < pageBottom + 60) {
+      page = pdf.addPage({ size: 'a4' })
+      yPos = height - margin
+      yPos = drawTitle(page, yPos)
+    }
+
+    yPos = drawLine(page, yPos)
+    page.drawText('GRAND TOTALS', {
+      x: margin, y: yPos, size: 9, font: 'Helvetica-Bold', color: headerBg,
+    })
+    yPos -= 14
+    yPos = drawField(page, yPos, 'Total Income Wallet Payout:', fmt(result.summary.totalIncomeWallet))
+    yPos = drawField(page, yPos, 'Total Working Wallet Payout:', fmt(result.summary.totalWorkingWallet))
+    page.drawText('→', { x: margin + 168, y: yPos + 11, size: 8, font: 'Helvetica-Bold', color: green })
+    yPos = drawSubtotal(page, yPos, 'Grand Total:', fmt(result.summary.grandTotal))
+    yPos = drawField(page, yPos, 'Eligible Users:', String(result.summary.eligibleUsers))
+
+    // Footer
+    page.drawText('Prime Jewellery — Payout Preview Report', {
+      x: margin, y: pageBottom - 10, size: 8, font: 'Helvetica', color: muted,
+    })
+
+    const pdfBytes = await pdf.save()
+    response.header('Content-Type', 'application/pdf')
+    response.header(
+      'Content-Disposition',
+      `attachment; filename="payout-preview-${month.toFormat('yyyy-MM')}.pdf"`
+    )
+    return response.send(Buffer.from(pdfBytes))
   }
 }

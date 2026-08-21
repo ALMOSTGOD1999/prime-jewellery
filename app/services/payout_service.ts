@@ -3,7 +3,9 @@ import db from '@adonisjs/lucid/services/db'
 import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
 import logger from '@adonisjs/core/services/logger'
 import PlatformConfig from '#models/platform_config'
+import Investment from '#models/investment'
 import InvestmentReturnDistribution from '#models/investment_return_distribution'
+import InvestmentPackage from '#models/investment_package'
 import MonthlyIncomeSnapshot from '#models/monthly_income_snapshot'
 import User from '#models/user'
 import Purchase from '#models/purchase'
@@ -13,6 +15,49 @@ import RewardService from '#services/reward_service'
 import { WithdrawlTypeEnum } from '#enums/withdrawl'
 import { TransactionTypeEnum } from '#enums/transaction'
 import InvestmentService from '#services/investment_service'
+
+// ─── Payout Preview Types ─────────────────────────────────────
+export interface PayoutPreviewIncomeWallet {
+  investmentAmount: number
+  returnRate: number
+  returnAmount: number
+  incomeShare: number
+  repurchaseShare: number
+  adminShare: number
+}
+
+export interface PayoutPreviewWorkingWallet {
+  activationCashback: number
+  activationSponsor: number
+  activationLevel: number
+  levelIncome: number
+  emiLevelIncome: number
+  salary: number
+  grossTotal: number
+  workingShare: number
+  repurchaseShare: number
+  adminShare: number
+}
+
+export interface PayoutPreviewUser {
+  userId: number
+  userCode: string
+  userName: string
+  incomeWallet: PayoutPreviewIncomeWallet | null
+  workingWallet: PayoutPreviewWorkingWallet | null
+  totalPayout: number
+}
+
+export interface PayoutPreviewResult {
+  month: string
+  users: PayoutPreviewUser[]
+  summary: {
+    totalIncomeWallet: number
+    totalWorkingWallet: number
+    grandTotal: number
+    eligibleUsers: number
+  }
+}
 
 export default class PayoutService {
   static readonly INCOME_PERCENT = 0.7
@@ -464,6 +509,232 @@ export default class PayoutService {
     const otherDeductions = Math.round(afterAdmin * 0.2 * 100) / 100
     const net = Math.round((afterAdmin - otherDeductions) * 100) / 100
     return { gross: grossAmount, adminCharges, otherDeductions, net }
+  }
+
+  // ─── Payout Preview ──────────────────────────────────────────
+
+  /**
+   * Compute a full per-user payout breakdown for a given month WITHOUT
+   * writing any data. Used by the admin payout preview page and PDF.
+   */
+  static async getPayoutPreview(month: DateTime): Promise<PayoutPreviewResult> {
+    const period = month.startOf('month')
+    const monthStart = period
+    const monthEnd = period.endOf('month')
+    const previewUsers: PayoutPreviewUser[] = []
+
+    // ─── 1. Income Wallet Payout (Investment Returns) ──────────
+    const investments = await Investment.query()
+      .where('status', 'active')
+      .where('started_at', '<=', monthEnd.toSQL()!)
+      .preload('user', (q) => q.select('id', 'name', 'status'))
+
+    // Group investments by user
+    const investmentsByUser = new Map<number, typeof investments>()
+    for (const inv of investments) {
+      if (!inv.user || inv.user.status !== 'active') continue
+      const list = investmentsByUser.get(inv.userId) || []
+      list.push(inv)
+      investmentsByUser.set(inv.userId, list)
+    }
+
+    const userIncomeData = new Map<number, PayoutPreviewIncomeWallet>()
+
+    for (const [userId, userInvestments] of investmentsByUser) {
+      let totalIncomeShare = 0
+      let totalRepurchaseShare = 0
+      let totalAdminShare = 0
+      let totalReturnAmount = 0
+
+      for (const investment of userInvestments) {
+        // Check if max return reached
+        const effectiveAmount = await InvestmentService.getEffectiveAmount(investment)
+        const pkg = await InvestmentPackage.findPackageForAmount(effectiveAmount)
+        if (!pkg) continue
+
+        const totalReturned = await InvestmentReturnDistribution.query()
+          .where('investment_id', investment.id)
+          .sum('return_amount as total')
+          .first()
+        const totalReturnSoFar = Number(totalReturned?.$extras?.total || 0)
+        const maxReturnAmount = InvestmentService.roundMoney(
+          (effectiveAmount * pkg.maxReturnPercent) / 100
+        )
+        if (totalReturnSoFar >= maxReturnAmount) continue
+
+        const rate = Number(investment.monthlyReturnRate) || 3
+        const startedAt = investment.startedAt.setZone('Asia/Kolkata').startOf('day')
+        const activeDays = Math.min(monthEnd.diff(startedAt, 'days').days + 1, 30)
+        const prorateFactor = Math.max(activeDays, 1) / 30
+
+        const returnAmount = InvestmentService.roundMoney(
+          (effectiveAmount * rate * prorateFactor) / 100
+        )
+        const incomeShare = InvestmentService.roundMoney((returnAmount * 70) / 100)
+        const repurchaseShare = InvestmentService.roundMoney((returnAmount * 20) / 100)
+        const adminShare = InvestmentService.roundMoney(returnAmount - incomeShare - repurchaseShare)
+
+        totalReturnAmount += returnAmount
+        totalIncomeShare += incomeShare
+        totalRepurchaseShare += repurchaseShare
+        totalAdminShare += adminShare
+      }
+
+      if (totalReturnAmount > 0) {
+        userIncomeData.set(userId, {
+          investmentAmount: userInvestments.reduce(
+            (sum, inv) => sum + Number(inv.amount || 0),
+            0
+          ),
+          returnRate: Number(userInvestments[0]?.monthlyReturnRate) || 3,
+          returnAmount: totalReturnAmount,
+          incomeShare: totalIncomeShare,
+          repurchaseShare: totalRepurchaseShare,
+          adminShare: totalAdminShare,
+        })
+      }
+    }
+
+    // ─── 2. Working Wallet Payout (6 income sources) ───────────
+    const activeUsers = await User.query()
+      .where('role', 'user')
+      .whereNotNull('activated_at')
+      .where('status', 'active')
+
+    const INCOME_PERCENT = 0.7
+    const REPURCHASE_PERCENT = 0.2
+
+    for (const user of activeUsers) {
+      const incomeData = userIncomeData.get(user.id) || null
+
+      // Compute 6 working income sources
+      let activationCashback = 0
+      let activationSponsor = 0
+      let activationLevel = 0
+      let levelIncome = 0
+      let emiLevelIncome = 0
+      let salary = 0
+
+      // 1. Activation Cashback
+      const actAmt = Number(user.activationAmount) || 1000
+      const monthlyCashback = (actAmt * 0.1) / 2
+      const activatedAt = DateTime.fromJSDate(new Date(user.activatedAt!.toString()))
+      const monthStr = period.toFormat('yyyy-MM')
+      const month1Date = activatedAt.plus({ months: 1 })
+      const month2Date = activatedAt.plus({ months: 2 })
+      if (monthEnd >= month1Date && month1Date.toFormat('yyyy-MM') === monthStr)
+        activationCashback += monthlyCashback
+      if (monthEnd >= month2Date && month2Date.toFormat('yyyy-MM') === monthStr)
+        activationCashback += monthlyCashback
+
+      // Quick check: does user have any direct children?
+      const directChildrenCountRes = await user.related('children').query().count('* as total')
+      const hasDirects = Number(directChildrenCountRes[0].$extras.total) > 0
+
+      if (hasDirects) {
+        // 2. Activation Sponsor
+        const sponsorCountRes = await user
+          .related('children')
+          .query()
+          .whereNotNull('activated_at')
+          .whereBetween('activated_at', [monthStart.toSQL()!, monthEnd.toSQL()!])
+          .count('* as total')
+        activationSponsor =
+          Number(sponsorCountRes[0].$extras.total) * (actAmt * 0.1)
+
+        // 3. Activation Level
+        const activationLevelEnd = await RewardService.getActivationLevelRewards(user, {
+          limit: 1,
+          asOf: monthEnd,
+        })
+        const eligibleAtEnd = activationLevelEnd.stats.totalEligible
+        const activationLevelStart = await RewardService.getActivationLevelRewards(user, {
+          limit: 1,
+          asOf: monthStart.minus({ days: 1 }),
+        })
+        const eligibleAtStart = activationLevelStart.stats.totalEligible
+        activationLevel = Math.max(0, eligibleAtEnd - eligibleAtStart)
+
+        // 4. Level Income
+        const levelRewards = await RewardService.getLevelRewards(user, {
+          limit: 1,
+          asOf: monthEnd,
+        })
+        levelIncome = levelRewards.stats.thisMonthRewards || 0
+
+        // 5. EMI Level Income
+        const emiRewards = await RewardService.getEmiLevelRewards(user, {
+          limit: 1,
+          asOf: monthEnd,
+        })
+        emiLevelIncome = emiRewards.stats.thisMonthRewards || 0
+      }
+
+      // 6. Salary
+      const salaries = await user
+        .related('salaries')
+        .query()
+        .where('status', 'paid')
+        .whereBetween('paid_at', [monthStart.toSQL()!, monthEnd.toSQL()!])
+      salary = salaries.reduce((sum, s) => sum + (s.info?.reward || 0), 0)
+
+      const grossTotal =
+        activationCashback + activationSponsor + activationLevel + levelIncome + emiLevelIncome + salary
+      const workingShare = Math.round(grossTotal * INCOME_PERCENT * 100) / 100
+      const repurchaseShare = Math.round(grossTotal * REPURCHASE_PERCENT * 100) / 100
+      const adminShare = Math.round((grossTotal - workingShare - repurchaseShare) * 100) / 100
+
+      const workingData: PayoutPreviewWorkingWallet | null = grossTotal > 0 ? {
+        activationCashback: Math.round(activationCashback * 100) / 100,
+        activationSponsor: Math.round(activationSponsor * 100) / 100,
+        activationLevel: Math.round(activationLevel * 100) / 100,
+        levelIncome: Math.round(levelIncome * 100) / 100,
+        emiLevelIncome: Math.round(emiLevelIncome * 100) / 100,
+        salary: Math.round(salary * 100) / 100,
+        grossTotal: Math.round(grossTotal * 100) / 100,
+        workingShare,
+        repurchaseShare,
+        adminShare,
+      } : null
+
+      // Only include users who will receive money
+      const totalPayout =
+        (incomeData?.incomeShare || 0) + workingShare
+
+      if (totalPayout > 0) {
+        previewUsers.push({
+          userId: user.id,
+          userCode: `PJ${String(user.id).padStart(6, '0')}`,
+          userName: user.name || '—',
+          incomeWallet: incomeData || null,
+          workingWallet: workingData,
+          totalPayout: Math.round(totalPayout * 100) / 100,
+        })
+      }
+    }
+
+    // Sort by total payout descending
+    previewUsers.sort((a, b) => b.totalPayout - a.totalPayout)
+
+    const totalIncomeWallet = previewUsers.reduce(
+      (sum, u) => sum + (u.incomeWallet?.incomeShare || 0),
+      0
+    )
+    const totalWorkingWallet = previewUsers.reduce(
+      (sum, u) => sum + (u.workingWallet?.workingShare || 0),
+      0
+    )
+
+    return {
+      month: period.toFormat('yyyy-MM'),
+      users: previewUsers,
+      summary: {
+        totalIncomeWallet: Math.round(totalIncomeWallet * 100) / 100,
+        totalWorkingWallet: Math.round(totalWorkingWallet * 100) / 100,
+        grandTotal: Math.round((totalIncomeWallet + totalWorkingWallet) * 100) / 100,
+        eligibleUsers: previewUsers.length,
+      },
+    }
   }
 
   static isWorkingWalletWithdrawalType(type: WithdrawlTypeEnum): boolean {

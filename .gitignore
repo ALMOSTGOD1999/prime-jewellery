@@ -26,3 +26,6 @@ yarn-error.log
 
 # storage and uploads
 storage
+
+# Deepwork state
+.slim/deepwork/
