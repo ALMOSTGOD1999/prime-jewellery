@@ -154,7 +154,7 @@ export function AdminGoldPurchasesDataTable<TData, TValue>({
         <div className="flex flex-col gap-2 md:flex-row md:items-center order-2 md:order-none w-full">
           {!hideSearch && (
             <Input
-              placeholder="Search users..."
+              placeholder="Search by name, ID (e.g. PJ630351)..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="h-10 w-full md:w-[250px]"

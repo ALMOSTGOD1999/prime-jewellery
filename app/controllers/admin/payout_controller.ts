@@ -1,5 +1,6 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import PayoutService from '#services/payout_service'
+import type { PayoutPreviewResult } from '#services/payout_service'
 import PlatformConfig from '#models/platform_config'
 import ProcessWorkingPayout from '#jobs/process_working_payout'
 import User from '#models/user'
@@ -8,6 +9,7 @@ import { TransactionTypeEnum } from '#enums/transaction'
 import db from '@adonisjs/lucid/services/db'
 import { DateTime } from 'luxon'
 import { PDF, rgb } from '@libpdf/core'
+import logger from '@adonisjs/core/services/logger'
 
 export default class AdminPayoutController {
   async index({ inertia }: HttpContext) {
@@ -259,15 +261,26 @@ export default class AdminPayoutController {
     return response.redirect().back()
   }
 
-  // ─── Payout Preview ──────────────────────────────────────────
+  // ─── Payout Preview (cached) ──────────────────────────────────
+
+  private cacheKey(month: string) {
+    return `payout_preview_${month}`
+  }
+
+  private async getCachedPreview(month: string) {
+    const raw = await PlatformConfig.get(this.cacheKey(month))
+    return raw ? JSON.parse(raw) as PayoutPreviewResult : null
+  }
 
   async preview({ inertia, request }: HttpContext) {
     const qs = request.qs() as Record<string, string>
     const month = qs.month
       ? DateTime.fromISO(qs.month + '-01').startOf('month')
       : DateTime.now().minus({ months: 1 }).startOf('month')
+    const monthStr = month.toFormat('yyyy-MM')
 
-    const result = await PayoutService.getPayoutPreview(month)
+    // Serve from cache — instant load
+    const cached = await this.getCachedPreview(monthStr)
 
     // Build last 12 months for the dropdown
     const availableMonths: { value: string; label: string }[] = []
@@ -280,9 +293,33 @@ export default class AdminPayoutController {
     }
 
     return inertia.render('admin/payout/preview', {
-      ...result,
+      month: monthStr,
+      users: cached?.users || [],
+      summary: cached?.summary || { totalIncomeWallet: 0, totalWorkingWallet: 0, grandTotal: 0, eligibleUsers: 0 },
       availableMonths,
+      generatedAt: cached ? (cached as any).generatedAt || null : null,
     })
+  }
+
+  async generate({ request, response, session }: HttpContext) {
+    const qs = request.qs() as Record<string, string>
+    const month = qs.month
+      ? DateTime.fromISO(qs.month + '-01').startOf('month')
+      : DateTime.now().minus({ months: 1 }).startOf('month')
+    const monthStr = month.toFormat('yyyy-MM')
+
+    logger.info(`Generating payout preview for ${monthStr}...`)
+
+    const result = await PayoutService.getPayoutPreview(month)
+    // Attach generation timestamp for the frontend to display
+    const payload = { ...result, generatedAt: DateTime.now().toISO() }
+
+    await PlatformConfig.set(this.cacheKey(monthStr), JSON.stringify(payload), 'payout_preview')
+
+    logger.info(`Payout preview for ${monthStr} generated: ${result.users.length} users, grand total ₹${result.summary.grandTotal}`)
+
+    session.flash('success', `Payout preview for ${month.toFormat('LLLL yyyy')} generated successfully (${result.users.length} eligible users).`)
+    return response.redirect(`/admin/payout/preview?month=${monthStr}`)
   }
 
   async downloadPreview({ request, response }: HttpContext) {
@@ -293,10 +330,11 @@ export default class AdminPayoutController {
 
     const month = DateTime.fromISO(qs.month + '-01').startOf('month')
     const monthName = month.toFormat('LLLL yyyy')
-    const result = await PayoutService.getPayoutPreview(month)
 
-    if (result.users.length === 0) {
-      return response.status(404).send('No payout data found for the selected month.')
+    // Read from cache — no recomputation
+    const cached = await this.getCachedPreview(month.toFormat('yyyy-MM'))
+    if (!cached || cached.users.length === 0) {
+      return response.status(404).send('No payout preview data found. Please generate the preview first from the preview page.')
     }
 
     const pdf = PDF.create()
@@ -325,7 +363,7 @@ export default class AdminPayoutController {
       })
       y -= 16
       p.drawText(
-        `Eligible Users: ${result.summary.eligibleUsers}  |  Grand Total: ₹${result.summary.grandTotal.toLocaleString('en-IN')}  |  Generated: ${DateTime.now().toFormat('dd-MM-yyyy hh:mm a')}`,
+        `Eligible Users: ${cached.summary.eligibleUsers}  |  Grand Total: ₹${cached.summary.grandTotal.toLocaleString('en-IN')}  |  Generated: ${(cached as any).generatedAt ? DateTime.fromISO((cached as any).generatedAt).toFormat('dd-MM-yyyy hh:mm a') : DateTime.now().toFormat('dd-MM-yyyy hh:mm a')}`,
         { x: margin, y, size: 8, font: 'Helvetica', color: muted }
       )
       return y - 22
@@ -364,7 +402,7 @@ export default class AdminPayoutController {
 
     const ROW_BLOCK = 11 // height per field line
 
-    for (const user of result.users) {
+    for (const user of cached.users) {
       // Estimate space needed for this user block
       const fieldsNeeded = 4 + // header + separator + combined total + blank
         (user.incomeWallet ? 8 : 0) + // income section fields
@@ -436,11 +474,11 @@ export default class AdminPayoutController {
       x: margin, y: yPos, size: 9, font: 'Helvetica-Bold', color: headerBg,
     })
     yPos -= 14
-    yPos = drawField(page, yPos, 'Total Income Wallet Payout:', fmt(result.summary.totalIncomeWallet))
-    yPos = drawField(page, yPos, 'Total Working Wallet Payout:', fmt(result.summary.totalWorkingWallet))
+    yPos = drawField(page, yPos, 'Total Income Wallet Payout:', fmt(cached.summary.totalIncomeWallet))
+    yPos = drawField(page, yPos, 'Total Working Wallet Payout:', fmt(cached.summary.totalWorkingWallet))
     page.drawText('→', { x: margin + 168, y: yPos + 11, size: 8, font: 'Helvetica-Bold', color: green })
-    yPos = drawSubtotal(page, yPos, 'Grand Total:', fmt(result.summary.grandTotal))
-    yPos = drawField(page, yPos, 'Eligible Users:', String(result.summary.eligibleUsers))
+    yPos = drawSubtotal(page, yPos, 'Grand Total:', fmt(cached.summary.grandTotal))
+    yPos = drawField(page, yPos, 'Eligible Users:', String(cached.summary.eligibleUsers))
 
     // Footer
     page.drawText('Prime Jewellery — Payout Preview Report', {

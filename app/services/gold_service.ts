@@ -258,14 +258,21 @@ export default class GoldService {
 
     const query = Purchase.query().preload('user')
 
-    // Search by user details
+    // Search by user details (name, email, phone, or user ID)
     if (search) {
-      query.whereHas('user', (userQuery) => {
-        userQuery
-          .where('name', 'ilike', `%${search}%`)
-          .orWhere('email', 'ilike', `%${search}%`)
-          .orWhere('phone', 'ilike', `%${search}%`)
-      })
+      const numericId = parseInt(search.replace(/^PJ/i, ''), 10)
+      if (!isNaN(numericId)) {
+        query.whereHas('user', (userQuery) => {
+          userQuery.where('id', numericId)
+        })
+      } else {
+        query.whereHas('user', (userQuery) => {
+          userQuery
+            .where('name', 'ilike', `%${search}%`)
+            .orWhere('email', 'ilike', `%${search}%`)
+            .orWhere('phone', 'ilike', `%${search}%`)
+        })
+      }
     }
 
     // Filter by status

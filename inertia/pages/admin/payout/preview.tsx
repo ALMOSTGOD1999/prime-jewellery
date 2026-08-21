@@ -1,4 +1,4 @@
-import { Head, router } from '@inertiajs/react'
+import { Head, router, useForm } from '@inertiajs/react'
 import { useState } from 'react'
 import AppLayout from '~/components/app/layout'
 import { Header } from '~/components/app/header'
@@ -12,6 +12,7 @@ import {
   CashIcon,
   Wallet01Icon,
   DollarCircleIcon,
+  RefreshIcon,
 } from '@hugeicons/core-free-icons'
 
 interface IncomeWallet {
@@ -55,6 +56,7 @@ interface Props {
     eligibleUsers: number
   }
   availableMonths: { value: string; label: string }[]
+  generatedAt: string | null
 }
 
 function fmt(n: number): string {
@@ -184,8 +186,10 @@ export default function PayoutPreview({
   users,
   summary,
   availableMonths,
+  generatedAt,
 }: Props) {
   const [showAll, setShowAll] = useState(false)
+  const generateForm = useForm({})
   const visibleUsers = showAll ? users : users.slice(0, 50)
 
   const monthLabel = new Date(month + '-01').toLocaleString('en-US', {
@@ -195,6 +199,10 @@ export default function PayoutPreview({
 
   function handleMonthChange(value: string) {
     router.get('/admin/payout/preview', { month: value }, { preserveState: true })
+  }
+
+  function handleGenerate() {
+    generateForm.post(`/admin/payout/preview/generate?month=${month}`, {})
   }
 
   return (
@@ -227,68 +235,100 @@ export default function PayoutPreview({
                 ))}
               </select>
 
-              {/* PDF Download */}
-              <a
-                href={`/admin/payout/preview/download?month=${month}`}
-                className="inline-flex items-center gap-2 border rounded-md px-3 py-1.5 text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-colors"
+              {/* Generate Button */}
+              <Button
+                onClick={handleGenerate}
+                disabled={generateForm.processing}
+                variant="default"
+                size="sm"
               >
-                <HugeiconsIcon icon={Download04Icon} className="h-4 w-4" />
-                Download PDF
-              </a>
+                <HugeiconsIcon icon={RefreshIcon} className={`h-4 w-4 ${generateForm.processing ? 'animate-spin' : ''}`} />
+                {generateForm.processing ? 'Generating...' : 'Generate Preview'}
+              </Button>
+
+              {/* PDF Download — only when data exists */}
+              {users.length > 0 && (
+                <a
+                  href={`/admin/payout/preview/download?month=${month}`}
+                  className="inline-flex items-center gap-2 border rounded-md px-3 py-1.5 text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-colors"
+                >
+                  <HugeiconsIcon icon={Download04Icon} className="h-4 w-4" />
+                  Download PDF
+                </a>
+              )}
             </div>
           </div>
 
+          {/* Generated timestamp */}
+          {generatedAt && (
+            <p className="text-xs text-muted-foreground">
+              Last generated: {new Date(generatedAt).toLocaleString('en-IN')}
+            </p>
+          )}
+
           {/* Summary Cards */}
-          <div className="grid gap-4 md:grid-cols-3">
-            <Card className="border-blue-200 bg-blue-50/30">
-              <CardHeader className="pb-2">
-                <div className="flex items-center gap-2">
-                  <HugeiconsIcon icon={CashIcon} className="h-4 w-4 text-blue-600" />
-                  <CardTitle className="text-sm text-blue-800">Income Wallet Payout</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-blue-700">
-                  {fmtShort(summary.totalIncomeWallet)}
-                </div>
-              </CardContent>
-            </Card>
+          {users.length > 0 && (
+            <div className="grid gap-4 md:grid-cols-3">
+              <Card className="border-blue-200 bg-blue-50/30">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center gap-2">
+                    <HugeiconsIcon icon={CashIcon} className="h-4 w-4 text-blue-600" />
+                    <CardTitle className="text-sm text-blue-800">Income Wallet Payout</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-blue-700">
+                    {fmtShort(summary.totalIncomeWallet)}
+                  </div>
+                </CardContent>
+              </Card>
 
-            <Card className="border-emerald-200 bg-emerald-50/30">
-              <CardHeader className="pb-2">
-                <div className="flex items-center gap-2">
-                  <HugeiconsIcon icon={Wallet01Icon} className="h-4 w-4 text-emerald-600" />
-                  <CardTitle className="text-sm text-emerald-800">Working Wallet Payout</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-emerald-700">
-                  {fmtShort(summary.totalWorkingWallet)}
-                </div>
-              </CardContent>
-            </Card>
+              <Card className="border-emerald-200 bg-emerald-50/30">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center gap-2">
+                    <HugeiconsIcon icon={Wallet01Icon} className="h-4 w-4 text-emerald-600" />
+                    <CardTitle className="text-sm text-emerald-800">Working Wallet Payout</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-emerald-700">
+                    {fmtShort(summary.totalWorkingWallet)}
+                  </div>
+                </CardContent>
+              </Card>
 
-            <Card className="border-primary/30 bg-primary/5">
-              <CardHeader className="pb-2">
-                <div className="flex items-center gap-2">
-                  <HugeiconsIcon icon={DollarCircleIcon} className="h-4 w-4 text-primary" />
-                  <CardTitle className="text-sm">Grand Total</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{fmtShort(summary.grandTotal)}</div>
-                <div className="text-xs text-muted-foreground mt-1">
-                  Eligible Users: {summary.eligibleUsers}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+              <Card className="border-primary/30 bg-primary/5">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center gap-2">
+                    <HugeiconsIcon icon={DollarCircleIcon} className="h-4 w-4 text-primary" />
+                    <CardTitle className="text-sm">Grand Total</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{fmtShort(summary.grandTotal)}</div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Eligible Users: {summary.eligibleUsers}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
           {/* User List */}
           {users.length === 0 ? (
             <Card>
-              <CardContent className="py-12 text-center text-muted-foreground">
-                No payout data available for {monthLabel}.
+              <CardContent className="py-12 text-center space-y-4">
+                <div className="text-muted-foreground">
+                  No payout preview generated yet for {monthLabel}.
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Click "Generate Preview" above to compute the full payout breakdown.
+                  This may take a minute for large user bases.
+                </p>
+                <Button onClick={handleGenerate} disabled={generateForm.processing}>
+                  <HugeiconsIcon icon={RefreshIcon} className={`h-4 w-4 ${generateForm.processing ? 'animate-spin' : ''}`} />
+                  {generateForm.processing ? 'Generating... please wait' : 'Generate Preview for ' + monthLabel}
+                </Button>
               </CardContent>
             </Card>
           ) : (

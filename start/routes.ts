@@ -414,6 +414,9 @@ router
           .as('history.download')
         router.get('/preview', [AdminPayoutController, 'preview']).as('preview')
         router
+          .post('/preview/generate', [AdminPayoutController, 'generate'])
+          .as('preview.generate')
+        router
           .get('/preview/download', [AdminPayoutController, 'downloadPreview'])
           .as('preview.download')
       })
