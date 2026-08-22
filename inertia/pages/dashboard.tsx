@@ -70,6 +70,7 @@ export default function DashboardPage({
       border: 'border-gold/20',
       iconBg: 'bg-gold/10 text-gold',
       valueColor: 'text-gold',
+      detailType: 'team' as const,
     },
     {
       title: 'Self Directs',
@@ -80,16 +81,18 @@ export default function DashboardPage({
       border: 'border-sky/20',
       iconBg: 'bg-sky/10 text-sky',
       valueColor: 'text-sky',
+      detailType: 'directs' as const,
     },
     {
       title: 'Self Business',
       value: formatCurrency(metrics?.directBusiness || 0),
-      subtitle: 'Direct Referrals',
+      subtitle: 'Your direct purchases',
       icon: UserIcon,
       gradient: 'from-sky/20 via-sky/5 to-transparent',
       border: 'border-sky/20',
       iconBg: 'bg-sky/10 text-sky',
       valueColor: 'text-sky',
+      detailType: 'self-business' as const,
     },
     {
       title: 'Self Investment',
@@ -100,6 +103,7 @@ export default function DashboardPage({
       border: 'border-emerald/20',
       iconBg: 'bg-emerald/10 text-emerald',
       valueColor: 'text-emerald',
+      detailType: 'self-investment' as const,
     },
     {
       title: 'Total Business',
@@ -110,6 +114,7 @@ export default function DashboardPage({
       border: 'border-gold/20',
       iconBg: 'bg-gold/10 text-gold',
       valueColor: 'text-gold',
+      detailType: 'team-business' as const,
     },
     {
       title: 'Business (Month)',
@@ -120,6 +125,7 @@ export default function DashboardPage({
       border: 'border-sky/20',
       iconBg: 'bg-sky/10 text-sky',
       valueColor: 'text-sky',
+      detailType: 'business-month' as const,
     },
     {
       title: 'Cashback Wallet',
@@ -223,17 +229,22 @@ export default function DashboardPage({
         {/* Stat Cards */}
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
           {statCards.map((stat, i) => {
-            const Wrapper = stat.walletType ? 'button' : 'div'
+            const isClickable = !!(stat as any).walletType || !!(stat as any).detailType
+            const Wrapper = isClickable ? 'button' : 'div'
             return (
               <Wrapper
                 key={i}
-                {...(stat.walletType
+                {...(isClickable
                   ? {
-                      onClick: () =>
-                        router.get(`/dashboard/wallet-history?wallet=${stat.walletType}`),
+                      onClick: () => {
+                        const wt = (stat as any).walletType
+                        const dt = (stat as any).detailType
+                        if (wt) router.get(`/dashboard/wallet-history?wallet=${wt}`)
+                        else if (dt) router.get(`/dashboard/${dt}`)
+                      },
                     }
                   : {})}
-                className={`relative overflow-hidden rounded-2xl border ${stat.border} bg-gradient-to-br ${stat.gradient} p-6 backdrop-blur-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 text-left w-full ${stat.walletType ? 'cursor-pointer' : ''}`}
+                className={`relative overflow-hidden rounded-2xl border ${stat.border} bg-gradient-to-br ${stat.gradient} p-6 backdrop-blur-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 text-left w-full ${isClickable ? 'cursor-pointer' : ''}`}
               >
                 <div className="absolute -top-2 -right-2 size-16 rounded-full opacity-10 bg-current" />
                 <div className="flex items-start justify-between mb-4">
@@ -252,7 +263,7 @@ export default function DashboardPage({
                 <div className="flex items-center gap-1.5 mt-2">
                   <span className="size-1.5 rounded-full bg-current opacity-60" />
                   <p className="text-xs text-muted-foreground">
-                    {stat.walletType ? 'Tap to view history' : stat.subtitle}
+                    {(stat as any).walletType || (stat as any).detailType ? 'Tap to view details' : stat.subtitle}
                   </p>
                 </div>
               </Wrapper>

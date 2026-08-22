@@ -46,6 +46,30 @@ router.get('dashboard/wallet-history', [DashboardController, 'walletHistory'])
   .as('dashboard.walletHistory')
   .use(middleware.auth())
 
+router.get('dashboard/team', [DashboardController, 'team'])
+  .as('dashboard.team')
+  .use(middleware.auth())
+
+router.get('dashboard/directs', [DashboardController, 'directs'])
+  .as('dashboard.directs')
+  .use(middleware.auth())
+
+router.get('dashboard/self-business', [DashboardController, 'selfBusiness'])
+  .as('dashboard.selfBusiness')
+  .use(middleware.auth())
+
+router.get('dashboard/self-investment', [DashboardController, 'selfInvestment'])
+  .as('dashboard.selfInvestment')
+  .use(middleware.auth())
+
+router.get('dashboard/team-business', [DashboardController, 'teamBusiness'])
+  .as('dashboard.teamBusiness')
+  .use(middleware.auth())
+
+router.get('dashboard/business-month', [DashboardController, 'businessMonth'])
+  .as('dashboard.businessMonth')
+  .use(middleware.auth())
+
 /*
 |--------------------------------------------------------------------------
 | Members
