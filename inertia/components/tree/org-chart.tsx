@@ -383,10 +383,14 @@ export default function OrgChart({ rootUser }: OrgChartProps) {
                           <h3 className="text-sm font-bold text-foreground truncate leading-tight">
                             {node.name}
                           </h3>
-                          {node.activatedAt && (
-                            <span className="relative flex h-2 w-2 shrink-0">
+                          {node.activatedAt ? (
+                            <span className="relative flex h-2 w-2 shrink-0" title="Active">
                               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                               <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                            </span>
+                          ) : (
+                            <span className="relative flex h-2 w-2 shrink-0" title="Inactive">
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
                             </span>
                           )}
                         </div>

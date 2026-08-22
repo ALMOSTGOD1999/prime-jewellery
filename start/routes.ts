@@ -417,6 +417,9 @@ router
           .post('/preview/generate', [AdminPayoutController, 'generate'])
           .as('preview.generate')
         router
+          .get('/preview/status', [AdminPayoutController, 'previewStatus'])
+          .as('preview.status')
+        router
           .get('/preview/download', [AdminPayoutController, 'downloadPreview'])
           .as('preview.download')
       })

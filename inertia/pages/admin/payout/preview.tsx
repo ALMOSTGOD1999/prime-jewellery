@@ -1,5 +1,5 @@
 import { Head, router, useForm } from '@inertiajs/react'
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import AppLayout from '~/components/app/layout'
 import { Header } from '~/components/app/header'
 import { Main } from '~/components/app/main'
@@ -189,6 +189,7 @@ export default function PayoutPreview({
   generatedAt,
 }: Props) {
   const [showAll, setShowAll] = useState(false)
+  const [isGenerating, setIsGenerating] = useState(!generatedAt && users.length === 0)
   const generateForm = useForm({})
   const visibleUsers = showAll ? users : users.slice(0, 50)
 
@@ -197,11 +198,32 @@ export default function PayoutPreview({
     year: 'numeric',
   })
 
+  // Poll for completion when generating
+  const checkStatus = useCallback(async () => {
+    try {
+      const res = await fetch(`/admin/payout/preview/status?month=${month}`)
+      const data = await res.json()
+      if (data.ready) {
+        setIsGenerating(false)
+        router.reload({ only: ['users', 'summary', 'generatedAt'] })
+      }
+    } catch {
+      // ignore fetch errors, keep polling
+    }
+  }, [month])
+
+  useEffect(() => {
+    if (!isGenerating) return
+    const interval = setInterval(checkStatus, 5000)
+    return () => clearInterval(interval)
+  }, [isGenerating, checkStatus])
+
   function handleMonthChange(value: string) {
     router.get('/admin/payout/preview', { month: value }, { preserveState: true })
   }
 
   function handleGenerate() {
+    setIsGenerating(true)
     generateForm.post(`/admin/payout/preview/generate?month=${month}`, {})
   }
 
@@ -264,6 +286,17 @@ export default function PayoutPreview({
             <p className="text-xs text-muted-foreground">
               Last generated: {new Date(generatedAt).toLocaleString('en-IN')}
             </p>
+          )}
+
+          {/* Generating banner */}
+          {isGenerating && (
+            <div className="flex items-center gap-3 p-4 rounded-lg border border-amber-200 bg-amber-50/50 text-amber-800">
+              <HugeiconsIcon icon={RefreshIcon} className="h-5 w-5 animate-spin text-amber-600" />
+              <div>
+                <div className="font-medium text-sm">Generating payout preview...</div>
+                <div className="text-xs text-amber-600">This may take a few minutes. The page will refresh automatically when ready.</div>
+              </div>
+            </div>
           )}
 
           {/* Summary Cards */}
