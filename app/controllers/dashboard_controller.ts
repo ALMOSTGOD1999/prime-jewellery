@@ -374,4 +374,194 @@ export default class DashboardController {
       transactions: result.rows,
     })
   }
+
+  // ─── Admin Dashboard Detail Endpoints ───────────────────────────
+
+  async allUsers({ inertia, request }: HttpContext) {
+    const page = Math.max(1, Number(request.qs().page) || 1)
+    const limit = 20
+    const offset = (page - 1) * limit
+
+    const countRes = await db.rawQuery(
+      `SELECT COUNT(*)::int as total FROM users WHERE role != 'admin'`
+    )
+    const total = countRes.rows[0]?.total || 0
+    const totalPages = Math.max(1, Math.ceil(total / limit))
+
+    const usersRes = await db.rawQuery(
+      `SELECT id, name, email, phone, status, activated_at, parent_id, created_at
+       FROM users WHERE role != 'admin'
+       ORDER BY created_at DESC
+       LIMIT ? OFFSET ?`,
+      [limit, offset]
+    )
+
+    return inertia.render('admin/dashboard/users', {
+      users: usersRes.rows,
+      page,
+      totalPages,
+      total,
+      title: 'All Users',
+    })
+  }
+
+  async usersMonth({ inertia, request }: HttpContext) {
+    const page = Math.max(1, Number(request.qs().page) || 1)
+    const limit = 20
+    const offset = (page - 1) * limit
+    const startOfMonth = DateTime.now().startOf('month').toSQLDate()
+
+    const countRes = await db.rawQuery(
+      `SELECT COUNT(*)::int as total FROM users WHERE role != 'admin' AND created_at >= ?`,
+      [startOfMonth]
+    )
+    const total = countRes.rows[0]?.total || 0
+    const totalPages = Math.max(1, Math.ceil(total / limit))
+
+    const usersRes = await db.rawQuery(
+      `SELECT id, name, email, phone, status, activated_at, parent_id, created_at
+       FROM users WHERE role != 'admin' AND created_at >= ?
+       ORDER BY created_at DESC
+       LIMIT ? OFFSET ?`,
+      [startOfMonth, limit, offset]
+    )
+
+    return inertia.render('admin/dashboard/users', {
+      users: usersRes.rows,
+      page,
+      totalPages,
+      total,
+      title: `Users — ${DateTime.now().toFormat('MMMM yyyy')}`,
+    })
+  }
+
+  async usersToday({ inertia, request }: HttpContext) {
+    const page = Math.max(1, Number(request.qs().page) || 1)
+    const limit = 20
+    const offset = (page - 1) * limit
+    const startOfDay = DateTime.now().startOf('day').toSQLDate()
+
+    const countRes = await db.rawQuery(
+      `SELECT COUNT(*)::int as total FROM users WHERE role != 'admin' AND created_at >= ?`,
+      [startOfDay]
+    )
+    const total = countRes.rows[0]?.total || 0
+    const totalPages = Math.max(1, Math.ceil(total / limit))
+
+    const usersRes = await db.rawQuery(
+      `SELECT id, name, email, phone, status, activated_at, parent_id, created_at
+       FROM users WHERE role != 'admin' AND created_at >= ?
+       ORDER BY created_at DESC
+       LIMIT ? OFFSET ?`,
+      [startOfDay, limit, offset]
+    )
+
+    return inertia.render('admin/dashboard/users', {
+      users: usersRes.rows,
+      page,
+      totalPages,
+      total,
+      title: `Users — ${DateTime.now().toFormat('dd MMMM yyyy')}`,
+    })
+  }
+
+  async totalBusiness({ inertia, request }: HttpContext) {
+    const page = Math.max(1, Number(request.qs().page) || 1)
+    const limit = 20
+    const offset = (page - 1) * limit
+
+    const countRes = await db.rawQuery(
+      `SELECT COUNT(*)::int as total FROM purchases
+       WHERE approved_at IS NOT NULL AND cancelled_at IS NULL`
+    )
+    const total = countRes.rows[0]?.total || 0
+    const totalPages = Math.max(1, Math.ceil(total / limit))
+
+    const purchasesRes = await db.rawQuery(
+      `SELECT p.id, p.amount, p.buyer_name, p.approved_at, p.created_at,
+              u.id as member_id, u.name as member_name
+       FROM purchases p
+       INNER JOIN users u ON p.user_id = u.id
+       WHERE p.approved_at IS NOT NULL AND p.cancelled_at IS NULL
+       ORDER BY p.approved_at DESC
+       LIMIT ? OFFSET ?`,
+      [limit, offset]
+    )
+
+    return inertia.render('admin/dashboard/business', {
+      purchases: purchasesRes.rows,
+      page,
+      totalPages,
+      total,
+      title: 'All Business',
+    })
+  }
+
+  async adminBusinessMonth({ inertia, request }: HttpContext) {
+    const page = Math.max(1, Number(request.qs().page) || 1)
+    const limit = 20
+    const offset = (page - 1) * limit
+    const startOfMonth = DateTime.now().startOf('month').toSQLDate()
+
+    const countRes = await db.rawQuery(
+      `SELECT COUNT(*)::int as total FROM purchases
+       WHERE approved_at IS NOT NULL AND cancelled_at IS NULL AND approved_at >= ?`,
+      [startOfMonth]
+    )
+    const total = countRes.rows[0]?.total || 0
+    const totalPages = Math.max(1, Math.ceil(total / limit))
+
+    const purchasesRes = await db.rawQuery(
+      `SELECT p.id, p.amount, p.buyer_name, p.approved_at, p.created_at,
+              u.id as member_id, u.name as member_name
+       FROM purchases p
+       INNER JOIN users u ON p.user_id = u.id
+       WHERE p.approved_at IS NOT NULL AND p.cancelled_at IS NULL AND p.approved_at >= ?
+       ORDER BY p.approved_at DESC
+       LIMIT ? OFFSET ?`,
+      [startOfMonth, limit, offset]
+    )
+
+    return inertia.render('admin/dashboard/business', {
+      purchases: purchasesRes.rows,
+      page,
+      totalPages,
+      total,
+      title: `Business — ${DateTime.now().toFormat('MMMM yyyy')}`,
+    })
+  }
+
+  async businessToday({ inertia, request }: HttpContext) {
+    const page = Math.max(1, Number(request.qs().page) || 1)
+    const limit = 20
+    const offset = (page - 1) * limit
+    const startOfDay = DateTime.now().startOf('day').toSQLDate()
+
+    const countRes = await db.rawQuery(
+      `SELECT COUNT(*)::int as total FROM purchases
+       WHERE approved_at IS NOT NULL AND cancelled_at IS NULL AND approved_at >= ?`,
+      [startOfDay]
+    )
+    const total = countRes.rows[0]?.total || 0
+    const totalPages = Math.max(1, Math.ceil(total / limit))
+
+    const purchasesRes = await db.rawQuery(
+      `SELECT p.id, p.amount, p.buyer_name, p.approved_at, p.created_at,
+              u.id as member_id, u.name as member_name
+       FROM purchases p
+       INNER JOIN users u ON p.user_id = u.id
+       WHERE p.approved_at IS NOT NULL AND p.cancelled_at IS NULL AND p.approved_at >= ?
+       ORDER BY p.approved_at DESC
+       LIMIT ? OFFSET ?`,
+      [startOfDay, limit, offset]
+    )
+
+    return inertia.render('admin/dashboard/business', {
+      purchases: purchasesRes.rows,
+      page,
+      totalPages,
+      total,
+      title: `Business — ${DateTime.now().toFormat('dd MMMM yyyy')}`,
+    })
+  }
 }

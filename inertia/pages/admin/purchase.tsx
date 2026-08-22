@@ -95,6 +95,7 @@ export default function AdminPurchasePage({
     carat: '22ct',
     weight: '',
     amount: '',
+    ornamentName: '',
   })
 
   // Auto-filled breakdown — works in both weight and amount mode
@@ -392,6 +393,18 @@ export default function AdminPurchasePage({
                       )}
                     </div>
                   )}
+
+                  {/* Ornament Name */}
+                  <div className="space-y-2">
+                    <Label htmlFor="purchase-ornament">Ornament Name</Label>
+                    <Input
+                      id="purchase-ornament"
+                      type="text"
+                      placeholder="e.g. Gold Necklace, Ring, Bangle"
+                      value={purchaseForm.data.ornamentName}
+                      onChange={(e) => purchaseForm.setData('ornamentName', e.target.value)}
+                    />
+                  </div>
 
                   {/* Auto-filled breakdown */}
                   <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">

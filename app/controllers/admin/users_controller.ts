@@ -324,7 +324,7 @@ export default class AdminUsersController {
   async makePurchase({ params, request, response, session, auth }: HttpContext) {
     const admin = auth.getUserOrFail()
     const user = await User.findOrFail(params.id)
-    const { amount, carat, weight } = request.only(['amount', 'carat', 'weight'])
+    const { amount, carat, weight, ornamentName } = request.only(['amount', 'carat', 'weight', 'ornamentName'])
 
     try {
       if (carat && weight) {
@@ -340,7 +340,7 @@ export default class AdminUsersController {
 
         await GoldService.adminPurchaseGoldByWeight(
           user,
-          { carat, weight: Number(weight) },
+          { carat, weight: Number(weight), ornamentName: ornamentName || undefined },
           admin.id
         )
         session.flash(

@@ -169,6 +169,7 @@ export default class InvoiceService {
       invoiceDate: purchase.createdAt.toFormat('dd-MM-yyyy'),
       buyerName: purchase.buyerName || purchase.user.name,
       customerPhone: purchase.user.phone,
+      memberCode: String(purchase.user.id),
       quantity: goldWeight,
       totalAmount: Number(purchase.amount),
       goldCarat: goldCarat || '',
@@ -177,6 +178,7 @@ export default class InvoiceService {
       makingCharges,
       gstAmount,
       additionalCharges,
+      ornamentName: purchase.ornamentName || '',
     })
   }
 
@@ -185,6 +187,7 @@ export default class InvoiceService {
     invoiceDate: string
     buyerName: string
     customerPhone: string
+    memberCode: string
     quantity: number
     totalAmount: number
     goldCarat: string
@@ -193,6 +196,7 @@ export default class InvoiceService {
     makingCharges: number
     gstAmount: number
     additionalCharges: number
+    ornamentName: string
   }): Promise<Uint8Array> {
     const pdf = PDF.create()
     pdf.setTitle(`Gold Purchase Invoice ${data.invoiceNo}`)
@@ -318,33 +322,37 @@ export default class InvoiceService {
       font: 'Helvetica',
       color: muted,
     })
-    const caratLabel = data.goldCarat ? data.goldCarat.toUpperCase() : ''
-    page.drawText(`Quantity: ${data.quantity.toFixed(3)} gm`, {
+    page.drawText(`Member Code: ${data.memberCode}`, {
       x: width / 2 + 20,
-      y: y - 44,
+      y: y - 26,
       size: 10,
       font: 'Helvetica-Bold',
       color: dark,
     })
-    if (data.goldRate > 0) {
-      page.drawText(`Gold Rate: ${formatAmount(data.goldRate)}/${caratLabel || 'gm'}`, {
+    if (data.ornamentName) {
+      page.drawText(`Ornament: ${data.ornamentName}`, {
         x: width / 2 + 20,
-        y: y - 62,
+        y: y - 44,
         size: 10,
         font: 'Helvetica',
         color: dark,
       })
     }
+    page.drawText(`Quantity: ${data.quantity.toFixed(3)} gm`, {
+      x: width / 2 + 20,
+      y: y - (data.ornamentName ? 62 : 44),
+      size: 10,
+      font: 'Helvetica-Bold',
+      color: dark,
+    })
     page.drawText(`Invoice Total: ${formatAmount(data.totalAmount)}`, {
       x: width / 2 + 20,
-      y: data.goldRate > 0 ? y - 80 : y - 62,
+      y: y - (data.ornamentName ? 80 : 62),
       size: 10,
       font: 'Helvetica-Bold',
       color: dark,
     })
 
-    // Adjust y position to account for the gold rate line if shown
-    if (data.goldRate > 0) y -= 18
     y -= 112
 
     this.drawGoldPurchaseRow(
@@ -353,7 +361,6 @@ export default class InvoiceService {
       y,
       width - margin * 2,
       'Component',
-      'Rate',
       'Amount',
       true
     )
@@ -367,21 +374,20 @@ export default class InvoiceService {
     const making = data.makingCharges || data.totalAmount * r.making
 
     const rows = [
-      ['Gold Value', `${Math.round(r.jewelleryDisplay)}%`, goldValue],
-      ['CGST', `${(r.gstDisplay / 2).toFixed(1)}%`, cgst],
-      ['SGST', `${(r.gstDisplay / 2).toFixed(1)}%`, sgst],
-      ['Additional Charges', `${Math.round(r.additionalDisplay)}%`, additional],
-      ['Making Charges', `${r.makingDisplay}%`, making],
+      ['Gold Value', goldValue],
+      ['CGST', cgst],
+      ['SGST', sgst],
+      ['Additional Charges', additional],
+      ['Making Charges', making],
     ] as const
 
-    rows.forEach(([label, rate, amount]) => {
+    rows.forEach(([label, amount]) => {
       this.drawGoldPurchaseRow(
         page,
         margin,
         y,
         width - margin * 2,
         label,
-        rate,
         formatAmount(amount)
       )
       y -= 28
@@ -460,7 +466,6 @@ export default class InvoiceService {
     y: number,
     width: number,
     label: string,
-    rate: string,
     amount: string,
     isHeader = false
   ) {
@@ -476,13 +481,6 @@ export default class InvoiceService {
     const color = isHeader ? rgb(1, 0.94, 0.78) : rgb(0.16, 0.11, 0.06)
     page.drawText(label, {
       x: x + 14,
-      y: y - 18,
-      size: 10,
-      font: isHeader ? 'Helvetica-Bold' : 'Helvetica',
-      color,
-    })
-    page.drawText(rate, {
-      x: x + width / 2,
       y: y - 18,
       size: 10,
       font: isHeader ? 'Helvetica-Bold' : 'Helvetica',
@@ -972,6 +970,7 @@ export default class InvoiceService {
       invoiceDate: purchase.createdAt.toFormat('dd-MM-yyyy'),
       buyerName: purchase.buyerName || purchase.user.name,
       customerPhone: purchase.user.phone,
+      memberCode: String(purchase.user.id),
       quantity: goldWeight,
       totalAmount: Number(purchase.amount),
       goldCarat: goldCarat || '',
@@ -980,6 +979,7 @@ export default class InvoiceService {
       makingCharges,
       gstAmount,
       additionalCharges,
+      ornamentName: purchase.ornamentName || '',
     })
   }
 

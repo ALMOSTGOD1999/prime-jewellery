@@ -64,6 +64,9 @@ export default class Purchase extends compose(BaseModel, withID(), withTimestamp
   @column()
   declare totalItems: number | null
 
+  @column()
+  declare ornamentName: string | null
+
   @belongsTo(() => User)
   declare user: BelongsTo<typeof User>
 }

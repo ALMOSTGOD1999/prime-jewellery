@@ -133,6 +133,7 @@ export default class GoldService {
       hallmarkAdditional?: number
       totalItems?: number
       remark?: string
+      ornamentName?: string
     },
     adminId: number
   ) {
@@ -154,6 +155,7 @@ export default class GoldService {
       additionalCharges: data.additionalCharges ?? null,
       totalItems: data.totalItems ?? null,
       remark: data.remark ?? `Admin purchase by #${adminId}`,
+      ornamentName: data.ornamentName ?? null,
     })
 
     // Record audit transaction for history
@@ -178,7 +180,7 @@ export default class GoldService {
    */
   static async adminPurchaseGoldByWeight(
     user: User,
-    data: { carat: string; weight: number },
+    data: { carat: string; weight: number; ornamentName?: string },
     adminId: number
   ) {
     const rates = await GoldBillingConfig.getRates()
@@ -201,6 +203,7 @@ export default class GoldService {
         additionalCharges: calc.additionalCharges,
         totalItems: 1,
         remark: `Admin purchase by #${adminId} (${data.carat}, ${data.weight}g)`,
+        ornamentName: data.ornamentName,
       },
       adminId
     )

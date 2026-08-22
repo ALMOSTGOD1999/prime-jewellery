@@ -1,4 +1,4 @@
-import { Head } from '@inertiajs/react'
+import { router, Head } from '@inertiajs/react'
 import {
   Calendar03Icon,
   Calendar01Icon,
@@ -47,6 +47,7 @@ export default function AdminDashboardPage({ stats, goldPrice }: AdminDashboardP
       border: 'border-gold/20',
       iconBg: 'bg-gold/10 text-gold',
       valueColor: 'text-gold',
+      href: '/admin/dashboard/users',
     },
     {
       title: 'Users (Month)',
@@ -57,6 +58,7 @@ export default function AdminDashboardPage({ stats, goldPrice }: AdminDashboardP
       border: 'border-sky/20',
       iconBg: 'bg-sky/10 text-sky',
       valueColor: 'text-sky',
+      href: '/admin/dashboard/users-month',
     },
     {
       title: 'Users (Today)',
@@ -67,6 +69,7 @@ export default function AdminDashboardPage({ stats, goldPrice }: AdminDashboardP
       border: 'border-emerald/20',
       iconBg: 'bg-emerald/10 text-emerald',
       valueColor: 'text-emerald',
+      href: '/admin/dashboard/users-today',
     },
     {
       title: 'Total Business',
@@ -77,6 +80,7 @@ export default function AdminDashboardPage({ stats, goldPrice }: AdminDashboardP
       border: 'border-gold/20',
       iconBg: 'bg-gold/10 text-gold',
       valueColor: 'text-gold',
+      href: '/admin/dashboard/business',
     },
     {
       title: 'Business (Month)',
@@ -87,6 +91,7 @@ export default function AdminDashboardPage({ stats, goldPrice }: AdminDashboardP
       border: 'border-sky/20',
       iconBg: 'bg-sky/10 text-sky',
       valueColor: 'text-sky',
+      href: '/admin/dashboard/business-month',
     },
     {
       title: 'Business (Today)',
@@ -97,6 +102,7 @@ export default function AdminDashboardPage({ stats, goldPrice }: AdminDashboardP
       border: 'border-emerald/20',
       iconBg: 'bg-emerald/10 text-emerald',
       valueColor: 'text-emerald',
+      href: '/admin/dashboard/business-today',
     },
   ]
 
@@ -121,9 +127,10 @@ export default function AdminDashboardPage({ stats, goldPrice }: AdminDashboardP
 
           <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             {statCards.map((stat, i) => (
-              <div
+              <button
                 key={i}
-                className={`relative overflow-hidden rounded-2xl border ${stat.border} bg-gradient-to-br ${stat.gradient} p-6 backdrop-blur-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5`}
+                onClick={() => router.get(stat.href)}
+                className={`relative overflow-hidden rounded-2xl border ${stat.border} bg-gradient-to-br ${stat.gradient} p-6 backdrop-blur-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 text-left w-full cursor-pointer`}
               >
                 {/* Decorative corner dot */}
                 <div className="absolute -top-2 -right-2 size-16 rounded-full opacity-10 bg-current" />
@@ -141,9 +148,9 @@ export default function AdminDashboardPage({ stats, goldPrice }: AdminDashboardP
                 </div>
                 <div className="flex items-center gap-1.5 mt-2">
                   <span className="size-1.5 rounded-full bg-current opacity-60" />
-                  <p className="text-xs text-muted-foreground">{stat.subtitle}</p>
+                  <p className="text-xs text-muted-foreground">Tap to view details</p>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         </Main>
