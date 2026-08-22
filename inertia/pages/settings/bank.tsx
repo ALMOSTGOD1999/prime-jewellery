@@ -204,7 +204,7 @@ export default function BankPage({ bank }: InferPageProps<SettingsController, 'b
                       <Field className="gap-2" data-invalid={!!form.errors.qr}>
                         <FieldLabel>
                           <HugeiconsIcon icon={QrCodeIcon} className="w-4 h-4 inline mr-1" />
-                          UPI QR Code
+                          UPI QR Code <span className="text-muted-foreground font-normal">(Optional)</span>
                         </FieldLabel>
 
                         {isApproved && bank?.qr ? (

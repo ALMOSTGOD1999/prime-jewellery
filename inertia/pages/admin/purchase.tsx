@@ -89,16 +89,17 @@ export default function AdminPurchasePage({
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
   const [searching, setSearching] = useState(false)
   const [selectedUser, setSelectedUser] = useState<SearchResult | null>(null)
+  const [inputMode, setInputMode] = useState<'weight' | 'amount'>('weight')
 
   const purchaseForm = useForm({
     carat: '22ct',
     weight: '',
+    amount: '',
   })
 
-  // Auto-filled breakdown from the current admin-set gold rates (same formula as the user page)
+  // Auto-filled breakdown — works in both weight and amount mode
   const breakdown = useMemo(() => {
-    const grams = Number(purchaseForm.data.weight)
-    if (!billingRates || !grams || grams <= 0) return null
+    if (!billingRates) return null
 
     const rate =
       purchaseForm.data.carat === '18ct'
@@ -107,23 +108,33 @@ export default function AdminPurchasePage({
           ? billingRates.rate24ct
           : billingRates.rate22ct
 
-    const goldValue = r2(grams * rate)
-    const investment = r2(goldValue / (billingRates.jewelleryValuePercent / 100))
-    const gstAmount = r2((goldValue * billingRates.gstPercent) / 100)
-    const additionalCharges = r2((goldValue * billingRates.additionalChargePercent) / 100)
-    const makingCharges = r2(investment - goldValue - gstAmount - additionalCharges)
-    const makingPercent = goldValue > 0 ? r2((makingCharges / goldValue) * 100) : 0
+    if (inputMode === 'weight') {
+      const grams = Number(purchaseForm.data.weight)
+      if (!grams || grams <= 0) return null
 
-    return {
-      rate,
-      goldValue,
-      investment,
-      gstAmount,
-      additionalCharges,
-      makingCharges,
-      makingPercent,
+      const goldValue = r2(grams * rate)
+      const investment = r2(goldValue / (billingRates.jewelleryValuePercent / 100))
+      const gstAmount = r2((goldValue * billingRates.gstPercent) / 100)
+      const additionalCharges = r2((goldValue * billingRates.additionalChargePercent) / 100)
+      const makingCharges = r2(investment - goldValue - gstAmount - additionalCharges)
+      const makingPercent = goldValue > 0 ? r2((makingCharges / goldValue) * 100) : 0
+
+      return { rate, goldValue, investment, gstAmount, additionalCharges, makingCharges, makingPercent, weightGrams: grams }
+    } else {
+      // Amount mode: reverse-calculate from total amount
+      const investment = Number(purchaseForm.data.amount)
+      if (!investment || investment <= 0) return null
+
+      const goldValue = r2(investment * (billingRates.jewelleryValuePercent / 100))
+      const weightGrams = rate > 0 ? r2(goldValue / rate) : 0
+      const gstAmount = r2((goldValue * billingRates.gstPercent) / 100)
+      const additionalCharges = r2((goldValue * billingRates.additionalChargePercent) / 100)
+      const makingCharges = r2(investment - goldValue - gstAmount - additionalCharges)
+      const makingPercent = goldValue > 0 ? r2((makingCharges / goldValue) * 100) : 0
+
+      return { rate, goldValue, investment, gstAmount, additionalCharges, makingCharges, makingPercent, weightGrams }
     }
-  }, [purchaseForm.data.carat, purchaseForm.data.weight, billingRates])
+  }, [purchaseForm.data.carat, purchaseForm.data.weight, purchaseForm.data.amount, inputMode, billingRates])
 
   const selectedAmount = breakdown ? breakdown.investment : 0
   const goldPackage =
@@ -169,10 +180,21 @@ export default function AdminPurchasePage({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedUser || !breakdown || belowMinimum) return
+
+    // Set the right fields depending on mode before submitting
+    if (inputMode === 'amount') {
+      purchaseForm.setData((prev) => ({
+        ...prev,
+        amount: String(breakdown.investment),
+        weight: String(breakdown.weightGrams),
+      }))
+    }
+
     purchaseForm.post(`/admin/users/${selectedUser.id}/purchase`, {
       preserveScroll: true,
       onSuccess: () => {
         purchaseForm.setData('weight', '')
+        purchaseForm.setData('amount', '')
       },
     })
   }
@@ -276,29 +298,64 @@ export default function AdminPurchasePage({
                     </div>
                   </div>
 
-                  {/* Carat + Weight */}
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="purchase-carat">Gold Carat</Label>
-                      <Select
-                        value={purchaseForm.data.carat}
-                        onValueChange={(val) => purchaseForm.setData('carat', val || '22ct')}
-                      >
-                        <SelectTrigger id="purchase-carat" className="w-full">
-                          <SelectValue placeholder="Select carat" className="capitalize" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectGroup>
-                            {CARATS.map((c) => (
-                              <SelectItem key={c} value={c}>
-                                {c.toUpperCase()}
-                              </SelectItem>
-                            ))}
-                          </SelectGroup>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                  {/* Carat */}
+                  <div className="space-y-2">
+                    <Label htmlFor="purchase-carat">Gold Carat</Label>
+                    <Select
+                      value={purchaseForm.data.carat}
+                      onValueChange={(val) => purchaseForm.setData('carat', val || '22ct')}
+                    >
+                      <SelectTrigger id="purchase-carat" className="w-full">
+                        <SelectValue placeholder="Select carat" className="capitalize" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          {CARATS.map((c) => (
+                            <SelectItem key={c} value={c}>
+                              {c.toUpperCase()}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
+                  {/* Input Mode Toggle */}
+                  <div className="flex rounded-lg border border-border overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setInputMode('weight')
+                        purchaseForm.setData('amount', '')
+                        purchaseForm.clearErrors()
+                      }}
+                      className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                        inputMode === 'weight'
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                      }`}
+                    >
+                      By Gold Weight
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setInputMode('amount')
+                        purchaseForm.setData('weight', '')
+                        purchaseForm.clearErrors()
+                      }}
+                      className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                        inputMode === 'amount'
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                      }`}
+                    >
+                      By Amount
+                    </button>
+                  </div>
+
+                  {/* Weight or Amount input */}
+                  {inputMode === 'weight' ? (
                     <div className="space-y-2">
                       <Label htmlFor="purchase-weight">Gold Weight (grams)</Label>
                       <Input
@@ -312,17 +369,29 @@ export default function AdminPurchasePage({
                         onChange={(e) => purchaseForm.setData('weight', e.target.value)}
                       />
                       {purchaseForm.errors.weight && (
-                        <p className="text-sm text-destructive">
-                          {purchaseForm.errors.weight}
-                        </p>
+                        <p className="text-sm text-destructive">{purchaseForm.errors.weight}</p>
                       )}
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <Label htmlFor="purchase-amount">Total Amount (₹)</Label>
+                      <Input
+                        id="purchase-amount"
+                        type="number"
+                        min={MIN_PURCHASE_AMOUNT}
+                        step="1"
+                        inputMode="numeric"
+                        placeholder={`Min ${MIN_PURCHASE_AMOUNT}`}
+                        value={purchaseForm.data.amount}
+                        onChange={(e) => purchaseForm.setData('amount', e.target.value)}
+                      />
                       {(purchaseForm.errors as any).amount && (
                         <p className="text-sm text-destructive">
                           {(purchaseForm.errors as any).amount}
                         </p>
                       )}
                     </div>
-                  </div>
+                  )}
 
                   {/* Auto-filled breakdown */}
                   <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
@@ -336,8 +405,12 @@ export default function AdminPurchasePage({
                             {formatCurrency(breakdown.rate)}/gm
                           </span>
                         </div>
+                        {inputMode === 'amount' && breakdownRow(
+                          'Calculated Weight',
+                          `${breakdown.weightGrams}g`
+                        )}
                         {breakdownRow(
-                          'Gold Value (Weight ├ù Rate)',
+                          'Gold Value (Weight × Rate)',
                           formatCurrency(breakdown.goldValue)
                         )}
                         {breakdownRow(
@@ -361,7 +434,9 @@ export default function AdminPurchasePage({
                       </div>
                     ) : (
                       <p className="py-3 text-center text-sm text-muted-foreground">
-                        Enter a gold weight above to see the auto-filled breakdown.
+                        {inputMode === 'weight'
+                          ? 'Enter a gold weight above to see the auto-filled breakdown.'
+                          : 'Enter a total amount above to see the auto-filled breakdown.'}
                       </p>
                     )}
                   </div>
@@ -398,8 +473,8 @@ export default function AdminPurchasePage({
 
                   {belowMinimum && (
                     <p className="text-xs text-destructive">
-                      Minimum purchase amount is {formatCurrency(MIN_PURCHASE_AMOUNT)} ΓÇö please
-                      enter a higher gold weight.
+                      Minimum purchase amount is {formatCurrency(MIN_PURCHASE_AMOUNT)} — please
+                      {inputMode === 'weight' ? ' enter a higher gold weight.' : ' enter a higher amount.'}
                     </p>
                   )}
 

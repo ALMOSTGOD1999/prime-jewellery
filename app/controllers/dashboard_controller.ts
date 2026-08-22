@@ -254,11 +254,37 @@ export default class DashboardController {
       [user.id, limit, offset]
     )
 
+    // Leg volumes: power vs weaker (same logic as dashboard_metrics_service)
+    const legRes = await db.rawQuery(
+      `WITH RECURSIVE leg_tree AS (
+         SELECT id, id as root_leg FROM users WHERE parent_id = ?
+         UNION ALL SELECT u.id, lt.root_leg FROM users u INNER JOIN leg_tree lt ON u.parent_id = lt.id
+       )
+       SELECT lt.root_leg, u.name as leg_name,
+              COALESCE(SUM(p.amount), 0)::float as leg_volume
+       FROM leg_tree lt
+       INNER JOIN users u ON lt.root_leg = u.id
+       LEFT JOIN purchases p ON p.user_id = lt.id AND p.approved_at IS NOT NULL AND p.cancelled_at IS NULL
+       GROUP BY lt.root_leg, u.name ORDER BY leg_volume DESC`,
+      [user.id]
+    )
+
+    const legs = legRes.rows.map((r: any) => ({
+      id: r.root_leg,
+      name: r.leg_name,
+      volume: Number(r.leg_volume) || 0,
+    }))
+    const powerLeg = legs.length > 0 ? legs[0] : null
+    const weakerLegs = legs.length > 1 ? legs.slice(1) : []
+    const weakerTotal = weakerLegs.reduce((sum: number, l: any) => sum + l.volume, 0)
+    const grandTotal = powerLeg ? powerLeg.volume + weakerTotal : 0
+
     return inertia.render('dashboard/team-business', {
       purchases: purchasesRes.rows,
       page,
       totalPages,
       total,
+      legs: { powerLeg, weakerLegs, weakerTotal, grandTotal },
     })
   }
 
