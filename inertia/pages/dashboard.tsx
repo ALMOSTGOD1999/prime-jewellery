@@ -1,3 +1,4 @@
+import { router } from '@inertiajs/react'
 import AppLayout from '~/components/app/layout'
 import { Header } from '~/components/app/header'
 import { Main } from '~/components/app/main'
@@ -129,6 +130,7 @@ export default function DashboardPage({
       border: 'border-emerald/20',
       iconBg: 'bg-emerald/10 text-emerald',
       valueColor: 'text-emerald',
+      walletType: 'income' as const,
     },
     {
       title: 'Repurchase Wallet',
@@ -139,6 +141,7 @@ export default function DashboardPage({
       border: 'border-violet/20',
       iconBg: 'bg-violet/10 text-violet',
       valueColor: 'text-violet',
+      walletType: 'repurchase' as const,
     },
     {
       title: 'Working Wallet',
@@ -149,6 +152,7 @@ export default function DashboardPage({
       border: 'border-purple/20',
       iconBg: 'bg-purple/10 text-purple',
       valueColor: 'text-purple',
+      walletType: 'working' as const,
     },
     {
       title: 'Gold Rate (22K/1g)',
@@ -218,31 +222,42 @@ export default function DashboardPage({
 
         {/* Stat Cards */}
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-          {statCards.map((stat, i) => (
-            <div
-              key={i}
-              className={`relative overflow-hidden rounded-2xl border ${stat.border} bg-gradient-to-br ${stat.gradient} p-6 backdrop-blur-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5`}
-            >
-              <div className="absolute -top-2 -right-2 size-16 rounded-full opacity-10 bg-current" />
-              <div className="flex items-start justify-between mb-4">
-                <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
-                <div
-                  className={`inline-flex size-9 items-center justify-center rounded-xl ${stat.iconBg}`}
-                >
-                  <HugeiconsIcon icon={stat.icon} className="size-4" />
+          {statCards.map((stat, i) => {
+            const Wrapper = stat.walletType ? 'button' : 'div'
+            return (
+              <Wrapper
+                key={i}
+                {...(stat.walletType
+                  ? {
+                      onClick: () =>
+                        router.get(`/dashboard/wallet-history?wallet=${stat.walletType}`),
+                    }
+                  : {})}
+                className={`relative overflow-hidden rounded-2xl border ${stat.border} bg-gradient-to-br ${stat.gradient} p-6 backdrop-blur-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 text-left w-full ${stat.walletType ? 'cursor-pointer' : ''}`}
+              >
+                <div className="absolute -top-2 -right-2 size-16 rounded-full opacity-10 bg-current" />
+                <div className="flex items-start justify-between mb-4">
+                  <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
+                  <div
+                    className={`inline-flex size-9 items-center justify-center rounded-xl ${stat.iconBg}`}
+                  >
+                    <HugeiconsIcon icon={stat.icon} className="size-4" />
+                  </div>
                 </div>
-              </div>
-              {stat.customContent ?? (
-                <div className={`text-3xl font-bold tracking-tight ${stat.valueColor}`}>
-                  {stat.value}
+                {stat.customContent ?? (
+                  <div className={`text-3xl font-bold tracking-tight ${stat.valueColor}`}>
+                    {stat.value}
+                  </div>
+                )}
+                <div className="flex items-center gap-1.5 mt-2">
+                  <span className="size-1.5 rounded-full bg-current opacity-60" />
+                  <p className="text-xs text-muted-foreground">
+                    {stat.walletType ? 'Tap to view history' : stat.subtitle}
+                  </p>
                 </div>
-              )}
-              <div className="flex items-center gap-1.5 mt-2">
-                <span className="size-1.5 rounded-full bg-current opacity-60" />
-                <p className="text-xs text-muted-foreground">{stat.subtitle}</p>
-              </div>
-            </div>
-          ))}
+              </Wrapper>
+            )
+          })}
         </div>
 
         {/* Overview Card */}

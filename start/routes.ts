@@ -37,6 +37,7 @@ const DashboardController = () => import('#controllers/dashboard_controller')
 router
   .group(() => {
     router.get('dashboard', [DashboardController, 'index']).as('index')
+    router.get('dashboard/wallet-history', [DashboardController, 'walletHistory']).as('walletHistory')
   })
   .as('dashboard')
   .use(middleware.auth())
