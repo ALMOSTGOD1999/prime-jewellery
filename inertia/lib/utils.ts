@@ -36,6 +36,15 @@ export function numberToWords(amount: number | string) {
   }).convert(Number(amount))
 }
 
+export function formatDate(dateStr: string) {
+  const d = new Date(dateStr)
+  return d.toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  })
+}
+
 export function formatUserId(
   id: number | string,
   _roleOrLeg?: string | null,
