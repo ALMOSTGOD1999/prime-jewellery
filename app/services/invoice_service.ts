@@ -338,7 +338,7 @@ export default class InvoiceService {
         color: dark,
       })
     }
-    page.drawText(`Quantity: ${data.quantity.toFixed(3)} gm`, {
+    page.drawText(`Weight: ${Number(data.quantity).toFixed(3)} gm`, {
       x: width / 2 + 20,
       y: y - (data.ornamentName ? 62 : 44),
       size: 10,
