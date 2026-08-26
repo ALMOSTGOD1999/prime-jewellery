@@ -1,4 +1,4 @@
-import { Head, useForm } from '@inertiajs/react'
+import { Head, useForm, router } from '@inertiajs/react'
 import { useState, useCallback, useEffect, useMemo } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
@@ -182,16 +182,19 @@ export default function AdminPurchasePage({
     e.preventDefault()
     if (!selectedUser || !breakdown || belowMinimum) return
 
-    // Set the right fields depending on mode before submitting
-    if (inputMode === 'amount') {
-      purchaseForm.setData((prev) => ({
-        ...prev,
-        amount: String(breakdown.investment),
-        weight: String(breakdown.weightGrams),
-      }))
+    // Build the correct payload before posting
+    const payload = {
+      carat: purchaseForm.data.carat,
+      ornamentName: purchaseForm.data.ornamentName,
+      weight: inputMode === 'weight'
+        ? purchaseForm.data.weight
+        : String(breakdown.weightGrams),
+      amount: inputMode === 'amount'
+        ? String(breakdown.investment)
+        : purchaseForm.data.amount,
     }
 
-    purchaseForm.post(`/admin/users/${selectedUser.id}/purchase`, {
+    router.post(`/admin/users/${selectedUser.id}/purchase`, payload, {
       preserveScroll: true,
       onSuccess: () => {
         purchaseForm.setData('weight', '')
