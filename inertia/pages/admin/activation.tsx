@@ -17,7 +17,8 @@ import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
 
-const ACTIVATION_OPTIONS = [1000, 3000]
+// const ACTIVATION_OPTIONS = [1000, 3000] // TODO: Enable when ₹3,000 package is ready
+const ACTIVATION_OPTIONS = [1000]
 
 interface SearchResult {
   id: number
