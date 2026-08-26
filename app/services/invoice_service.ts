@@ -208,7 +208,7 @@ export default class InvoiceService {
     try {
       const logoResponse = await fetch(COMPANY_LOGO_URL)
       const logoBytes = new Uint8Array(await logoResponse.arrayBuffer())
-      logoImage = pdf.embedPng(logoBytes)
+      logoImage = pdf.embedImage(logoBytes)
     } catch (error) {
       console.error('Failed to load logo:', error)
     }
@@ -626,7 +626,7 @@ export default class InvoiceService {
       const logoUrl = COMPANY_LOGO_URL
       const logoResponse = await fetch(logoUrl)
       const logoBytes = new Uint8Array(await logoResponse.arrayBuffer())
-      logoImage = pdf.embedPng(logoBytes)
+      logoImage = pdf.embedImage(logoBytes)
     } catch (error) {
       console.error('Failed to load logo:', error)
     }

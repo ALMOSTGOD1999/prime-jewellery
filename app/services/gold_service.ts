@@ -144,6 +144,8 @@ export default class GoldService {
     // Create purchase record with auto-approval (no wallet deduction)
     const purchase = await user.related('purchases').create({
       amount: data.amount,
+      buyerName: user.name,
+      quantity: data.goldWeight ?? 1,
       approvedAt: DateTime.now(),
       goldWeight: data.goldWeight ?? null,
       goldCarat: data.goldCarat ?? null,

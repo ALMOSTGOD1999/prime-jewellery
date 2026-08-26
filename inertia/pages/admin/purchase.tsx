@@ -1,4 +1,4 @@
-import { Head, useForm, router } from '@inertiajs/react'
+import { Head, useForm, router, usePage } from '@inertiajs/react'
 import { useState, useCallback, useEffect, useMemo } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
@@ -85,6 +85,8 @@ export default function AdminPurchasePage({
     if (goldPackages && goldPackages.length > 0) return goldPackages
     return DEFAULT_PACKAGES
   }, [goldPackages])
+
+  const { flash } = usePage<{ flash: { success?: string; errors?: Record<string, string> } }>().props
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
   const [searching, setSearching] = useState(false)
@@ -216,6 +218,18 @@ export default function AdminPurchasePage({
       <AppLayout>
         <Header>Make a Purchase</Header>
         <Main className="max-w-2xl mx-auto space-y-6">
+          {/* Flash Messages */}
+          {flash?.success && (
+            <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200">
+              {flash.success}
+            </div>
+          )}
+          {flash?.errors?.purchase && (
+            <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">
+              {flash.errors.purchase}
+            </div>
+          )}
+
           {/* Search Card */}
           <Card>
             <CardHeader>

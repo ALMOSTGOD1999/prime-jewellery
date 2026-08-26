@@ -322,19 +322,24 @@ export default class AdminUsersController {
    * No wallet deduction ΓÇö the purchase is recorded directly as an admin-led transaction.
    */
   async makePurchase({ params, request, response, session, auth }: HttpContext) {
-    const admin = auth.getUserOrFail()
-    const user = await User.findOrFail(params.id)
-    const { amount, carat, weight, ornamentName } = request.only(['amount', 'carat', 'weight', 'ornamentName'])
-
     try {
+      const admin = auth.getUserOrFail()
+      const user = await User.findOrFail(params.id)
+      const { amount, carat, weight, ornamentName } = request.only([
+        'amount',
+        'carat',
+        'weight',
+        'ornamentName',
+      ])
+
       if (carat && weight) {
         // Weight-based purchase: billing computed from current admin-set gold rates
         if (!['18ct', '22ct', '24ct'].includes(carat)) {
-          session.flash('errors.amount', 'Invalid gold carat')
+          session.flash('errors.purchase', 'Invalid gold carat')
           return response.redirect().back()
         }
         if (Number(weight) <= 0) {
-          session.flash('errors.amount', 'Invalid gold weight')
+          session.flash('errors.purchase', 'Invalid gold weight')
           return response.redirect().back()
         }
 
@@ -350,18 +355,18 @@ export default class AdminUsersController {
       } else {
         // Amount-based purchase (legacy)
         if (!amount || amount <= 0) {
-          session.flash('errors.amount', 'Invalid amount')
+          session.flash('errors.purchase', 'Invalid amount')
           return response.redirect().back()
         }
 
         await GoldService.adminPurchaseGold(user, { amount: Number(amount) }, admin.id)
         session.flash(
           'success',
-          `Gold purchase of Γé╣${Number(amount).toLocaleString('en-IN')} completed for ${user.name}`
+          `Gold purchase of \u20B9${Number(amount).toLocaleString('en-IN')} completed for ${user.name}`
         )
       }
-    } catch (error) {
-      session.flash('errors.amount', error.message)
+    } catch (error: any) {
+      session.flash('errors.purchase', error?.message || 'Purchase failed — please try again')
     }
 
     return response.redirect().back()
