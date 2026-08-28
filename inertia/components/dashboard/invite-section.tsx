@@ -53,7 +53,7 @@ export function InviteSection({ userId }: { userId: number }) {
               variant="outline"
               size="icon"
               onClick={() => {
-                const text = `Join my ${leg} team at PRIME Jewellery! Use my invite link to sign up: ${getInviteLink()}`
+                const text = `Join my team at PRIME Jewellery! Use my invite link to sign up: ${getInviteLink()}`
                 window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank')
               }}
             >
