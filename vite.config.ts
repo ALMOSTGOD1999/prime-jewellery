@@ -22,4 +22,14 @@ export default defineConfig({
       '~/': `${getDirname(import.meta.url)}/inertia/`,
     },
   },
+
+  build: {
+    rollupOptions: {
+      onwarn(warning, warn) {
+        // Suppress hugeicon /*#__PURE__*/ annotation warnings that flood the build
+        if (warning.id?.includes('@hugeicons')) return
+        warn(warning)
+      },
+    },
+  },
 })
