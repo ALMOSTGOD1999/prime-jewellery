@@ -170,6 +170,11 @@ export const getAppNav = (user: ReturnType<typeof useUser>, stats: AdminSidebarS
         icon: Icon(MoneySendSquareIcon),
       },
       {
+        title: 'Wallet Withdraw',
+        url: '/admin/wallet-withdraw',
+        icon: Icon(Wallet01Icon),
+      },
+      {
         title: 'Payout',
         url: '/admin/payout',
         icon: Icon(Wallet01Icon),

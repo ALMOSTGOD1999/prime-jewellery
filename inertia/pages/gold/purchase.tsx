@@ -106,14 +106,14 @@ export default function PurchasePage({ billingRates, user, purchases }: Purchase
         <Main className="space-y-6">
           <p className="text-sm text-muted-foreground">
             Purchases for <span className="font-medium text-foreground">{user.name}</span> — enter
-            the gold weight and every other amount fills in automatically at today's rates. New
-            purchases are processed by the admin.
+            the gold weight and every other amount fills in automatically at today's rates. Purchases
+            are confirmed instantly.
           </p>
 
           {/* New Purchase Request */}
           <Card>
             <CardHeader>
-              <CardTitle>New Purchase Request</CardTitle>
+              <CardTitle>New Purchase</CardTitle>
               <CardDescription>
                 Gold weight is the only input — rate, gold value, making charges, GST and total are
                 calculated from the current admin-set gold rates.
@@ -201,7 +201,7 @@ export default function PurchasePage({ billingRates, user, purchases }: Purchase
                   size="lg"
                   disabled={!breakdown || belowMinimum || form.processing}
                 >
-                  {form.processing ? 'Submitting...' : 'Submit Purchase Request'}
+                  {form.processing ? 'Processing...' : 'Confirm Purchase'}
                 </Button>
               </form>
             </CardContent>
@@ -212,8 +212,7 @@ export default function PurchasePage({ billingRates, user, purchases }: Purchase
             <CardHeader>
               <CardTitle>Purchase History</CardTitle>
               <CardDescription>
-                {purchases.counts.total} total · {purchases.counts.approved} approved ·{' '}
-                {purchases.counts.pending} pending · {purchases.counts.rejected} rejected
+                {purchases.counts.total} total · {purchases.counts.approved} confirmed
               </CardDescription>
             </CardHeader>
             <CardContent>

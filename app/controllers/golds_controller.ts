@@ -67,7 +67,7 @@ export default class GoldsController {
       const purchase = await GoldService.createUserPurchaseRequest(user, { carat, weight })
       session.flash(
         'success',
-        `Gold purchase request of ₹${Number(purchase.amount).toLocaleString('en-IN')} submitted — awaiting admin approval`
+        `Gold purchase of ₹${Number(purchase.amount).toLocaleString('en-IN')} confirmed successfully`
       )
     } catch (error) {
       session.flash('error', error.message)

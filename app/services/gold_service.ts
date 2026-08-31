@@ -212,10 +212,10 @@ export default class GoldService {
   }
 
   /**
-   * User submits a gold purchase request. Only weight (and carat) are entered;
+   * User submits a gold purchase. Only weight (and carat) are entered;
    * every other billing value is computed automatically from the current
-   * admin-set gold rates (GoldBillingConfig). The purchase stays pending until
-   * an admin approves it.
+   * admin-set gold rates (GoldBillingConfig). The purchase is auto-approved
+   * and the linked investment is created immediately.
    */
   static async createUserPurchaseRequest(
     user: User,
@@ -228,7 +228,7 @@ export default class GoldService {
       throw new Error('Minimum purchase amount is ₹10,000 — please enter a higher gold weight')
     }
 
-    return user.related('purchases').create({
+    const purchase = await user.related('purchases').create({
       amount: calc.packageAmount,
       buyerName: user.name,
       quantity: data.weight,
@@ -240,8 +240,26 @@ export default class GoldService {
       gstAmount: calc.gstAmount,
       additionalCharges: calc.additionalCharges,
       totalItems: 1,
-      remark: `Purchase request (${data.carat}, ${data.weight}g) — awaiting admin approval`,
+      approvedAt: DateTime.now(),
+      remark: `Gold purchase (${data.carat}, ${data.weight}g)`,
     })
+
+    // Record audit transaction for history
+    await user.related('transactions').create({
+      utr: `GOLD-${DateTime.now().toFormat('yyyyMMddHHmmss')}-${user.id}`,
+      amount: calc.packageAmount,
+      type: TransactionTypeEnum.INVESTMENT,
+      approvedAt: DateTime.now(),
+      remark: `Gold purchase of ₹${calc.packageAmount.toLocaleString('en-IN')} (${data.carat}, ${data.weight}g)`,
+    })
+
+    // Every approved purchase is an investment — register it for monthly returns.
+    await this.ensureInvestmentForPurchase(purchase)
+
+    // Dispatch job to calculate achievements for user and ancestors
+    await CalculateAchievement.enqueue(purchase.userId)
+
+    return purchase
   }
 
   static async getAdminPurchases(filters: {
@@ -265,8 +283,8 @@ export default class GoldService {
 
     // Search by user details (name, email, phone, or user ID)
     if (search) {
-      const numericId = parseInt(search.replace(/^PJ/i, ''), 10)
-      if (!isNaN(numericId)) {
+      const numericId = Number.parseInt(search.replace(/^PJ/i, ''), 10)
+      if (!Number.isNaN(numericId)) {
         query.whereHas('user', (userQuery) => {
           userQuery.where('id', numericId)
         })

@@ -10,4 +10,5 @@ export const WITHDRAWAL_DATES: Record<WithdrawlTypeEnum, number[]> = {
   [WithdrawlTypeEnum.EMI]: [],
   [WithdrawlTypeEnum.EMI_LEVEL]: [9],
   [WithdrawlTypeEnum.INVESTMENT_INCOME]: [], // Available anytime
+  [WithdrawlTypeEnum.WORKING_WALLET]: [], // Admin-initiated, no date restriction
 }

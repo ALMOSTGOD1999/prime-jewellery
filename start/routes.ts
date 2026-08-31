@@ -42,56 +42,69 @@ router
   .use(middleware.auth())
   .use(middleware.admin())
 
-router.get('dashboard/wallet-history', [DashboardController, 'walletHistory'])
+router
+  .get('dashboard/wallet-history', [DashboardController, 'walletHistory'])
   .as('dashboard.walletHistory')
   .use(middleware.auth())
 
-router.get('dashboard/team', [DashboardController, 'team'])
+router
+  .get('dashboard/team', [DashboardController, 'team'])
   .as('dashboard.team')
   .use(middleware.auth())
 
-router.get('dashboard/directs', [DashboardController, 'directs'])
+router
+  .get('dashboard/directs', [DashboardController, 'directs'])
   .as('dashboard.directs')
   .use(middleware.auth())
 
-router.get('dashboard/self-business', [DashboardController, 'selfBusiness'])
+router
+  .get('dashboard/self-business', [DashboardController, 'selfBusiness'])
   .as('dashboard.selfBusiness')
   .use(middleware.auth())
 
-router.get('dashboard/self-investment', [DashboardController, 'selfInvestment'])
+router
+  .get('dashboard/self-investment', [DashboardController, 'selfInvestment'])
   .as('dashboard.selfInvestment')
   .use(middleware.auth())
 
-router.get('dashboard/team-business', [DashboardController, 'teamBusiness'])
+router
+  .get('dashboard/team-business', [DashboardController, 'teamBusiness'])
   .as('dashboard.teamBusiness')
   .use(middleware.auth())
 
-router.get('dashboard/business-month', [DashboardController, 'businessMonth'])
+router
+  .get('dashboard/business-month', [DashboardController, 'businessMonth'])
   .as('dashboard.businessMonth')
   .use(middleware.auth())
 
 // Admin Dashboard Detail Routes
-router.get('admin/dashboard/users', [DashboardController, 'allUsers'])
+router
+  .get('admin/dashboard/users', [DashboardController, 'allUsers'])
   .as('admin.dashboard.users')
   .use(middleware.auth())
 
-router.get('admin/dashboard/users-month', [DashboardController, 'usersMonth'])
+router
+  .get('admin/dashboard/users-month', [DashboardController, 'usersMonth'])
   .as('admin.dashboard.usersMonth')
   .use(middleware.auth())
 
-router.get('admin/dashboard/users-today', [DashboardController, 'usersToday'])
+router
+  .get('admin/dashboard/users-today', [DashboardController, 'usersToday'])
   .as('admin.dashboard.usersToday')
   .use(middleware.auth())
 
-router.get('admin/dashboard/business', [DashboardController, 'totalBusiness'])
+router
+  .get('admin/dashboard/business', [DashboardController, 'totalBusiness'])
   .as('admin.dashboard.business')
   .use(middleware.auth())
 
-router.get('admin/dashboard/business-month', [DashboardController, 'adminBusinessMonth'])
+router
+  .get('admin/dashboard/business-month', [DashboardController, 'adminBusinessMonth'])
   .as('admin.dashboard.businessMonth')
   .use(middleware.auth())
 
-router.get('admin/dashboard/business-today', [DashboardController, 'businessToday'])
+router
+  .get('admin/dashboard/business-today', [DashboardController, 'businessToday'])
   .as('admin.dashboard.businessToday')
   .use(middleware.auth())
 
@@ -302,6 +315,18 @@ router
       .prefix('withdrawal')
       .as('withdrawal')
 
+    ////// Wallet Withdraw (Admin withdraws user's working wallet)
+    const AdminWalletWithdrawController = () =>
+      import('#controllers/admin/wallet_withdraw_controller')
+    router
+      .group(() => {
+        router.get('/', [AdminWalletWithdrawController, 'index']).as('page')
+        router.get('/search', [AdminWalletWithdrawController, 'search']).as('search')
+        router.post('/withdraw', [AdminWalletWithdrawController, 'withdraw']).as('withdraw')
+      })
+      .prefix('wallet-withdraw')
+      .as('walletWithdraw')
+
     ////// Settings
     router
       .group(() => {
@@ -467,12 +492,8 @@ router
           .get('/history/download', [AdminPayoutHistoryController, 'download'])
           .as('history.download')
         router.get('/preview', [AdminPayoutController, 'preview']).as('preview')
-        router
-          .post('/preview/generate', [AdminPayoutController, 'generate'])
-          .as('preview.generate')
-        router
-          .get('/preview/status', [AdminPayoutController, 'previewStatus'])
-          .as('preview.status')
+        router.post('/preview/generate', [AdminPayoutController, 'generate']).as('preview.generate')
+        router.get('/preview/status', [AdminPayoutController, 'previewStatus']).as('preview.status')
         router
           .get('/preview/download', [AdminPayoutController, 'downloadPreview'])
           .as('preview.download')

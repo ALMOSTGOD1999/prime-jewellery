@@ -8,6 +8,7 @@ export enum WithdrawlTypeEnum {
   EMI = 'emi',
   EMI_LEVEL = 'emi_level',
   INVESTMENT_INCOME = 'investment_income',
+  WORKING_WALLET = 'working_wallet',
 }
 
 export enum WithdrawlStatusEnum {
