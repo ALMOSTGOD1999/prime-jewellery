@@ -30,7 +30,7 @@ export default class GoldService {
       amount: purchase.amount,
       monthlyReturnRate: rate,
       status: 'active',
-      startedAt: purchase.approvedAt ?? purchase.createdAt,
+      startedAt: purchase.createdAt,
       remark: 'Auto-created from gold purchase',
       purchaseId: purchase.id,
     })
@@ -475,7 +475,7 @@ export default class GoldService {
 
     investment.amount = purchase.amount
     investment.monthlyReturnRate = pkg?.monthlyReturnPercent ?? investment.monthlyReturnRate
-    investment.startedAt = purchase.approvedAt ?? purchase.createdAt
+    investment.startedAt = purchase.createdAt
     if (investment.status === 'closed') {
       investment.status = 'active'
       investment.closedAt = null
