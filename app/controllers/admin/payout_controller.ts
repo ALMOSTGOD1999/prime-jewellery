@@ -261,6 +261,52 @@ export default class AdminPayoutController {
     return response.redirect().back()
   }
 
+  /**
+   * Clear every user's repurchase wallet balance to zero and record each
+   * clearance as a wallet_debit transaction for the audit trail.
+   */
+  async withdrawAllRepurchase({ auth, session, response }: HttpContext) {
+    const admin = auth.getUserOrFail()
+    let cleared = 0
+    let totalCleared = 0
+
+    await db.transaction(async (trx) => {
+      const users = await User.query({ client: trx })
+        .whereNot('role', 'admin')
+        .where('repurchase_wallet', '>', 0)
+        .select('id', 'repurchase_wallet')
+
+      for (const user of users) {
+        const amount = Number(user.repurchaseWallet)
+        if (amount <= 0) continue
+
+        await Transaction.create(
+          {
+            userId: user.id,
+            type: TransactionTypeEnum.WALLET_DEBIT,
+            amount,
+            remark: `Repurchase wallet withdrawal — payout cleared by admin #${admin.id}`,
+            approvedAt: DateTime.now(),
+          },
+          { client: trx }
+        )
+
+        user.useTransaction(trx)
+        user.repurchaseWallet = 0
+        await user.save()
+
+        cleared++
+        totalCleared += amount
+      }
+    })
+
+    session.flash(
+      'success',
+      `All repurchase wallets cleared. ${cleared} wallets wiped (₹${totalCleared.toLocaleString('en-IN')}).`
+    )
+    return response.redirect().back()
+  }
+
   // ─── Payout Preview (cached) ──────────────────────────────────
 
   private cacheKey(month: string) {

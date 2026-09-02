@@ -487,6 +487,9 @@ router
         router
           .post('/withdraw-all-working', [AdminPayoutController, 'withdrawAllWorking'])
           .as('withdrawAll.working')
+        router
+          .post('/withdraw-all-repurchase', [AdminPayoutController, 'withdrawAllRepurchase'])
+          .as('withdrawAll.repurchase')
         router.get('/history', [AdminPayoutHistoryController, 'index']).as('history')
         router
           .get('/history/download', [AdminPayoutHistoryController, 'download'])

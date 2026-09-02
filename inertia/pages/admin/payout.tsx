@@ -59,6 +59,7 @@ export default function AdminPayoutPage({
   const resetForm = useForm({})
   const withdrawIncomeForm = useForm({})
   const withdrawWorkingForm = useForm({})
+  const withdrawRepurchaseForm = useForm({})
 
   const handleIncomePayout = () => incomeForm.post('/admin/payout/income-wallet')
   const handleWorkingPayout = () => workingForm.post('/admin/payout/working-wallet')
@@ -357,7 +358,7 @@ export default function AdminPayoutPage({
           </Card>
 
           {/* Withdraw for All */}
-          <div className="grid gap-6 md:grid-cols-2">
+          <div className="grid gap-6 md:grid-cols-3">
             <Card>
               <CardHeader>
                 <CardTitle>Withdraw All — Income Wallet</CardTitle>
@@ -392,6 +393,24 @@ export default function AdminPayoutPage({
                   variant="destructive"
                 >
                   {withdrawWorkingForm.processing ? 'Processing...' : 'Withdraw All Working Wallet'}
+                </Button>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Withdraw All — Repurchase Wallet</CardTitle>
+                <CardDescription>
+                  Clear every user's repurchase wallet balance to zero and record in history.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button
+                  onClick={() => withdrawRepurchaseForm.post('/admin/payout/withdraw-all-repurchase')}
+                  disabled={withdrawRepurchaseForm.processing}
+                  className="w-full"
+                  variant="destructive"
+                >
+                  {withdrawRepurchaseForm.processing ? 'Processing...' : 'Withdraw All Repurchase Wallet'}
                 </Button>
               </CardContent>
             </Card>
