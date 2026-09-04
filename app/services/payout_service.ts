@@ -236,6 +236,25 @@ export default class PayoutService {
       .whereNotNull('activated_at')
       .where('status', 'active')
 
+    // ─── Step 0: Resolve monthly salaries for all eligible users ───
+    // resolveMonthlySalary creates/updates salary records which
+    // getUserMonthlyWorkingIncome depends on for the salary component.
+    logger.info(`[payout] Resolving monthly salaries for ${users.length} users...`)
+    let salariesResolved = 0
+    for (const user of users) {
+      try {
+        const result = await RewardService.resolveMonthlySalary(user, period)
+        if (result.status === 'credited' || result.status === 'already-credited') {
+          salariesResolved++
+        }
+      } catch (error) {
+        logger.error(
+          `[payout] Salary resolve failed for user ${user.id}: ${error instanceof Error ? error.message : error}`
+        )
+      }
+    }
+    logger.info(`[payout] Salaries resolved: ${salariesResolved}/${users.length}`)
+
     let created = 0
     const total = users.length
     const startAll = Date.now()
