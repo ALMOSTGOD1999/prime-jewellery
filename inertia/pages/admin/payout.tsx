@@ -32,6 +32,8 @@ interface PayoutPageProps {
   hasUnpaidIncome: boolean
   hasUnpaidWorking: boolean
   needsReset: boolean
+  incomeInProgress: boolean
+  workingInProgress: boolean
   diagnostic: {
     activeUsers: number
     junePurchaseCount: number
@@ -52,6 +54,8 @@ export default function AdminPayoutPage({
   hasUnpaidIncome,
   hasUnpaidWorking,
   needsReset,
+  incomeInProgress,
+  workingInProgress,
   diagnostic,
 }: PayoutPageProps) {
   const incomeForm = useForm({ month: nextIncomeMonth })
@@ -196,12 +200,19 @@ export default function AdminPayoutPage({
                   </div>
                 )}
 
+                {incomeInProgress && !incomeCompleted && (
+                  <div className="flex items-center gap-2 text-sm text-amber-600">
+                    <HugeiconsIcon icon={InformationCircleIcon} className="h-4 w-4" />
+                    <span>Processing income payout for {nextIncomeMonth}… please wait.</span>
+                  </div>
+                )}
+
                 <Button
                   onClick={handleIncomePayout}
-                  disabled={incomeForm.processing || needsReset || incomeCompleted}
+                  disabled={incomeForm.processing || needsReset || incomeCompleted || incomeInProgress}
                   className="w-full"
                 >
-                  {incomeForm.processing
+                  {incomeForm.processing || incomeInProgress
                     ? 'Processing...'
                     : incomeCompleted
                       ? `Completed for ${nextIncomeMonth}`
@@ -210,26 +221,24 @@ export default function AdminPayoutPage({
 
                 {/* Download Payout History — Income Wallet */}
                 <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="w-full">
-                      <HugeiconsIcon icon={Download04Icon} className="mr-2 h-4 w-4" />
-                      Download Income Wallet History
-                    </Button>
+                  <DropdownMenuTrigger className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground w-full px-3 py-1.5 cursor-pointer">
+                    <HugeiconsIcon icon={Download04Icon} className="mr-2 h-4 w-4" />
+                    Download Income Wallet History
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-48">
-                    <DropdownMenuItem asChild>
+                    <DropdownMenuItem>
                       <a
                         href={downloadUrl(incomeDownloadMonth, 'income', 'csv')}
-                        className="cursor-pointer"
+                        className="cursor-pointer flex items-center gap-2.5"
                       >
                         <HugeiconsIcon icon={File01Icon} className="h-4 w-4" />
                         Download in CSV
                       </a>
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
+                    <DropdownMenuItem>
                       <a
                         href={downloadUrl(incomeDownloadMonth, 'income', 'pdf')}
-                        className="cursor-pointer"
+                        className="cursor-pointer flex items-center gap-2.5"
                       >
                         <HugeiconsIcon icon={File02Icon} className="h-4 w-4" />
                         Download in PDF
@@ -272,13 +281,20 @@ export default function AdminPayoutPage({
                   </div>
                 )}
 
+                {workingInProgress && !workingCompleted && (
+                  <div className="flex items-center gap-2 text-sm text-amber-600">
+                    <HugeiconsIcon icon={InformationCircleIcon} className="h-4 w-4" />
+                    <span>Processing working payout for {nextWorkingMonth}… please wait.</span>
+                  </div>
+                )}
+
                 <Button
                   onClick={handleWorkingPayout}
-                  disabled={workingForm.processing || needsReset || workingCompleted}
+                  disabled={workingForm.processing || needsReset || workingCompleted || workingInProgress}
                   variant="outline"
                   className="w-full border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
                 >
-                  {workingForm.processing
+                  {workingForm.processing || workingInProgress
                     ? 'Processing...'
                     : workingCompleted
                       ? `Completed for ${nextWorkingMonth}`
@@ -287,26 +303,24 @@ export default function AdminPayoutPage({
 
                 {/* Download Payout History — Working Wallet */}
                 <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="w-full">
-                      <HugeiconsIcon icon={Download04Icon} className="mr-2 h-4 w-4" />
-                      Download Working Wallet History
-                    </Button>
+                  <DropdownMenuTrigger className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground w-full px-3 py-1.5 cursor-pointer">
+                    <HugeiconsIcon icon={Download04Icon} className="mr-2 h-4 w-4" />
+                    Download Working Wallet History
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-48">
-                    <DropdownMenuItem asChild>
+                    <DropdownMenuItem>
                       <a
                         href={downloadUrl(workingDownloadMonth, 'working', 'csv')}
-                        className="cursor-pointer"
+                        className="cursor-pointer flex items-center gap-2.5"
                       >
                         <HugeiconsIcon icon={File01Icon} className="h-4 w-4" />
                         Download in CSV
                       </a>
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
+                    <DropdownMenuItem>
                       <a
                         href={downloadUrl(workingDownloadMonth, 'working', 'pdf')}
-                        className="cursor-pointer"
+                        className="cursor-pointer flex items-center gap-2.5"
                       >
                         <HugeiconsIcon icon={File02Icon} className="h-4 w-4" />
                         Download in PDF

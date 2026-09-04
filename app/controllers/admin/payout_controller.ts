@@ -48,6 +48,12 @@ export default class AdminPayoutController {
       const incomeIsFuture = incomeMonth && incomeMonth > now
       const workingIsFuture = workingMonth && workingMonth > now
 
+      // Check whether a payout job is currently running (lock held)
+      const [incomeInProgress, workingInProgress] = await Promise.all([
+        PayoutService.isPayoutInProgress('income'),
+        PayoutService.isPayoutInProgress('working'),
+      ])
+
       return inertia.render('admin/payout', {
         incomeWalletPayoutMonth: incomeMonth?.toFormat('yyyy-MM') ?? null,
         workingWalletPayoutMonth: workingMonth?.toFormat('yyyy-MM') ?? null,
@@ -56,6 +62,8 @@ export default class AdminPayoutController {
         hasUnpaidIncome,
         hasUnpaidWorking,
         needsReset: incomeIsFuture || workingIsFuture,
+        incomeInProgress,
+        workingInProgress,
         diagnostic,
       })
     } catch {
@@ -67,6 +75,8 @@ export default class AdminPayoutController {
         hasUnpaidIncome: false,
         hasUnpaidWorking: false,
         needsReset: false,
+        incomeInProgress: false,
+        workingInProgress: false,
         diagnostic: {
           activeUsers: 0,
           junePurchaseCount: 0,
@@ -253,11 +263,52 @@ export default class AdminPayoutController {
   }
 
   async withdrawAllWorking({ auth, session, response }: HttpContext) {
-    await auth.getUserOrFail()
+    const admin = auth.getUserOrFail()
+
+    // 1. Approve all pending working wallet withdrawal requests
     await db.rawQuery(
       `UPDATE withdrawls SET status = 'approved', approved_at = NOW() WHERE type != 'investment_income' AND status = 'pending'`
     )
-    session.flash('success', 'All pending working wallet withdrawals approved.')
+
+    // 2. Clear every user's working wallet balance to zero and record
+    //    each clearance as a wallet_debit transaction for the audit trail.
+    let cleared = 0
+    let totalCleared = 0
+
+    await db.transaction(async (trx) => {
+      const users = await User.query({ client: trx })
+        .whereNot('role', 'admin')
+        .where('working_wallet', '>', 0)
+        .select('id', 'working_wallet')
+
+      for (const user of users) {
+        const amount = Number(user.workingWallet)
+        if (amount <= 0) continue
+
+        await Transaction.create(
+          {
+            userId: user.id,
+            type: TransactionTypeEnum.WALLET_DEBIT,
+            amount,
+            remark: `Working wallet withdrawal — payout cleared by admin #${admin.id}`,
+            approvedAt: DateTime.now(),
+          },
+          { client: trx }
+        )
+
+        user.useTransaction(trx)
+        user.workingWallet = 0
+        await user.save()
+
+        cleared++
+        totalCleared += amount
+      }
+    })
+
+    session.flash(
+      'success',
+      `All pending working wallet withdrawals approved. ${cleared} working wallets cleared (₹${totalCleared.toLocaleString('en-IN')}).`
+    )
     return response.redirect().back()
   }
 
@@ -364,8 +415,29 @@ export default class AdminPayoutController {
     // Mark as generating
     await PlatformConfig.set(`payout_preview_generating_${monthStr}`, 'true', 'payout_preview')
 
-    // Enqueue the heavy computation as a background job
-    await GeneratePayoutPreview.enqueue(monthStr)
+    // Try background queue first; fall back to synchronous if Redis/queue is unavailable
+    let enqueueFailed = false
+    try {
+      await GeneratePayoutPreview.enqueue(monthStr)
+    } catch (error) {
+      enqueueFailed = true
+    }
+
+    if (enqueueFailed) {
+      // Run synchronously in the request — slower but at least works
+      try {
+        const result = await PayoutService.getPayoutPreview(month)
+        const payload = { ...result, generatedAt: DateTime.now().toISO() }
+        await PlatformConfig.set(`payout_preview_${monthStr}`, JSON.stringify(payload), 'payout_preview')
+        await PlatformConfig.set(`payout_preview_generating_${monthStr}`, 'false', 'payout_preview')
+        session.flash('success', `Payout preview for ${month.toFormat('LLLL yyyy')} generated (${result.users.length} users).`)
+        return response.redirect(`/admin/payout/preview?month=${monthStr}`)
+      } catch (innerError) {
+        await PlatformConfig.set(`payout_preview_generating_${monthStr}`, 'false', 'payout_preview')
+        session.flash('errors.global', `Failed to generate preview: ${innerError instanceof Error ? innerError.message : 'Unknown error'}`)
+        return response.redirect(`/admin/payout/preview?month=${monthStr}`)
+      }
+    }
 
     session.flash('success', `Payout preview generation for ${month.toFormat('LLLL yyyy')} started. This may take a few minutes — the page will refresh automatically.`)
     return response.redirect(`/admin/payout/preview?month=${monthStr}`)
@@ -375,13 +447,52 @@ export default class AdminPayoutController {
     const qs = request.qs() as Record<string, string>
     const month = qs.month || DateTime.now().minus({ months: 1 }).startOf('month').toFormat('yyyy-MM')
 
-    const generating = await PlatformConfig.get(`payout_preview_generating_${month}`)
-    const cached = await this.getCachedPreview(month)
+    // Fetch the generating flag row (with updated_at for timeout check)
+    const generatingRow = await PlatformConfig.query()
+      .where('key', `payout_preview_generating_${month}`)
+      .select('value', 'updated_at')
+      .first()
+
+    const isGeneratingFlag = generatingRow?.value === 'true'
+
+    // Check cache existence without parsing the huge JSON blob
+    const cacheRow = await PlatformConfig.query()
+      .where('key', `payout_preview_${month}`)
+      .select('value')
+      .first()
+
+    const ready = !!cacheRow
+    let generatedAt: string | null = null
+
+    if (ready && cacheRow) {
+      // Self-heal: if the generating flag is stuck but data already exists, clear it
+      if (isGeneratingFlag) {
+        await PlatformConfig.set(`payout_preview_generating_${month}`, 'false', 'payout_preview')
+      }
+
+      try {
+        const parsed = JSON.parse(cacheRow.value)
+        generatedAt = parsed.generatedAt || null
+      } catch {
+        // corrupted cache — treat as not ready
+        return response.json({ generating: false, ready: false, generatedAt: null })
+      }
+    }
+
+    // Self-heal: if generating flag has been stuck for >15 minutes with no result, auto-clear
+    let generating = isGeneratingFlag && !ready
+    if (generating && generatingRow?.updatedAt) {
+      const elapsed = DateTime.now().diff(generatingRow.updatedAt, 'minutes').minutes
+      if (elapsed > 15) {
+        await PlatformConfig.set(`payout_preview_generating_${month}`, 'false', 'payout_preview')
+        generating = false
+      }
+    }
 
     return response.json({
-      generating: generating === 'true',
-      ready: !!cached,
-      generatedAt: cached ? (cached as any).generatedAt || null : null,
+      generating,
+      ready,
+      generatedAt,
     })
   }
 

@@ -1,5 +1,5 @@
 import { Head, router, useForm } from '@inertiajs/react'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import AppLayout from '~/components/app/layout'
 import { Header } from '~/components/app/header'
 import { Main } from '~/components/app/main'
@@ -198,25 +198,40 @@ export default function PayoutPreview({
     year: 'numeric',
   })
 
-  // Poll for completion when generating
-  const checkStatus = useCallback(async () => {
-    try {
-      const res = await fetch(`/admin/payout/preview/status?month=${month}`)
-      const data = await res.json()
-      if (data.ready) {
-        setIsGenerating(false)
-        router.reload({ only: ['users', 'summary', 'generatedAt'] })
-      }
-    } catch {
-      // ignore fetch errors, keep polling
-    }
-  }, [month])
-
+  // Poll for completion when generating — with abort & max retries
   useEffect(() => {
     if (!isGenerating) return
+
+    let cancelled = false
+    const controller = new AbortController()
+    const MAX_POLLS = 120 // 10 minutes at 5s intervals
+    let polls = 0
+
+    const checkStatus = async () => {
+      if (cancelled || polls >= MAX_POLLS) return
+      polls++
+      try {
+        const res = await fetch(`/admin/payout/preview/status?month=${month}`, {
+          signal: controller.signal,
+        })
+        const data = await res.json()
+        if (!cancelled && data.ready) {
+          setIsGenerating(false)
+          router.reload({ only: ['users', 'summary', 'generatedAt'] })
+        }
+      } catch (err: any) {
+        if (err?.name === 'AbortError' || cancelled) return
+        // network error — keep polling but don't crash
+      }
+    }
+
     const interval = setInterval(checkStatus, 5000)
-    return () => clearInterval(interval)
-  }, [isGenerating, checkStatus])
+    return () => {
+      cancelled = true
+      controller.abort()
+      clearInterval(interval)
+    }
+  }, [isGenerating, month])
 
   function handleMonthChange(value: string) {
     router.get('/admin/payout/preview', { month: value }, { preserveState: true })

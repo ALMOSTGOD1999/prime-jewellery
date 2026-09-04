@@ -261,8 +261,8 @@ export default class AdminPayoutHistoryController {
     )
     yPos -= 22
 
-    // Column layout (wider to avoid text overflow / wrapping)
-    const colWidths = [52, 55, 90, 62, 36, 52, 120, 88]
+    // Column layout — wider for readability, fewer columns (bank details on separate line)
+    const colWidths = [60, 65, 110, 72, 42, 62, 140]
     const colHeaders = [
       'Date',
       'User ID',
@@ -271,30 +271,29 @@ export default class AdminPayoutHistoryController {
       'Type',
       'Wallet',
       'Remark',
-      'Bank Details',
     ]
     const tableWidth = colWidths.reduce((a, b) => a + b, 0)
 
     const drawHeader = (p: any, y: number) => {
       let x = margin
-      p.drawRectangle({ x: margin, y: y - 2, width: tableWidth, height: 16, color: headerBg })
+      p.drawRectangle({ x: margin, y: y - 2, width: tableWidth, height: 18, color: headerBg })
       for (const [i, header] of colHeaders.entries()) {
         p.drawText(header, {
-          x: x + 2,
-          y: y + 1,
-          size: 7,
+          x: x + 3,
+          y: y + 2,
+          size: 8,
           font: 'Helvetica-Bold',
           color: white,
         })
         x += colWidths[i]
       }
-      return y - 18
+      return y - 20
     }
 
     yPos = drawHeader(page, yPos)
 
-    // Row height: main text (size 7 ~9pt tall) + bank detail (size 6.5 ~8pt tall) + padding = ~22pt per entry
-    const MIN_ROW_SPACE = 36
+    // Row height: main text (size 8.5 ~11pt) + bank detail (size 7.5 ~10pt) + padding
+    const MIN_ROW_SPACE = 38
 
     for (const [idx, row] of rows.entries()) {
       // Page break check
@@ -320,14 +319,7 @@ export default class AdminPayoutHistoryController {
         : ''
       const userId = `PJ${String(row.user_id).padStart(6, '0')}`
       const userName = this.truncate(row.user_name || '—', 22)
-      const remark = this.truncate(row.remark || '—', 28)
-
-      // Compact bank info string for main table column
-      let bankInfo = '—'
-      if (row.bank_account_number) {
-        const last4 = String(row.bank_account_number).slice(-4)
-        bankInfo = `${this.truncate(row.bank_name || 'Bank', 14)} ...${last4}`
-      }
+      const remark = this.truncate(row.remark || '—', 32)
 
       // Alternate row background
       if (idx % 2 === 0) {
@@ -340,7 +332,7 @@ export default class AdminPayoutHistoryController {
         })
       }
 
-      // Draw main row values
+      // Draw main row values — 7 columns (no bank details column)
       let x = margin
       const mainValues = [
         { text: dateStr, color: muted },
@@ -353,22 +345,21 @@ export default class AdminPayoutHistoryController {
         { text: typeLabel, color: isReversal ? debitRed : muted },
         { text: walletType, color: muted },
         { text: remark, color: muted },
-        { text: bankInfo, color: muted },
       ]
 
       for (const [i, col] of mainValues.entries()) {
         page.drawText(col.text, {
-          x: x + 2,
+          x: x + 3,
           y: yPos,
-          size: 7,
+          size: 8.5,
           font: 'Helvetica',
           color: col.color,
         })
         x += colWidths[i]
       }
 
-      // Draw full bank details on a second line inside the same row block
-      yPos -= 12
+      // Draw full bank details on a second line below the main row
+      yPos -= 14
       if (row.bank_name || row.bank_account_number || row.bank_ifsc) {
         const bankParts = [
           row.bank_name,
@@ -380,10 +371,10 @@ export default class AdminPayoutHistoryController {
         ].filter(Boolean)
 
         const bankLine = bankParts.length > 0 ? bankParts.join('  |  ') : '—'
-        page.drawText(this.truncate(bankLine, 110), {
+        page.drawText(this.truncate(bankLine, 120), {
           x: margin + 4,
           y: yPos,
-          size: 6.5,
+          size: 7.5,
           font: 'Helvetica',
           color: muted,
         })

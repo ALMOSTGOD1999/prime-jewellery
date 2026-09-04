@@ -100,46 +100,53 @@ export default function PayoutHistory({ months, selectedMonth, summary, transact
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="border-b text-left text-xs text-muted-foreground">
-                          <th className="py-2 pr-3">User ID</th>
-                          <th className="py-2 pr-3">Name</th>
-                          <th className="py-2 pr-3">Amount</th>
-                          <th className="py-2 pr-3">Wallet</th>
-                          <th className="py-2 pr-3">Remark</th>
-                          <th className="py-2 pr-3">Date</th>
+                        <tr className="border-b-2 text-left text-xs text-muted-foreground uppercase tracking-wide">
+                          <th className="py-3 px-3 w-[100px]">Date</th>
+                          <th className="py-3 px-3 w-[100px]">User ID</th>
+                          <th className="py-3 px-3">Name</th>
+                          <th className="py-3 px-3 w-[120px] text-right">Amount</th>
+                          <th className="py-3 px-3 w-[100px]">Type</th>
+                          <th className="py-3 px-3 min-w-[200px]">Remark</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {transactions.data.map((txn) => {
+                        {transactions.data.map((txn, idx) => {
                           const rev = txn.remark?.includes('REVERSAL')
                           const inc =
                             txn.remark?.toLowerCase().includes('cashback wallet') ||
                             txn.remark?.toLowerCase().includes('income wallet')
+                          const isEven = idx % 2 === 0
                           return (
                             <tr
                               key={txn.id}
-                              className={`border-b last:border-0 hover:bg-muted/30 ${rev ? 'bg-red-50/30' : ''}`}
+                              className={`border-b last:border-0 hover:bg-muted/30 ${
+                                rev ? 'bg-red-50/40' : isEven ? 'bg-muted/10' : ''
+                              }`}
                             >
-                              <td className="py-2 pr-3 font-mono text-xs">{txn.user_id}</td>
-                              <td className="py-2 pr-3">{txn.user_name || '—'}</td>
+                              <td className="py-3 px-3 text-muted-foreground whitespace-nowrap text-xs">
+                                {d(txn.created_at)}
+                              </td>
+                              <td className="py-3 px-3 font-mono text-xs font-medium">
+                                PJ{String(txn.user_id).padStart(6, '0')}
+                              </td>
+                              <td className="py-3 px-3 font-medium">{txn.user_name || '—'}</td>
                               <td
-                                className={`py-2 pr-3 font-medium ${rev ? 'text-red-600' : 'text-emerald-600'}`}
+                                className={`py-3 px-3 font-semibold text-right whitespace-nowrap ${
+                                  rev ? 'text-red-600' : 'text-emerald-600'
+                                }`}
                               >
-                                {rev ? '−' : ''}
+                                {rev ? '−' : '+'}
                                 {f(Number(txn.amount))}
                               </td>
-                              <td className="py-2 pr-3">
+                              <td className="py-3 px-3">
                                 <Badge
                                   variant={rev ? 'destructive' : inc ? 'default' : 'secondary'}
                                 >
                                   {rev ? 'REVERSAL' : inc ? 'Income' : 'Repurchase'}
                                 </Badge>
                               </td>
-                              <td className="py-2 pr-3 text-xs text-muted-foreground max-w-[250px] truncate">
+                              <td className="py-3 px-3 text-xs text-muted-foreground max-w-[300px] truncate" title={txn.remark}>
                                 {txn.remark}
-                              </td>
-                              <td className="py-2 pr-3 text-muted-foreground whitespace-nowrap text-xs">
-                                {d(txn.created_at)}
                               </td>
                             </tr>
                           )
@@ -148,32 +155,56 @@ export default function PayoutHistory({ months, selectedMonth, summary, transact
                     </table>
                   </div>
 
-                  {transactions.totalPages > 1 && (
-                    <div className="flex items-center justify-between mt-4 pt-4 border-t">
-                      <span className="text-sm text-muted-foreground">
-                        Page {transactions.page} of {transactions.totalPages} ({transactions.total}{' '}
-                        total)
-                      </span>
-                      <div className="flex gap-2">
-                        {transactions.page > 1 && (
+                  {/* Pagination */}
+                  <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                    <span className="text-sm text-muted-foreground">
+                      Page {transactions.page} of {transactions.totalPages} ({transactions.total}{' '}
+                      total records)
+                    </span>
+                    <div className="flex gap-2">
+                      {transactions.page > 1 && (
+                        <a
+                          href={`?month=${selectedMonth}&page=${transactions.page - 1}`}
+                          className="px-3 py-1.5 rounded-md text-sm font-medium border border-border hover:bg-muted transition-colors"
+                        >
+                          ← Previous
+                        </a>
+                      )}
+                      {Array.from({ length: Math.min(transactions.totalPages, 7) }, (_, i) => {
+                        let pageNum: number
+                        if (transactions.totalPages <= 7) {
+                          pageNum = i + 1
+                        } else if (transactions.page <= 4) {
+                          pageNum = i + 1
+                        } else if (transactions.page >= transactions.totalPages - 3) {
+                          pageNum = transactions.totalPages - 6 + i
+                        } else {
+                          pageNum = transactions.page - 3 + i
+                        }
+                        return (
                           <a
-                            href={`?month=${selectedMonth}&page=${transactions.page - 1}`}
-                            className="text-sm text-primary hover:underline"
+                            key={pageNum}
+                            href={`?month=${selectedMonth}&page=${pageNum}`}
+                            className={`px-3 py-1.5 rounded-md text-sm font-medium border transition-colors ${
+                              pageNum === transactions.page
+                                ? 'bg-primary text-primary-foreground border-primary'
+                                : 'border-border hover:bg-muted'
+                            }`}
                           >
-                            Previous
+                            {pageNum}
                           </a>
-                        )}
-                        {transactions.page < transactions.totalPages && (
-                          <a
-                            href={`?month=${selectedMonth}&page=${transactions.page + 1}`}
-                            className="text-sm text-primary hover:underline"
-                          >
-                            Next
-                          </a>
-                        )}
-                      </div>
+                        )
+                      })}
+                      {transactions.page < transactions.totalPages && (
+                        <a
+                          href={`?month=${selectedMonth}&page=${transactions.page + 1}`}
+                          className="px-3 py-1.5 rounded-md text-sm font-medium border border-border hover:bg-muted transition-colors"
+                        >
+                          Next →
+                        </a>
+                      )}
                     </div>
-                  )}
+                  </div>
                 </>
               )}
             </CardContent>

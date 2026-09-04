@@ -112,6 +112,25 @@ export default class PayoutService {
     }
   }
 
+  /**
+   * Check whether a payout of the given type is currently in progress (lock is
+   * held and has not expired). Used by the frontend to show a processing
+   * indicator instead of a re-clickable button.
+   */
+  static async isPayoutInProgress(type: 'income' | 'working'): Promise<boolean> {
+    const key = this.payoutLockKey(type)
+    const row = await PlatformConfig.query().where('key', key).select('value').first()
+    if (!row || !row.value) return false
+
+    const parts = row.value.split('|')
+    if (parts.length < 2) return false
+
+    const expiresAt = Number(parts[1])
+    if (Number.isNaN(expiresAt)) return false
+
+    return DateTime.now().toSeconds() < expiresAt
+  }
+
   static async getIncomeWalletPayoutMonth(): Promise<DateTime | null> {
     const monthStr = await PlatformConfig.get('income_wallet_payout_month')
     return monthStr ? DateTime.fromISO(monthStr + '-01').startOf('month') : null
