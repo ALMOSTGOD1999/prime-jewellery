@@ -450,7 +450,11 @@ export default class RewardsController {
     const isPayoutReleased = await PayoutService.isPayoutReleased()
 
     const levelIncome = isPayoutReleased
-      ? await RewardService.getLevelRewards(user, { page, limit })
+      ? await RewardService.getLevelRewards(user, {
+          page,
+          limit,
+          asOf: (await PayoutService.getVisibleCutoff())?.endOf('month'),
+        })
       : {
           meta: {
             total: 0,
