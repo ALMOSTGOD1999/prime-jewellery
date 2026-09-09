@@ -542,9 +542,10 @@ export default class RewardService {
       limit?: number
       sortBy?: string
       sortOrder?: 'asc' | 'desc'
+      asOf?: DateTime
     } = {}
   ) {
-    const { page = 1, limit = 10, sortOrder = 'desc' } = filters
+    const { page = 1, limit = 10, sortOrder = 'desc', asOf } = filters
 
     // Cashback = monthly 3% investment return (full amount, before wallet split)
     const distributions = await db
@@ -558,9 +559,9 @@ export default class RewardService {
     }))
 
     const totalRewards = rewards.reduce((sum, r) => sum + r.amount, 0)
-    const currentMonth = DateTime.now().setZone(env.get('TZ')).toFormat('yyyy-MM')
+    const targetMonth = (asOf || DateTime.now().setZone(env.get('TZ'))).toFormat('yyyy-MM')
     const thisMonthRewards = rewards
-      .filter((r: any) => r.date?.startsWith(currentMonth))
+      .filter((r: any) => r.date?.startsWith(targetMonth))
       .reduce((sum: number, r: any) => sum + r.amount, 0)
 
     const total = rewards.length

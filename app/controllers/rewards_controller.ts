@@ -18,12 +18,16 @@ export default class RewardsController {
     ).validate(request.qs())
 
     const isPayoutReleased = await PayoutService.isPayoutReleased()
+    const asOf = isPayoutReleased
+      ? (await PayoutService.getVisibleCutoff())?.endOf('month')
+      : undefined
     const cashback = isPayoutReleased
       ? await RewardService.getCashbackRewards(user, {
           page,
           limit,
           sortBy,
           sortOrder,
+          asOf,
         })
       : {
           meta: {
@@ -112,6 +116,9 @@ export default class RewardsController {
     } = await filterValidator(allowedSortColumns).validate(request.qs())
 
     const isPayoutReleased = await PayoutService.isPayoutReleased()
+    const asOf = isPayoutReleased
+      ? (await PayoutService.getVisibleCutoff())?.endOf('month')
+      : undefined
 
     const activationCashback = isPayoutReleased
       ? await RewardService.getActivationCashbackRewards(user, {
@@ -119,6 +126,7 @@ export default class RewardsController {
           limit,
           sortBy,
           sortOrder,
+          asOf,
         })
       : {
           meta: {
@@ -143,6 +151,7 @@ export default class RewardsController {
           sortBy,
           sortOrder,
           search,
+          asOf,
         })
       : {
           meta: {
@@ -167,6 +176,7 @@ export default class RewardsController {
           sortBy,
           sortOrder,
           search,
+          asOf,
         })
       : {
           meta: {
