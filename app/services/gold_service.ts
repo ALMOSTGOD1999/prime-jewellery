@@ -11,8 +11,8 @@ import { TransactionTypeEnum } from '#enums/transaction'
 
 export default class GoldService {
   /**
-   * Gold purchases and investments are the same thing — every approved
-   * purchase is a self-investment. This creates the linked investment record
+   * Gold purchases are the same thing — every approved
+   * purchase is a self-purchase. This creates the linked purchase record
    * (idempotent) so monthly returns and the cashback-wallet payout pick it up
    * automatically, prorated from the purchase date.
    */
@@ -35,7 +35,7 @@ export default class GoldService {
       purchaseId: purchase.id,
     })
 
-    // A purchase is a self-investment, so it counts towards total invested.
+    // A purchase is a self-purchase, so it counts towards total invested.
     const user = await User.find(purchase.userId)
     if (user) {
       user.totalInvested = Number(user.totalInvested ?? 0) + Number(purchase.amount)
@@ -45,13 +45,13 @@ export default class GoldService {
     return investment
   }
 
-  /** Close the investment linked to a purchase that was rejected/stopped/cancelled. */
+  /** Close the purchase linked to a purchase that was rejected/stopped/cancelled. */
   static async closeInvestmentForPurchase(purchase: Purchase, reason: string) {
     const investment = await Investment.query().where('purchase_id', purchase.id).first()
     if (investment && investment.status === 'active') {
       investment.status = 'closed'
       investment.closedAt = DateTime.now()
-      investment.remark = `${reason} — investment closed (purchase ${purchase.id})`
+      investment.remark = `${reason} — purchase closed (purchase ${purchase.id})`
       await investment.save()
     }
   }
@@ -169,7 +169,7 @@ export default class GoldService {
       remark: `Purchase made by admin #${adminId} of ₹${data.amount.toLocaleString('en-IN')}`,
     })
 
-    // Every approved purchase is an investment — register it for monthly returns.
+    // Every approved purchase is a purchase — register it for monthly returns.
     await this.ensureInvestmentForPurchase(purchase)
 
     return purchase
@@ -253,7 +253,7 @@ export default class GoldService {
       remark: `Gold purchase of ₹${calc.packageAmount.toLocaleString('en-IN')} (${data.carat}, ${data.weight}g)`,
     })
 
-    // Every approved purchase is an investment — register it for monthly returns.
+    // Every approved purchase is a purchase — register it for monthly returns.
     await this.ensureInvestmentForPurchase(purchase)
 
     // Dispatch job to calculate achievements for user and ancestors
@@ -351,8 +351,8 @@ export default class GoldService {
 
     await purchase.save()
 
-    // Every approved purchase is an investment: approve → create the linked
-    // investment; reject/stop/cancel → close it so it stops earning returns.
+    // Every approved purchase is a purchase: approve → create the linked
+    // purchase; reject/stop/cancel → close it so it stops earning returns.
     if (status === 'approved') {
       await this.ensureInvestmentForPurchase(purchase)
     } else {
@@ -442,14 +442,14 @@ export default class GoldService {
 
     await purchase.save()
 
-    // Keep the linked investment (purchase == investment) in sync with edits.
+    // Keep the linked purchase (purchase == purchase) in sync with edits.
     await this.syncInvestmentForPurchase(purchase)
   }
 
   /**
-   * Align the linked investment with the purchase record after an edit:
-   * approved purchases get an active investment matching the new amount/date,
-   * anything else gets its investment closed.
+   * Align the linked purchase with the purchase record after an edit:
+   * approved purchases get an active purchase matching the new amount/date,
+   * anything else gets its purchase closed.
    */
   static async syncInvestmentForPurchase(purchase: Purchase) {
     const approved =

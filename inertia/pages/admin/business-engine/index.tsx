@@ -444,7 +444,7 @@ export default function BusinessEngineIndex(props: Props) {
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base">Monthly Cash Reward Slabs</CardTitle>
                   <CardDescription>
-                    Investment packages with min/max amount and return rates
+                    Purchase packages with min/max amount and return rates
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">

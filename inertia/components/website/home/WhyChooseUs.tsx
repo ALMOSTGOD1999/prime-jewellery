@@ -45,7 +45,7 @@ const features = [
   },
   {
     icon: Money01Icon,
-    title: 'Best Value for Investment',
+    title: 'Best Value for Purchase',
     description:
       'Competitive pricing, transparent rates, and the intrinsic value of gold make every purchase a smart financial decision.',
   },
@@ -72,7 +72,7 @@ const features = [
 const highlights = [
   {
     icon: GoldIcon,
-    title: 'Gold as a Secure Investment',
+    title: 'Gold as a Secure Purchase',
     description:
       'Investing in gold today helps customers build a secure financial future. With rising global demand and enduring value, gold remains one of the safest assets for long-term wealth preservation.',
     gradient: 'from-gold/20 via-gold/5 to-transparent',
@@ -147,7 +147,7 @@ const WhyChooseUs = () => {
           ))}
         </div>
 
-        {/* Bottom Wide Highlight Cards — Gold Investment + Membership Gift */}
+        {/* Bottom Wide Highlight Cards — Gold Purchase + Membership Gift */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 md:gap-6 lg:gap-8">
           {highlights.map((item) => (
             <div

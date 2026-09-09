@@ -22,7 +22,7 @@ interface Distribution {
   investment_status: string
 }
 
-interface Investment {
+interface Purchase {
   id: number
   amount: number
   status: string
@@ -32,9 +32,9 @@ interface Investment {
   purchase_id: string | null
 }
 
-interface SelfInvestmentProps {
+interface SelfPurchaseProps {
   distributions: Distribution[]
-  investments: Investment[]
+  purchases: Purchase[]
   summary: { totalReturn: number; totalIncome: number; totalGold: number }
 }
 
@@ -50,12 +50,12 @@ function formatMonth(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })
 }
 
-export default function SelfInvestmentPage({ distributions, investments, summary }: SelfInvestmentProps) {
+export default function SelfPurchasePage({ distributions, purchases, summary }: SelfPurchaseProps) {
   return (
     <>
-      <Head title="Self Investment" />
+      <Head title="Self Purchase" />
       <AppLayout>
-        <Header>Self Investment</Header>
+        <Header>Self Purchase</Header>
         <Main className="space-y-6">
           <button onClick={() => router.get('/dashboard')} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
             <HugeiconsIcon icon={ArrowLeft01Icon} className="size-4" /> Back to Dashboard
@@ -77,14 +77,14 @@ export default function SelfInvestmentPage({ distributions, investments, summary
             </div>
           </div>
 
-          {/* Investments */}
-          {investments.length > 0 && (
+          {/* Purchases */}
+          {purchases.length > 0 && (
             <Card className="border-border/50 shadow-sm">
               <div className="px-5 py-3 border-b border-border/50">
-                <p className="text-sm font-semibold text-foreground">Active Investments</p>
+                <p className="text-sm font-semibold text-foreground">Active Purchases</p>
               </div>
               <div className="divide-y divide-border/50">
-                {investments.map((inv) => (
+                {purchases.map((inv) => (
                   <div key={inv.id} className="flex items-center justify-between px-5 py-3">
                     <div>
                       <p className="text-sm font-medium text-foreground">{formatCurrency(inv.amount)}</p>
@@ -124,7 +124,7 @@ export default function SelfInvestmentPage({ distributions, investments, summary
                       </Badge>
                     </div>
                     <div className="flex gap-4 text-xs text-muted-foreground">
-                      <span>Invested: {formatCurrency(d.investment_amount)}</span>
+                      <span>Purchased: {formatCurrency(d.investment_amount)}</span>
                       <span className="text-violet">Income: {formatCurrency(d.income_amount)}</span>
                       <span className="text-gold">Repurchase: {formatCurrency(d.gold_amount)}</span>
                     </div>

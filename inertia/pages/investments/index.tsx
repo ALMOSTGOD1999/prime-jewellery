@@ -15,7 +15,7 @@ import { formatDateWithRelative } from '~/lib/format'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { InformationCircleIcon } from '@hugeicons/core-free-icons'
 
-type Investment = {
+type PurchaseRecord = {
   id: number
   amount: number
   monthlyReturnRate: number
@@ -36,7 +36,7 @@ type Distribution = {
   createdAt: string
 }
 
-type InvestmentPageProps = {
+type PurchasePageProps = {
   stats: {
     activeInvestmentAmount: number
     totalReturn: number
@@ -48,7 +48,7 @@ type InvestmentPageProps = {
     incomeWalletPercent: number
     goldWalletPercent: number
   }
-  investments: Investment[]
+  investments: PurchaseRecord[]
   distributions: {
     meta: any
     data: Distribution[]
@@ -56,12 +56,12 @@ type InvestmentPageProps = {
   isPayoutReleased: boolean
 }
 
-export default function InvestmentsPage({
+export default function PurchasesPage({
   stats,
   investments,
   distributions,
   isPayoutReleased,
-}: InvestmentPageProps) {
+}: PurchasePageProps) {
   const withdrawalForm = useForm({
     amount: '',
   })
@@ -75,9 +75,9 @@ export default function InvestmentsPage({
 
   return (
     <>
-      <Head title="Investments" />
+      <Head title="Purchases" />
       <AppLayout>
-        <Header>Investments</Header>
+        <Header>Purchases</Header>
         <Main className="space-y-6">
           {!isPayoutReleased && (
             <Alert className="border-amber-200 bg-amber-50/50">
@@ -92,7 +92,7 @@ export default function InvestmentsPage({
           <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
             <Card>
               <CardHeader>
-                <CardDescription>Active Investment</CardDescription>
+                <CardDescription>Active Purchase</CardDescription>
                 <CardTitle className="text-2xl">
                   {formatCurrency(stats.activeInvestmentAmount)}
                 </CardTitle>
@@ -162,7 +162,7 @@ export default function InvestmentsPage({
 
           <Card>
             <CardHeader>
-              <CardTitle>My Investments</CardTitle>
+              <CardTitle>My Purchases</CardTitle>
               <CardDescription>Principal amounts that generate monthly returns.</CardDescription>
             </CardHeader>
             <CardContent>
@@ -206,7 +206,7 @@ export default function InvestmentsPage({
                     {investments.length === 0 && (
                       <tr>
                         <td colSpan={5} className="py-6 text-center text-muted-foreground">
-                          No investments yet.
+                          No purchases yet.
                         </td>
                       </tr>
                     )}
@@ -229,7 +229,7 @@ export default function InvestmentsPage({
                   <thead>
                     <tr className="border-b text-left">
                       <th className="py-2 pr-4">Period</th>
-                      <th className="py-2 pr-4">Investment</th>
+                      <th className="py-2 pr-4">Purchase</th>
                       <th className="py-2 pr-4">Return</th>
                       <th className="py-2 pr-4">Cashback Wallet</th>
                       <th className="py-2 pr-4">Gold Wallet</th>

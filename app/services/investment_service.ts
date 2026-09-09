@@ -25,7 +25,7 @@ export default class InvestmentService {
   static async findPackageForAmount(amount: number): Promise<InvestmentPackage> {
     const pkg = await InvestmentPackage.findPackageForAmount(amount)
     if (!pkg) {
-      throw new Error(`No investment package found for amount ₹${amount.toLocaleString('en-IN')}`)
+      throw new Error(`No purchase package found for amount ₹${amount.toLocaleString('en-IN')}`)
     }
     return pkg
   }
@@ -55,11 +55,11 @@ export default class InvestmentService {
   }
 
   /**
-   * Resolve the CURRENT amount of a self-investment. A gold purchase and an
-   * investment are the same thing — every approved purchase is the underlying
-   * self-investment, and the admin may reduce or add to it after the fact. The
+   * Resolve the CURRENT amount of a self-purchase. A gold purchase and a
+   * purchase are the same thing — every approved purchase is the underlying
+   * self-purchase, and the admin may reduce or add to it after the fact. The
    * linked purchase record is the source of truth, so its current amount is
-   * used for the return calculation (falls back to the investment record).
+   * used for the return calculation (falls back to the purchase record).
    */
   static async getEffectiveAmount(investment: Investment): Promise<number> {
     if (investment.purchaseId) {
@@ -75,7 +75,7 @@ export default class InvestmentService {
   }
 
   /**
-   * Check if investment has reached its maximum return cap (e.g. 100% of investment)
+   * Check if purchase has reached its maximum return cap (e.g. 100% of purchase)
    */
   static async hasReachedMaxReturn(investment: Investment): Promise<boolean> {
     const effectiveAmount = await this.getEffectiveAmount(investment)
@@ -161,7 +161,7 @@ export default class InvestmentService {
     const bank = await user.related('bank').query().first()
     if (!bank?.approvedAt) {
       throw new Error(
-        'Please add and approve your bank details before withdrawing investment income'
+        'Please add and approve your bank details before withdrawing purchase income'
       )
     }
 
@@ -186,7 +186,7 @@ export default class InvestmentService {
     let maxReturnReached = 0
 
     for (const investment of investments) {
-      // Skip investments belonging to inactive users. Select only the columns
+      // Skip purchases belonging to inactive users. Select only the columns
       // needed — loading the avatar attachment computes its URL, which fails
       // in console/CLI contexts (no HTTP routes are registered).
       const invUser = await User.query()
@@ -198,10 +198,10 @@ export default class InvestmentService {
         continue
       }
 
-      // Check if investment has reached max return cap
+      // Check if purchase has reached max return cap
       const reachedMax = await this.hasReachedMaxReturn(investment)
       if (reachedMax) {
-        // Close the investment
+        // Close the purchase
         investment.status = 'closed'
         investment.closedAt = DateTime.now()
         investment.remark = 'Maximum return reached (100%)'

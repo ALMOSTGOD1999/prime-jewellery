@@ -143,7 +143,7 @@ export function EditPurchaseDialog({ purchase, isOpen, onOpenChange }: EditPurch
           <DialogTitle>Edit Purchase Details</DialogTitle>
           <DialogDescription>
             Update the purchase amount or the purchase date and time. This directly affects the
-            investment records.
+            purchase records.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="grid gap-4 py-4">

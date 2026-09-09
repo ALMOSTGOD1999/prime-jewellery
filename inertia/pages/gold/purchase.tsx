@@ -61,16 +61,16 @@ export default function PurchasePage({ billingRates, user, purchases }: Purchase
           : billingRates.rate22ct
 
     const goldValue = r2(grams * rate)
-    const investment = r2(goldValue / (billingRates.jewelleryValuePercent / 100))
+    const totalPurchase = r2(goldValue / (billingRates.jewelleryValuePercent / 100))
     const gstAmount = r2((goldValue * billingRates.gstPercent) / 100)
     const additionalCharges = r2((goldValue * billingRates.additionalChargePercent) / 100)
-    const makingCharges = r2(investment - goldValue - gstAmount - additionalCharges)
+    const makingCharges = r2(totalPurchase - goldValue - gstAmount - additionalCharges)
     const makingPercent = goldValue > 0 ? r2((makingCharges / goldValue) * 100) : 0
 
     return {
       rate,
       goldValue,
-      investment,
+      totalPurchase,
       gstAmount,
       additionalCharges,
       makingCharges,
@@ -78,7 +78,7 @@ export default function PurchasePage({ billingRates, user, purchases }: Purchase
     }
   }, [form.data.carat, form.data.weight, billingRates])
 
-  const belowMinimum = breakdown !== null && breakdown.investment < MIN_PURCHASE_AMOUNT
+  const belowMinimum = breakdown !== null && breakdown.totalPurchase < MIN_PURCHASE_AMOUNT
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -177,7 +177,7 @@ export default function PurchasePage({ billingRates, user, purchases }: Purchase
                       <div className="flex items-center justify-between border-t border-primary/10 pt-2">
                         <span className="text-sm font-semibold">Total Package</span>
                         <span className="text-base font-bold text-primary">
-                          {formatCurrency(breakdown.investment)}
+                          {formatCurrency(breakdown.totalPurchase)}
                         </span>
                       </div>
                     </div>

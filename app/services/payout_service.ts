@@ -561,7 +561,7 @@ export default class PayoutService {
     const monthEnd = period.endOf('month')
     const previewUsers: PayoutPreviewUser[] = []
 
-    // ─── 1. Income Wallet Payout (Investment Returns) ──────────
+    // ─── 1. Income Wallet Payout (Purchase Returns) ──────────
     const investments = await Investment.query()
       .where('status', 'active')
       .where('started_at', '<=', monthEnd.toSQL()!)

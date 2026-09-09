@@ -59,12 +59,12 @@ export default class GoldBillingConfig {
    *
    * New Formula:
    *   Gold Value     = Weight × Rate per gram
-   *   Investment     = Gold Value ÷ (jewelleryValuePercent / 100)
+   *   Purchase       = Gold Value ÷ (jewelleryValuePercent / 100)
    *   GST            = (gstPercent / 100) × Gold Value
    *   Additional     = (additionalChargePercent / 100) × Gold Value
-   *   Making         = Investment − Gold Value − GST − Additional
+   *   Making         = Purchase − Gold Value − GST − Additional
    *   Making %       = (Making / Gold Value) × 100
-   *   Total Package  = Investment (same as Customer Investment)
+   *   Total Package  = Purchase (same as Customer Purchase)
    */
   static calculate(
     rates: GoldBillingRates,
@@ -84,7 +84,7 @@ export default class GoldBillingConfig {
     const goldRate = this.getRateForCarat(rates, carat)
     const goldValue = goldRate * weight
 
-    // Investment (Total Package) = Gold Value / jewelleryValuePercent
+    // Purchase (Total Package) = Gold Value / jewelleryValuePercent
     const investment = goldValue / (rates.jewelleryValuePercent / 100)
 
     // Jewellery Value = Gold Value (the pure gold portion)
@@ -94,11 +94,11 @@ export default class GoldBillingConfig {
     const gstAmount = (goldValue * rates.gstPercent) / 100
     const additionalCharges = (goldValue * rates.additionalChargePercent) / 100
 
-    // Making Charge is the remainder so that Total = Investment
+    // Making Charge is the remainder so that Total = Purchase
     const makingCharges = investment - goldValue - gstAmount - additionalCharges
     const makingChargePercent = goldValue > 0 ? (makingCharges / goldValue) * 100 : 0
 
-    // Total Package = Investment (they are now the same)
+    // Total Package = Purchase (they are now the same)
     const packageAmount = investment
 
     const r = (n: number) => Math.round(n * 100) / 100

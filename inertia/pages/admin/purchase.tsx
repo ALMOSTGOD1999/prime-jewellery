@@ -116,35 +116,35 @@ export default function AdminPurchasePage({
       if (!grams || grams <= 0) return null
 
       const goldValue = r2(grams * rate)
-      const investment = r2(goldValue / (billingRates.jewelleryValuePercent / 100))
+      const totalPurchase = r2(goldValue / (billingRates.jewelleryValuePercent / 100))
       const gstAmount = r2((goldValue * billingRates.gstPercent) / 100)
       const additionalCharges = r2((goldValue * billingRates.additionalChargePercent) / 100)
-      const makingCharges = r2(investment - goldValue - gstAmount - additionalCharges)
+      const makingCharges = r2(totalPurchase - goldValue - gstAmount - additionalCharges)
       const makingPercent = goldValue > 0 ? r2((makingCharges / goldValue) * 100) : 0
 
-      return { rate, goldValue, investment, gstAmount, additionalCharges, makingCharges, makingPercent, weightGrams: grams }
+      return { rate, goldValue, totalPurchase, gstAmount, additionalCharges, makingCharges, makingPercent, weightGrams: grams }
     } else {
       // Amount mode: reverse-calculate from total amount
-      const investment = Number(purchaseForm.data.amount)
-      if (!investment || investment <= 0) return null
+      const totalPurchase = Number(purchaseForm.data.amount)
+      if (!totalPurchase || totalPurchase <= 0) return null
 
-      const goldValue = r2(investment * (billingRates.jewelleryValuePercent / 100))
+      const goldValue = r2(totalPurchase * (billingRates.jewelleryValuePercent / 100))
       const weightGrams = rate > 0 ? r2(goldValue / rate) : 0
       const gstAmount = r2((goldValue * billingRates.gstPercent) / 100)
       const additionalCharges = r2((goldValue * billingRates.additionalChargePercent) / 100)
-      const makingCharges = r2(investment - goldValue - gstAmount - additionalCharges)
+      const makingCharges = r2(totalPurchase - goldValue - gstAmount - additionalCharges)
       const makingPercent = goldValue > 0 ? r2((makingCharges / goldValue) * 100) : 0
 
-      return { rate, goldValue, investment, gstAmount, additionalCharges, makingCharges, makingPercent, weightGrams }
+      return { rate, goldValue, totalPurchase, gstAmount, additionalCharges, makingCharges, makingPercent, weightGrams }
     }
   }, [purchaseForm.data.carat, purchaseForm.data.weight, purchaseForm.data.amount, inputMode, billingRates])
 
-  const selectedAmount = breakdown ? breakdown.investment : 0
+  const selectedAmount = breakdown ? breakdown.totalPurchase : 0
   const goldPackage =
     selectedUser && selectedAmount >= MIN_PURCHASE_AMOUNT
       ? findPackage(packages, selectedAmount)
       : null
-  const belowMinimum = breakdown !== null && breakdown.investment < MIN_PURCHASE_AMOUNT
+  const belowMinimum = breakdown !== null && breakdown.totalPurchase < MIN_PURCHASE_AMOUNT
 
   const performSearch = useCallback(async (query: string) => {
     if (!query.trim()) {
@@ -192,7 +192,7 @@ export default function AdminPurchasePage({
         ? purchaseForm.data.weight
         : String(breakdown.weightGrams),
       amount: inputMode === 'amount'
-        ? String(breakdown.investment)
+        ? String(breakdown.totalPurchase)
         : purchaseForm.data.amount,
     }
 
@@ -458,7 +458,7 @@ export default function AdminPurchasePage({
                         <div className="flex items-center justify-between border-t border-primary/10 pt-2">
                           <span className="text-sm font-semibold">Total Package</span>
                           <span className="text-base font-bold text-primary">
-                            {formatCurrency(breakdown.investment)}
+                            {formatCurrency(breakdown.totalPurchase)}
                           </span>
                         </div>
                       </div>

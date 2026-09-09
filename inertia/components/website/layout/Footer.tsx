@@ -56,7 +56,7 @@ const Footer = () => {
                 'Silver Jewellery',
                 'New Arrivals',
                 'Best Sellers',
-                'Investment Plans',
+                    'Purchase Plans',
               ].map((item) => (
                 <li key={item}>
                   <Link

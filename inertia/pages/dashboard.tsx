@@ -95,7 +95,7 @@ export default function DashboardPage({
       detailType: 'self-business' as const,
     },
     {
-      title: 'Self Investment',
+      title: 'Self Purchase',
       value: formatCurrency(metrics?.myBusiness || 0),
       subtitle: `₹${formatCurrency(metrics?.myBusinessMonth || 0)} this month`,
       icon: Wallet01Icon,
@@ -130,7 +130,7 @@ export default function DashboardPage({
     {
       title: 'Cashback Wallet',
       value: formatCurrency(incomeWallet || 0),
-      subtitle: 'Monthly investment return',
+      subtitle: 'Monthly purchase return',
       icon: Wallet01Icon,
       gradient: 'from-emerald/20 via-emerald/5 to-transparent',
       border: 'border-emerald/20',
@@ -141,7 +141,7 @@ export default function DashboardPage({
     {
       title: 'Repurchase Wallet',
       value: formatCurrency(repurchaseWallet || 0),
-      subtitle: 'Investment return + working income',
+      subtitle: 'Purchase return + working income',
       icon: Wallet01Icon,
       gradient: 'from-violet/20 via-violet/5 to-transparent',
       border: 'border-violet/20',

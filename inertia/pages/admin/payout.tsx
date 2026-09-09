@@ -139,7 +139,7 @@ export default function AdminPayoutPage({
                   <strong>₹{diagnostic.junePurchaseAmount.toLocaleString('en-IN')}</strong>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Active Investments:</span>{' '}
+                  <span className="text-muted-foreground">Active Purchases:</span>{' '}
                   <strong>{diagnostic.activeInvestments}</strong>
                 </div>
               </div>
@@ -147,7 +147,7 @@ export default function AdminPayoutPage({
                 (diagnostic.junePurchaseCount === 0 && diagnostic.activeInvestments === 0)) && (
                 <p className="mt-2 text-xs text-amber-600">
                   No data exists for {nextIncomeMonth}. Users need approved purchases or active
-                  investments to receive payouts.
+                  purchases to receive payouts.
                 </p>
               )}
             </CardContent>
