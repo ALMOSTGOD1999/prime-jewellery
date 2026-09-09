@@ -9,7 +9,7 @@ const navigation = [
   { name: 'Gold Jewellery', href: '/products?category=gold' },
   { name: 'Silver Jewellery', href: '/products?category=silver' },
   { name: 'About Us', href: '/about' },
-  { name: 'Purchase', href: '/investments' },
+  { name: 'Purchase', href: '/purchases' },
 ]
 
 const Header = () => {

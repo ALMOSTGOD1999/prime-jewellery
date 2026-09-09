@@ -63,7 +63,7 @@ router
   .use(middleware.auth())
 
 router
-  .get('dashboard/self-investment', [DashboardController, 'selfInvestment'])
+  .get('dashboard/self-purchase', [DashboardController, 'selfInvestment'])
   .as('dashboard.selfInvestment')
   .use(middleware.auth())
 
@@ -169,15 +169,15 @@ router
 
 /*
 |--------------------------------------------------------------------------
-| Investments
+| Purchases
 |--------------------------------------------------------------------------
 */
 const InvestmentsController = () => import('#controllers/investments_controller')
 router
   .group(() => {
-    router.get('investments', [InvestmentsController, 'index']).as('investments.index')
+    router.get('purchases', [InvestmentsController, 'index']).as('investments.index')
     router
-      .post('investments/withdraw-income', [InvestmentsController, 'withdrawIncome'])
+      .post('purchases/withdraw-income', [InvestmentsController, 'withdrawIncome'])
       .as('investments.withdrawIncome')
   })
   .as('investments')

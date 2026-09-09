@@ -103,7 +103,7 @@ export default function DashboardPage({
       border: 'border-emerald/20',
       iconBg: 'bg-emerald/10 text-emerald',
       valueColor: 'text-emerald',
-      detailType: 'self-investment' as const,
+      detailType: 'self-purchase' as const,
     },
     {
       title: 'Total Business',

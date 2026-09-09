@@ -41,7 +41,7 @@ const HeroSection = () => {
                 Explore Collection
               </Button>
             </Link>
-            <Link href="/investments">
+            <Link href="/purchases">
               <Button variant="outlineGold" size="lg">
                 Start Purchasing
               </Button>

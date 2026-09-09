@@ -168,8 +168,8 @@ export default class DashboardController {
   }
 
   /**
-   * GET /dashboard/self-investment
-   * Current user's investment return history.
+   * GET /dashboard/self-purchase
+   * Current user's purchase return history.
    */
   async selfInvestment({ auth, inertia }: HttpContext) {
     const user = auth.getUserOrFail()

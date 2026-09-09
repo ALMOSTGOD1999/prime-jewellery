@@ -68,7 +68,7 @@ export default function PurchasesPage({
 
   const submitWithdrawal = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    withdrawalForm.post('/investments/withdraw-income', {
+    withdrawalForm.post('/purchases/withdraw-income', {
       onSuccess: () => withdrawalForm.reset(),
     })
   }
