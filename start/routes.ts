@@ -82,31 +82,37 @@ router
   .get('admin/dashboard/users', [DashboardController, 'allUsers'])
   .as('admin.dashboard.users')
   .use(middleware.auth())
+  .use(middleware.admin())
 
 router
   .get('admin/dashboard/users-month', [DashboardController, 'usersMonth'])
   .as('admin.dashboard.usersMonth')
   .use(middleware.auth())
+  .use(middleware.admin())
 
 router
   .get('admin/dashboard/users-today', [DashboardController, 'usersToday'])
   .as('admin.dashboard.usersToday')
   .use(middleware.auth())
+  .use(middleware.admin())
 
 router
   .get('admin/dashboard/business', [DashboardController, 'totalBusiness'])
   .as('admin.dashboard.business')
   .use(middleware.auth())
+  .use(middleware.admin())
 
 router
   .get('admin/dashboard/business-month', [DashboardController, 'adminBusinessMonth'])
   .as('admin.dashboard.businessMonth')
   .use(middleware.auth())
+  .use(middleware.admin())
 
 router
   .get('admin/dashboard/business-today', [DashboardController, 'businessToday'])
   .as('admin.dashboard.businessToday')
   .use(middleware.auth())
+  .use(middleware.admin())
 
 /*
 | Members

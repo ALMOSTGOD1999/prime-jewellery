@@ -16,7 +16,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const user = useUser()!
   const { sidebarStats } = usePageProps<{ sidebarStats: AdminSidebarStats }>()
 
-  const sidebarLinks = useMemo(() => getAppNav(user, sidebarStats), [user, sidebarStats])
+  const sidebarLinks = useMemo(() => getAppNav(user, sidebarStats ?? { activeUsers: 0, activationRequests: 0, kycRequests: 0, bankRequests: 0, purchaseRequests: 0 }), [user, sidebarStats])
 
   useEffect(() => {
     if (flash?.success) {
