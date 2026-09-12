@@ -740,6 +740,7 @@ export default class RewardService {
         : firstPurchaseDate
       const startDate = firstPurchaseDate > userActivatedAt ? firstPurchaseDate : userActivatedAt
       const endDate = (asOf || DateTime.now().setZone(env.get('TZ'))).startOf('day')
+      const daysInMonth = endDate.daysInMonth
 
       for (let date = startDate; date <= endDate; date = date.plus({ days: 1 })) {
         // Calculate cumulative purchase amount until the current date.
@@ -764,8 +765,8 @@ export default class RewardService {
 
         if (cumulativeAmount === 0) continue
 
-        // Daily level reward = cumulative amount × percentage × 12 / 365
-        const dailyLevelReward = (cumulativeAmount * (percentage / 100) * 12) / 365
+        // Daily level reward = cumulative amount × percentage / daysInMonth (flat monthly)
+        const dailyLevelReward = (cumulativeAmount * (percentage / 100)) / (daysInMonth || 30)
         const dateKey = date.toISODate()!
 
         levelRewardsMap.set(dateKey, (levelRewardsMap.get(dateKey) || 0) + dailyLevelReward)
@@ -1128,6 +1129,7 @@ export default class RewardService {
         : firstEmiDate
       const startDate = firstEmiDate > userActivatedAt ? firstEmiDate : userActivatedAt
       const endDate = (asOf || DateTime.now().setZone(env.get('TZ'))).startOf('day')
+      const daysInMonth = endDate.daysInMonth
 
       for (let date = startDate; date <= endDate; date = date.plus({ days: 1 })) {
         // Calculate cumulative EMI amount paid until current date (up to 10 months validity per transaction)
@@ -1143,8 +1145,8 @@ export default class RewardService {
 
         if (cumulativeAmount === 0) continue
 
-        // Daily level reward = cumulative amount × percentage × 12 / 365
-        const dailyLevelReward = (cumulativeAmount * (percentage / 100) * 12) / 365
+        // Daily level reward = cumulative amount × percentage / daysInMonth (flat monthly)
+        const dailyLevelReward = (cumulativeAmount * (percentage / 100)) / (daysInMonth || 30)
         const dateKey = date.toISODate()!
 
         levelRewardsMap.set(dateKey, (levelRewardsMap.get(dateKey) || 0) + dailyLevelReward)

@@ -136,6 +136,7 @@ export default class AdminUsersController {
         phone: user.phone,
         gender: user.gender,
         avatar: user.avatar?.url,
+        status: user.status,
         activatedAt: user.activatedAt,
 
         parent: user.parent,
