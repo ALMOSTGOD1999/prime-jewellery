@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Head, router } from '@inertiajs/react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
@@ -5,12 +6,15 @@ import {
   Wallet01Icon,
   ArrowUp01Icon,
   ArrowDown01Icon,
+  FileDownloadIcon,
 } from '@hugeicons/core-free-icons'
 import AppLayout from '~/components/app/layout'
 import { Header } from '~/components/app/header'
 import { Main } from '~/components/app/main'
 import { Card, CardContent } from '~/components/ui/card'
 import { Badge } from '~/components/ui/badge'
+import { Button } from '~/components/ui/button'
+import { generateWalletHistoryPdf } from '~/lib/generate-wallet-pdf'
 
 interface WalletTransaction {
   id: string
@@ -25,6 +29,8 @@ interface WalletHistoryProps {
   wallet: string
   walletLabel: string
   transactions: WalletTransaction[]
+  userName: string
+  userCode: string
 }
 
 const walletColors: Record<string, { bg: string; border: string; text: string; badge: string }> = {
@@ -73,8 +79,15 @@ function formatCurrency(amount: number) {
   }).format(amount)
 }
 
-export default function WalletHistoryPage({ wallet, walletLabel, transactions }: WalletHistoryProps) {
+export default function WalletHistoryPage({
+  wallet,
+  walletLabel,
+  transactions,
+  userName,
+  userCode,
+}: WalletHistoryProps) {
   const colors = walletColors[wallet] || walletColors.income
+  const [generating, setGenerating] = useState(false)
 
   const totalCredits = transactions
     .filter((t) => t.type === 'wallet_credit')
@@ -84,20 +97,45 @@ export default function WalletHistoryPage({ wallet, walletLabel, transactions }:
     .filter((t) => t.type === 'wallet_debit')
     .reduce((sum, t) => sum + Number(t.amount), 0)
 
+  const handleDownloadPdf = async () => {
+    setGenerating(true)
+    try {
+      await generateWalletHistoryPdf(walletLabel, transactions, userName, userCode)
+    } catch (err) {
+      console.error('PDF generation failed:', err)
+    } finally {
+      setGenerating(false)
+    }
+  }
+
   return (
     <>
       <Head title={`${walletLabel} History`} />
       <AppLayout>
         <Header>{walletLabel} History</Header>
         <Main className="space-y-6">
-          {/* Back link */}
-          <button
-            onClick={() => router.get('/dashboard')}
-            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <HugeiconsIcon icon={ArrowLeft01Icon} className="size-4" />
-            Back to Dashboard
-          </button>
+          {/* Back link + Download */}
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => router.get('/dashboard')}
+              className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <HugeiconsIcon icon={ArrowLeft01Icon} className="size-4" />
+              Back to Dashboard
+            </button>
+
+            {transactions.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDownloadPdf}
+                disabled={generating}
+              >
+                <HugeiconsIcon icon={FileDownloadIcon} className="size-4" />
+                {generating ? 'Generating…' : 'Download PDF'}
+              </Button>
+            )}
+          </div>
 
           {/* Summary cards */}
           <div className="grid gap-4 md:grid-cols-3">

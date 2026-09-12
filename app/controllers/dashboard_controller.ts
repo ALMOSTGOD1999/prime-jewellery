@@ -372,6 +372,8 @@ export default class DashboardController {
       wallet,
       walletLabel: walletLabels[wallet],
       transactions: result.rows,
+      userName: user.name,
+      userCode: `PJ${String(user.id).padStart(6, '0')}`,
     })
   }
 
