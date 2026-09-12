@@ -1917,4 +1917,229 @@ export default class RewardService {
     // Return null if no criteria matches
     return null
   }
+
+  /**
+   * Per-user level income history.
+   * Returns each descendant user, their level depth, purchase amount,
+   * level income percentage, and total level income earned.
+   */
+  static async getLevelIncomePerUser(
+    user: User,
+    filters: {
+      page?: number
+      limit?: number
+      asOf?: DateTime
+    } = {}
+  ) {
+    const { page = 1, limit = 20, asOf } = filters
+
+    // 1. Get direct children count
+    const directChildren = await user.related('children').query().count('* as total')
+    const directCount = Number(directChildren[0].$extras.total)
+
+    // 2. Compute team business
+    const tbd = await db.rawQuery(
+      `WITH RECURSIVE descendants AS (
+         SELECT id FROM users WHERE parent_id = ?
+         UNION ALL
+         SELECT u.id FROM users u INNER JOIN descendants d ON u.parent_id = d.id
+       )
+       SELECT COALESCE(SUM(p.amount), 0)::float as total_team_business
+       FROM descendants d
+       LEFT JOIN purchases p ON p.user_id = d.id AND p.approved_at IS NOT NULL AND p.cancelled_at IS NULL`,
+      [user.id]
+    )
+    const teamBusiness = Number(tbd.rows[0]?.total_team_business) || 0
+    const teamBusinessLevel = await TeamBusinessLevel.getLevelForBusiness(teamBusiness)
+    const maxDepth = await LevelIncome.getMaxUnlockedLevel(directCount, teamBusinessLevel)
+
+    if (maxDepth === 0) {
+      return {
+        meta: {
+          total: 0,
+          per_page: limit,
+          current_page: page,
+          last_page: 1,
+          first_page: 1,
+          first_page_url: '/?page=1',
+          last_page_url: '/?page=1',
+          next_page_url: null,
+          previous_page_url: null,
+        },
+        data: [],
+        stats: { totalLevelIncome: 0, totalMembers: 0 },
+      }
+    }
+
+    // 3. Fetch descendants with depth and name
+    const descendants = await db.rawQuery(
+      `
+      WITH RECURSIVE descendants AS (
+        SELECT id, name, parent_id, 1 as depth
+        FROM users
+        WHERE parent_id = ?
+        UNION ALL
+        SELECT u.id, u.name, u.parent_id, d.depth + 1
+        FROM users u
+        INNER JOIN descendants d ON u.parent_id = d.id
+        WHERE d.depth < 24
+      )
+      SELECT * FROM descendants WHERE depth <= ?
+      `,
+      [user.id, maxDepth]
+    )
+
+    if (descendants.rows.length === 0) {
+      return {
+        meta: {
+          total: 0,
+          per_page: limit,
+          current_page: page,
+          last_page: 1,
+          first_page: 1,
+          first_page_url: '/?page=1',
+          last_page_url: '/?page=1',
+          next_page_url: null,
+          previous_page_url: null,
+        },
+        data: [],
+        stats: { totalLevelIncome: 0, totalMembers: 0 },
+      }
+    }
+
+    const descendantInfo = new Map<number, { name: string; depth: number }>()
+    const descendantIds = descendants.rows.map((r: any) => {
+      descendantInfo.set(r.id, { name: r.name, depth: r.depth })
+      return r.id
+    })
+
+    // 4. Fetch all approved purchases for descendants
+    const purchases = await Purchase.query()
+      .whereIn('userId', descendantIds)
+      .whereNotNull('approvedAt')
+      .orderBy('approvedAt', 'asc')
+
+    if (purchases.length === 0) {
+      return {
+        meta: {
+          total: 0,
+          per_page: limit,
+          current_page: page,
+          last_page: 1,
+          first_page: 1,
+          first_page_url: '/?page=1',
+          last_page_url: '/?page=1',
+          next_page_url: null,
+          previous_page_url: null,
+        },
+        data: [],
+        stats: { totalLevelIncome: 0, totalMembers: 0 },
+      }
+    }
+
+    // 5. Group purchases by user
+    const purchasesByUser = new Map<number, Purchase[]>()
+    for (const p of purchases) {
+      if (!purchasesByUser.has(p.userId)) purchasesByUser.set(p.userId, [])
+      purchasesByUser.get(p.userId)!.push(p)
+    }
+
+    // 6. Calculate per-user level income
+    const endDate = (asOf || DateTime.now().setZone(env.get('TZ'))).startOf('day')
+    const daysInMonth = endDate.daysInMonth
+
+    const userResults: {
+      userId: number
+      name: string
+      level: number
+      percentage: number
+      totalPurchase: number
+      totalLevelIncome: number
+    }[] = []
+
+    for (const [userId, userPurchases] of purchasesByUser.entries()) {
+      const info = descendantInfo.get(userId)!
+      const depth = info.depth
+      const percentage = await LevelIncome.getPercentageForLevel(depth)
+      if (percentage === 0) continue
+
+      const validPurchases = userPurchases.filter((p) => !p.cancelledAt)
+      if (validPurchases.length === 0) continue
+
+      const firstPurchaseDate = DateTime.fromJSDate(
+        new Date(validPurchases[0].approvedAt!.toString())
+      ).startOf('day')
+      const userActivatedAt = user.activatedAt
+        ? DateTime.fromJSDate(new Date(user.activatedAt.toString())).startOf('day')
+        : firstPurchaseDate
+      const startDate = firstPurchaseDate > userActivatedAt ? firstPurchaseDate : userActivatedAt
+
+      if (startDate > endDate) continue
+
+      let totalLevelIncome = 0
+      for (let date = startDate; date <= endDate; date = date.plus({ days: 1 })) {
+        const cumulativeAmount = validPurchases
+          .filter((p) => {
+            const approvedAt = DateTime.fromJSDate(new Date(p.approvedAt!.toString())).endOf('day')
+            if (approvedAt > date.endOf('day')) return false
+            const expiry = approvedAt.plus({ months: 10 })
+            if (date.endOf('day') > expiry) return false
+            if (p.stoppedAt) {
+              const stoppedAt = DateTime.fromJSDate(new Date(p.stoppedAt!.toString())).endOf('day')
+              if (date.endOf('day') > stoppedAt) return false
+            }
+            return true
+          })
+          .reduce((sum, p) => sum + Number(p.amount), 0)
+
+        if (cumulativeAmount === 0) continue
+        const dailyLevelReward = (cumulativeAmount * (percentage / 100)) / (daysInMonth || 30)
+        totalLevelIncome += dailyLevelReward
+      }
+
+      if (totalLevelIncome <= 0) continue
+
+      const totalPurchase = validPurchases.reduce((sum, p) => sum + Number(p.amount), 0)
+
+      userResults.push({
+        userId,
+        name: info.name,
+        level: depth,
+        percentage,
+        totalPurchase,
+        totalLevelIncome: Number(totalLevelIncome.toFixed(2)),
+      })
+    }
+
+    // 7. Sort by totalLevelIncome descending
+    userResults.sort((a, b) => b.totalLevelIncome - a.totalLevelIncome)
+
+    const stats = {
+      totalLevelIncome: Number(userResults.reduce((sum, r) => sum + r.totalLevelIncome, 0).toFixed(2)),
+      totalMembers: userResults.length,
+    }
+
+    // 8. Paginate
+    const total = userResults.length
+    const startIndex = (page - 1) * limit
+    const endIndex = startIndex + limit
+    const paginatedData = userResults.slice(startIndex, endIndex)
+    const lastPage = Math.ceil(total / limit) || 1
+
+    return {
+      meta: {
+        total,
+        per_page: limit,
+        current_page: page,
+        last_page: lastPage,
+        first_page: 1,
+        first_page_url: '/?page=1',
+        last_page_url: `/?page=${lastPage}`,
+        next_page_url: page < lastPage ? `/?page=${page + 1}` : null,
+        previous_page_url: page > 1 ? `/?page=${page - 1}` : null,
+      },
+      data: paginatedData,
+      stats,
+    }
+  }
 }

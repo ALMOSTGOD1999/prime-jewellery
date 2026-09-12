@@ -211,6 +211,7 @@ router
     router.get('cashback', [RewardsController, 'cashbackPage']).as('cashback.page')
     router.get('salaries', [RewardsController, 'salaryPage']).as('salary.page')
     router.get('level-income', [RewardsController, 'levelIncomePage']).as('level.income.page')
+    router.get('level-income-history', [RewardsController, 'levelIncomeHistoryPage']).as('level.income.history.page')
     router
       .get('membership-level-income', [RewardsController, 'membershipLevelIncomePage'])
       .as('membership.level.income.page')

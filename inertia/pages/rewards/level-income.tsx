@@ -73,7 +73,13 @@ export default function LevelIncomePage({ levelIncome, isPayoutReleased }: Level
 
         <p className="text-sm text-muted-foreground">
           Level income is earned from purchases made by your downline members. It is automatically
-          added to your working wallet each month.
+          added to your working wallet each month.{' '}
+          <a
+            href="/rewards/level-income-history"
+            className="text-blue-600 hover:underline font-medium"
+          >
+            View detailed breakdown by member →
+          </a>
         </p>
 
         <div className="rounded-md border">

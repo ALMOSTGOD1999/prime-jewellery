@@ -486,4 +486,37 @@ export default class RewardsController {
       isPayoutReleased,
     })
   }
+
+  async levelIncomeHistoryPage({ auth, inertia, request }: HttpContext) {
+    const user = auth.getUserOrFail()
+    const { page = 1, limit = 20 } = await paginationValidator.validate(request.qs())
+    const isPayoutReleased = await PayoutService.isPayoutReleased()
+
+    const levelIncomePerUser = isPayoutReleased
+      ? await RewardService.getLevelIncomePerUser(user, {
+          page,
+          limit,
+          asOf: (await PayoutService.getVisibleCutoff())?.endOf('month'),
+        })
+      : {
+          meta: {
+            total: 0,
+            per_page: limit,
+            current_page: page,
+            last_page: 1,
+            first_page: 1,
+            first_page_url: '/?page=1',
+            last_page_url: '/?page=1',
+            next_page_url: null,
+            previous_page_url: null,
+          },
+          data: [],
+          stats: { totalLevelIncome: 0, totalMembers: 0 },
+        }
+
+    return inertia.render('rewards/level-income-history', {
+      levelIncomePerUser,
+      isPayoutReleased,
+    })
+  }
 }
