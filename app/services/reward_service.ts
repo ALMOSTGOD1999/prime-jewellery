@@ -1581,8 +1581,6 @@ export default class RewardService {
     let totalLocked = 0
     let totalAllTime = 0
 
-    const now = DateTime.now().setZone(env.get('TZ'))
-
     for (const salary of salaries) {
       if (!salary.info) continue
       const amount = salary.info.reward
@@ -1590,27 +1588,10 @@ export default class RewardService {
       // Expired incentives are never payable
       if (salary.status === 'expired') continue
 
-      // Pending incentives only become payable after the 20% growth requirement
-      if (!salary.isPaid) {
-        totalLocked += amount
-        continue
-      }
-
       totalAllTime += amount
 
-      // Unlock schedule starts from when the incentive became payable
-      const payableAt = (salary.paidAt ?? salary.createdAt).setZone(env.get('TZ'))
-      let unlockDate: DateTime
-
-      if (payableAt.day <= 15) {
-        // Paid 1st-15th -> Available 20th of Next Month
-        unlockDate = payableAt.plus({ months: 1 }).set({ day: 20 }).startOf('day')
-      } else {
-        // Paid 16th-End -> Available 5th of Month after Next
-        unlockDate = payableAt.plus({ months: 2 }).set({ day: 5 }).startOf('day')
-      }
-
-      if (now >= unlockDate) {
+      // Paid incentives are immediately available for withdrawal
+      if (salary.isPaid) {
         totalUnlocked += amount
       } else {
         totalLocked += amount
