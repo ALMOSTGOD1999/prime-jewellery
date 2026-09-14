@@ -29,6 +29,7 @@ interface WalletHistoryProps {
   wallet: string
   walletLabel: string
   transactions: WalletTransaction[]
+  currentBalance: number
   userName: string
   userCode: string
 }
@@ -83,6 +84,7 @@ export default function WalletHistoryPage({
   wallet,
   walletLabel,
   transactions,
+  currentBalance,
   userName,
   userCode,
 }: WalletHistoryProps) {
@@ -142,7 +144,7 @@ export default function WalletHistoryPage({
             <div className={`relative overflow-hidden rounded-2xl border ${colors.border} bg-gradient-to-br ${colors.bg} p-5`}>
               <p className="text-sm font-medium text-muted-foreground mb-1">Current Balance</p>
               <p className={`text-2xl font-bold tracking-tight ${colors.text}`}>
-                {formatCurrency(totalCredits - totalDebits)}
+                {formatCurrency(currentBalance)}
               </p>
             </div>
             <div className="relative overflow-hidden rounded-2xl border border-emerald/20 bg-gradient-to-br from-emerald/20 via-emerald/5 to-transparent p-5">

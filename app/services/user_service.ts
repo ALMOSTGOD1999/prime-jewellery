@@ -1,4 +1,5 @@
 import User from '#models/user'
+import Purchase from '#models/purchase'
 import db from '@adonisjs/lucid/services/db'
 import { attachmentManager } from '@jrmc/adonis-attachment'
 import { UserRoleEnum } from '#enums/user'
@@ -193,16 +194,44 @@ export default class UserService {
       query.withCount('children')
       query.select('id', 'name', 'created_at', 'activated_at', 'avatar')
     })
+
+    const childIds = user.children.map((c) => c.id)
+
+    // Fetch business data for all children in one query
+    const businessMap = new Map<number, { totalBusiness: number; businessDate: string | null }>()
+    if (childIds.length > 0) {
+      const purchases = await Purchase.query()
+        .whereIn('userId', childIds)
+        .whereNotNull('approvedAt')
+        .whereNull('cancelledAt')
+        .orderBy('approvedAt', 'desc')
+
+      for (const childId of childIds) {
+        const childPurchases = purchases.filter((p) => p.userId === childId)
+        const totalBusiness = childPurchases.reduce((sum, p) => sum + Number(p.amount), 0)
+        const latestPurchase = childPurchases[0]
+        const businessDate = latestPurchase?.approvedAt
+          ? latestPurchase.approvedAt.toISO()
+          : null
+        businessMap.set(childId, { totalBusiness, businessDate })
+      }
+    }
+
     const rootUser = user.serialize()
     rootUser.childrenCount = Number(user.$extras.children_count)
-    rootUser.children = user.children.map((c) => ({
-      id: c.id,
-      name: c.name,
-      createdAt: c.createdAt,
-      activatedAt: c.activatedAt,
-      avatar: c.avatar,
-      childrenCount: Number(c.$extras.children_count),
-    }))
+    rootUser.children = user.children.map((c) => {
+      const biz = businessMap.get(c.id) || { totalBusiness: 0, businessDate: null }
+      return {
+        id: c.id,
+        name: c.name,
+        createdAt: c.createdAt,
+        activatedAt: c.activatedAt,
+        avatar: c.avatar,
+        childrenCount: Number(c.$extras.children_count),
+        totalBusiness: biz.totalBusiness,
+        businessDate: biz.businessDate,
+      }
+    })
     return rootUser
   }
 
@@ -214,14 +243,41 @@ export default class UserService {
       .withCount('children')
       .select('id', 'name', 'created_at', 'activated_at', 'avatar')
 
-    return children.map((c) => ({
-      id: c.id,
-      name: c.name,
-      createdAt: c.createdAt,
-      activatedAt: c.activatedAt,
-      avatar: c.avatar,
-      childrenCount: Number(c.$extras.children_count),
-    }))
+    const childIds = children.map((c) => c.id)
+
+    // Fetch business data for all children in one query
+    const businessMap = new Map<number, { totalBusiness: number; businessDate: string | null }>()
+    if (childIds.length > 0) {
+      const purchases = await Purchase.query()
+        .whereIn('userId', childIds)
+        .whereNotNull('approvedAt')
+        .whereNull('cancelledAt')
+        .orderBy('approvedAt', 'desc')
+
+      for (const childId of childIds) {
+        const childPurchases = purchases.filter((p) => p.userId === childId)
+        const totalBusiness = childPurchases.reduce((sum, p) => sum + Number(p.amount), 0)
+        const latestPurchase = childPurchases[0]
+        const businessDate = latestPurchase?.approvedAt
+          ? latestPurchase.approvedAt.toISO()
+          : null
+        businessMap.set(childId, { totalBusiness, businessDate })
+      }
+    }
+
+    return children.map((c) => {
+      const biz = businessMap.get(c.id) || { totalBusiness: 0, businessDate: null }
+      return {
+        id: c.id,
+        name: c.name,
+        createdAt: c.createdAt,
+        activatedAt: c.activatedAt,
+        avatar: c.avatar,
+        childrenCount: Number(c.$extras.children_count),
+        totalBusiness: biz.totalBusiness,
+        businessDate: biz.businessDate,
+      }
+    })
   }
 
   static async updateProfile(

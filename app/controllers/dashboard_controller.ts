@@ -348,6 +348,15 @@ export default class DashboardController {
     const patterns = WALLET_REMARK_PATTERNS[wallet]
     const orConditions = patterns.map((p) => `remark LIKE '${p}'`).join(' OR ')
 
+    // Read the true wallet balance from the users column (source of truth).
+    // The column is always kept in sync by WalletService credit/debit helpers.
+    const walletColumn = `${wallet}_wallet`
+    const balanceRes = await db.rawQuery(
+      `SELECT ${walletColumn} FROM users WHERE id = ?`,
+      [user.id]
+    )
+    const currentBalance = Math.max(0, Number(balanceRes.rows[0]?.[walletColumn] ?? 0))
+
     // Fetch all wallet credit/debit transactions matching this wallet type.
     // `remark` is the only reliable way to distinguish wallet destinations
     // since the Transaction table has no explicit wallet_type column.
@@ -372,6 +381,7 @@ export default class DashboardController {
       wallet,
       walletLabel: walletLabels[wallet],
       transactions: result.rows,
+      currentBalance,
       userName: user.name,
       userCode: `PJ${String(user.id).padStart(6, '0')}`,
     })

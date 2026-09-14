@@ -7,6 +7,7 @@ import {
   Maximize02Icon,
   MinusSignIcon,
   PlusSignIcon,
+  RupeeCircleIcon,
   UserIcon,
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
@@ -26,6 +27,8 @@ export interface OrgChartUser {
   activatedAt?: string | null
   childrenCount?: number
   avatar?: { url: string } | null
+  totalBusiness?: number
+  businessDate?: string | null
 }
 
 interface OrgChartProps {
@@ -38,7 +41,7 @@ interface OrgChartProps {
 function getConfig(isMobile: boolean) {
   return {
     nodeWidth: isMobile ? 180 : 260,
-    nodeHeight: isMobile ? 95 : 110,
+    nodeHeight: isMobile ? 110 : 130,
     horizontalGap: isMobile ? 20 : 30,
     verticalGap: isMobile ? 60 : 80,
     paddingTop: 30,
@@ -418,6 +421,25 @@ export default function OrgChart({ rootUser }: OrgChartProps) {
                               </span>
                             </div>
                           </div>
+
+                          {/* Business Row */}
+                          {node.totalBusiness !== undefined && node.totalBusiness > 0 && (
+                            <div className="flex items-center gap-1 text-[10px] font-mono">
+                              <HugeiconsIcon
+                                icon={RupeeCircleIcon}
+                                size={10}
+                                className="opacity-70 text-green-600"
+                              />
+                              <span className="text-green-600 font-semibold">
+                                ₹{node.totalBusiness.toLocaleString('en-IN')}
+                              </span>
+                              {node.businessDate && (
+                                <span className="text-muted-foreground">
+                                  ({formatDateWithRelative(node.businessDate).relative})
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>

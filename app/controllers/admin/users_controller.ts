@@ -68,7 +68,7 @@ export default class AdminUsersController {
     const search = (request.qs().search as string) || ''
     const query = User.query()
       .whereNot('role', 'admin')
-      .select('id', 'name', 'email', 'phone', 'status', 'activatedAt')
+      .select('id', 'name', 'email', 'phone', 'status', 'activatedAt', 'activationAmount')
       .limit(50)
     if (search) {
       query.where((builder) => {
@@ -88,6 +88,7 @@ export default class AdminUsersController {
         phone: u.phone,
         status: u.status,
         activatedAt: u.activatedAt,
+        activationAmount: u.activationAmount,
       })),
     })
   }

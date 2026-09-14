@@ -294,7 +294,17 @@ router
     ////// Activation
     router
       .group(() => {
-        router.get('/', ({ inertia }) => inertia.render('admin/activation')).as('page')
+        router.get('/', async ({ inertia }) => {
+          const db = await import('@adonisjs/lucid/services/db')
+          const result = await db.default.rawQuery(
+            `SELECT id, name, email, phone, activated_at, activation_amount
+             FROM users
+             WHERE role != 'admin' AND activated_at IS NOT NULL
+             ORDER BY activated_at DESC
+             LIMIT 50`
+          )
+          return inertia.render('admin/activation', { recentActivations: result.rows })
+        }).as('page')
         router.post('/user', [ActivationController, 'activateUser']).as('activate.user')
       })
       .prefix('activation')

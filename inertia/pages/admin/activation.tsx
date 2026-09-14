@@ -7,6 +7,7 @@ import {
   CheckmarkCircle01Icon,
   UserCheck01Icon,
   Cancel01Icon,
+  Clock01Icon,
 } from '@hugeicons/core-free-icons'
 
 import AppLayout from '~/components/app/layout'
@@ -16,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
+import { Badge } from '~/components/ui/badge'
 
 // const ACTIVATION_OPTIONS = [1000, 3000] // TODO: Enable when ₹3,000 package is ready
 const ACTIVATION_OPTIONS = [1000]
@@ -25,9 +27,47 @@ interface SearchResult {
   name: string
   email: string
   phone: string
+  status: string
+  activatedAt: string | null
+  activationAmount: number | null
 }
 
-export default function ActivationPage() {
+interface RecentActivation {
+  id: number
+  name: string
+  email: string
+  phone: string
+  activated_at: string
+  activation_amount: number
+}
+
+function formatUserId(id: number) {
+  return `PJ${String(id).padStart(6, '0')}`
+}
+
+function formatCurrency(amount: number) {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 0,
+  }).format(amount)
+}
+
+function timeAgo(dateStr: string) {
+  const now = Date.now()
+  const then = new Date(dateStr).getTime()
+  const diffMs = now - then
+  const mins = Math.floor(diffMs / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  const days = Math.floor(hrs / 24)
+  if (days < 30) return `${days}d ago`
+  return new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+export default function ActivationPage({ recentActivations = [] }: { recentActivations?: RecentActivation[] }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
   const [searching, setSearching] = useState(false)
@@ -175,6 +215,15 @@ export default function ActivationPage() {
                           ID: {user.id} · {user.email} · {user.phone}
                         </p>
                       </div>
+                      {user.activatedAt ? (
+                        <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300 dark:border-green-800 shrink-0">
+                          Active
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-xs shrink-0">
+                          Inactive
+                        </Badge>
+                      )}
                     </button>
                   ))}
                 </div>
@@ -192,7 +241,7 @@ export default function ActivationPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <HugeiconsIcon icon={UserCheck01Icon} className="h-5 w-5 text-primary" />
-                  Activate User
+                  {selectedUser.activatedAt ? 'User Activated' : 'Activate User'}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -220,87 +269,170 @@ export default function ActivationPage() {
                   </div>
                 </div>
 
-                {/* Activation Options */}
-                <div>
-                  <Label className="mb-2 block">Select Activation Amount</Label>
-                  <div className="grid grid-cols-2 gap-3">
-                    {ACTIVATION_OPTIONS.map((amount) => {
-                      return (
-                        <button
-                          key={amount}
-                          type="button"
-                          onClick={() => setSelectedAmount(amount)}
-                          className={`relative flex items-center justify-between rounded-xl border-2 p-4 text-left transition-all ${
-                            selectedAmount === amount
-                              ? 'border-primary bg-primary/5'
-                              : 'border-border hover:border-primary/50 hover:bg-muted/30'
-                          }`}
-                        >
-                          <div>
-                            <p className="font-semibold text-lg">
-                              ₹{amount.toLocaleString('en-IN')}
-                            </p>
-                            <p className="text-xs text-muted-foreground">Account Activation</p>
-                          </div>
-                          <div
-                            className={`flex h-6 w-6 items-center justify-center rounded-full border-2 ${
-                              selectedAmount === amount
-                                ? 'border-primary bg-primary text-primary-foreground'
-                                : 'border-muted-foreground'
-                            }`}
-                          >
-                            {selectedAmount === amount && (
-                              <HugeiconsIcon icon={CheckmarkCircle01Icon} className="h-4 w-4" />
-                            )}
-                          </div>
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-
-                {/* Error */}
-                {activationError && (
-                  <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3">
-                    <p className="text-sm text-destructive">{activationError}</p>
-                  </div>
-                )}
-
-                {/* Success */}
-                {activationSuccess && (
-                  <div className="rounded-lg bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 p-3">
+                {/* Already Activated — show activation details */}
+                {selectedUser.activatedAt ? (
+                  <div className="rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950 p-5 space-y-3">
                     <div className="flex items-center gap-2">
-                      <HugeiconsIcon
-                        icon={CheckmarkCircle01Icon}
-                        className="h-5 w-5 text-green-600"
-                      />
-                      <span className="text-sm font-medium text-green-800 dark:text-green-200">
-                        {selectedUser.name} activated successfully!
-                      </span>
+                      <HugeiconsIcon icon={CheckmarkCircle01Icon} className="h-5 w-5 text-green-600" />
+                      <span className="font-semibold text-green-800 dark:text-green-200">Already Activated</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div className="space-y-1">
+                        <p className="text-muted-foreground">Activated On</p>
+                        <p className="font-medium">
+                          {new Date(selectedUser.activatedAt).toLocaleDateString('en-IN', {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric',
+                          })}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-muted-foreground">Activation Amount</p>
+                        <p className="font-semibold text-green-600 text-lg">
+                          {formatCurrency(selectedUser.activationAmount || 0)}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                )}
+                ) : (
+                  <>
+                    {/* Not Activated — show activation form */}
+                    {/* Activation Options */}
+                    <div>
+                      <Label className="mb-2 block">Select Activation Amount</Label>
+                      <div className="grid grid-cols-2 gap-3">
+                        {ACTIVATION_OPTIONS.map((amount) => {
+                          return (
+                            <button
+                              key={amount}
+                              type="button"
+                              onClick={() => setSelectedAmount(amount)}
+                              className={`relative flex items-center justify-between rounded-xl border-2 p-4 text-left transition-all ${
+                                selectedAmount === amount
+                                  ? 'border-primary bg-primary/5'
+                                  : 'border-border hover:border-primary/50 hover:bg-muted/30'
+                              }`}
+                            >
+                              <div>
+                                <p className="font-semibold text-lg">
+                                  ₹{amount.toLocaleString('en-IN')}
+                                </p>
+                                <p className="text-xs text-muted-foreground">Account Activation</p>
+                              </div>
+                              <div
+                                className={`flex h-6 w-6 items-center justify-center rounded-full border-2 ${
+                                  selectedAmount === amount
+                                    ? 'border-primary bg-primary text-primary-foreground'
+                                    : 'border-muted-foreground'
+                                }`}
+                              >
+                                {selectedAmount === amount && (
+                                  <HugeiconsIcon icon={CheckmarkCircle01Icon} className="h-4 w-4" />
+                                )}
+                              </div>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
 
-                {/* Activate Button */}
-                <Button
-                  className="w-full"
-                  size="lg"
-                  onClick={handleActivate}
-                  disabled={!selectedAmount || activating}
-                >
-                  {activating ? (
-                    <>
-                      <HugeiconsIcon icon={Loading01Icon} className="mr-2 h-4 w-4 animate-spin" />
-                      Activating...
-                    </>
-                  ) : (
-                    <>
-                      <HugeiconsIcon icon={UserCheck01Icon} className="mr-2 h-4 w-4" />
-                      Activate {selectedUser.name} (₹{(selectedAmount || 0).toLocaleString('en-IN')}
-                      )
-                    </>
-                  )}
-                </Button>
+                    {/* Error */}
+                    {activationError && (
+                      <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3">
+                        <p className="text-sm text-destructive">{activationError}</p>
+                      </div>
+                    )}
+
+                    {/* Success */}
+                    {activationSuccess && (
+                      <div className="rounded-lg bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 p-3">
+                        <div className="flex items-center gap-2">
+                          <HugeiconsIcon
+                            icon={CheckmarkCircle01Icon}
+                            className="h-5 w-5 text-green-600"
+                          />
+                          <span className="text-sm font-medium text-green-800 dark:text-green-200">
+                            {selectedUser.name} activated successfully!
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Activate Button */}
+                    <Button
+                      className="w-full"
+                      size="lg"
+                      onClick={handleActivate}
+                      disabled={!selectedAmount || activating}
+                    >
+                      {activating ? (
+                        <>
+                          <HugeiconsIcon icon={Loading01Icon} className="mr-2 h-4 w-4 animate-spin" />
+                          Activating...
+                        </>
+                      ) : (
+                        <>
+                          <HugeiconsIcon icon={UserCheck01Icon} className="mr-2 h-4 w-4" />
+                          Activate {selectedUser.name} (₹{(selectedAmount || 0).toLocaleString('en-IN')}
+                          )
+                        </>
+                      )}
+                    </Button>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Recent Activations */}
+          {recentActivations.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <HugeiconsIcon icon={Clock01Icon} className="h-5 w-5 text-primary" />
+                  Recent Activations
+                  <Badge variant="secondary" className="ml-auto text-xs">
+                    {recentActivations.length}
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="border rounded-lg overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-muted/50 border-b">
+                          <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">User</th>
+                          <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">ID</th>
+                          <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Amount</th>
+                          <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Activated</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {recentActivations.map((user) => (
+                          <tr key={user.id} className="hover:bg-muted/30 transition-colors">
+                            <td className="px-4 py-3">
+                              <p className="font-medium">{user.name}</p>
+                              <p className="text-xs text-muted-foreground">{user.email || user.phone}</p>
+                            </td>
+                            <td className="px-4 py-3">
+                              <Badge variant="outline" className="text-xs font-mono">
+                                {formatUserId(user.id)}
+                              </Badge>
+                            </td>
+                            <td className="px-4 py-3 font-semibold text-green-600">
+                              {formatCurrency(user.activation_amount || 0)}
+                            </td>
+                            <td className="px-4 py-3 text-muted-foreground text-xs">
+                              {timeAgo(user.activated_at)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           )}
