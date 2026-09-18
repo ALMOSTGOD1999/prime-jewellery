@@ -22,7 +22,7 @@ function roundMoney(value: number): number {
  * Eligibility: the downline member must have been activated on the same IST
  * calendar day or after the upline's activation day. Same-day batches count.
  *
- * Credits go to the upline's income wallet as approved wallet_credit
+ * Credits go to the upline's working wallet as approved wallet_credit
  * transactions (approved at the member's activation event time).
  */
 export default class MembershipLevelIncomeService {
@@ -88,7 +88,7 @@ export default class MembershipLevelIncomeService {
         )
         await User.query({ client: trx })
           .where('id', grant.upline.id)
-          .increment('income_wallet', grant.amount)
+          .increment('working_wallet', grant.amount)
         total += grant.amount
       }
       return total

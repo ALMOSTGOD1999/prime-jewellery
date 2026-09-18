@@ -296,6 +296,7 @@ router
       .group(() => {
         router.get('/', async ({ inertia }) => {
           const db = await import('@adonisjs/lucid/services/db')
+
           const result = await db.default.rawQuery(
             `SELECT id, name, email, phone, activated_at, activation_amount
              FROM users
@@ -303,7 +304,23 @@ router
              ORDER BY activated_at DESC
              LIMIT 50`
           )
-          return inertia.render('admin/activation', { recentActivations: result.rows })
+
+          const statsRes = await db.default.rawQuery(`
+            SELECT
+              COALESCE(SUM(activation_amount), 0)::float AS total_all,
+              COALESCE(SUM(activation_amount) FILTER (WHERE activated_at >= date_trunc('month', NOW())), 0)::float AS total_month,
+              COALESCE(SUM(activation_amount) FILTER (WHERE activated_at >= date_trunc('week', NOW())), 0)::float AS total_week,
+              COUNT(*)::int AS total_users,
+              COUNT(*) FILTER (WHERE activated_at >= date_trunc('month', NOW()))::int AS month_users,
+              COUNT(*) FILTER (WHERE activated_at >= date_trunc('week', NOW()))::int AS week_users
+            FROM users
+            WHERE role != 'admin' AND activated_at IS NOT NULL
+          `)
+
+          return inertia.render('admin/activation', {
+            recentActivations: result.rows,
+            activationStats: statsRes.rows[0],
+          })
         }).as('page')
         router.post('/user', [ActivationController, 'activateUser']).as('activate.user')
       })

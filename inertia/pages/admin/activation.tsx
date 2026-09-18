@@ -8,6 +8,9 @@ import {
   UserCheck01Icon,
   Cancel01Icon,
   Clock01Icon,
+  Wallet01Icon,
+  Calendar01Icon,
+  Calendar03Icon,
 } from '@hugeicons/core-free-icons'
 
 import AppLayout from '~/components/app/layout'
@@ -19,8 +22,8 @@ import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
 import { Badge } from '~/components/ui/badge'
 
-// const ACTIVATION_OPTIONS = [1000, 3000] // TODO: Enable when ₹3,000 package is ready
-const ACTIVATION_OPTIONS = [1000]
+// const ACTIVATION_OPTIONS = [0, 1000, 3000] // TODO: Enable when ₹3,000 package is ready
+const ACTIVATION_OPTIONS = [0, 1000]
 
 interface SearchResult {
   id: number
@@ -39,6 +42,15 @@ interface RecentActivation {
   phone: string
   activated_at: string
   activation_amount: number
+}
+
+interface ActivationStats {
+  total_all: number
+  total_month: number
+  total_week: number
+  total_users: number
+  month_users: number
+  week_users: number
 }
 
 function formatUserId(id: number) {
@@ -67,7 +79,13 @@ function timeAgo(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-export default function ActivationPage({ recentActivations = [] }: { recentActivations?: RecentActivation[] }) {
+export default function ActivationPage({
+  recentActivations = [],
+  activationStats,
+}: {
+  recentActivations?: RecentActivation[]
+  activationStats?: ActivationStats
+}) {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
   const [searching, setSearching] = useState(false)
@@ -171,6 +189,50 @@ export default function ActivationPage({ recentActivations = [] }: { recentActiv
       <AppLayout>
         <Header>Activation Management</Header>
         <Main className="max-w-2xl mx-auto space-y-6">
+          {/* Stats Cards */}
+          {activationStats && (
+            <div className="grid gap-4 grid-cols-3">
+              <div className="relative overflow-hidden rounded-2xl border border-emerald/20 bg-gradient-to-br from-emerald/20 via-emerald/5 to-transparent p-5">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="inline-flex size-8 items-center justify-center rounded-lg bg-emerald/10 text-emerald">
+                    <HugeiconsIcon icon={Wallet01Icon} className="size-4" />
+                  </div>
+                  <p className="text-xs font-medium text-muted-foreground">Total Collected</p>
+                </div>
+                <p className="text-2xl font-bold tracking-tight text-emerald">
+                  {formatCurrency(activationStats.total_all)}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">{activationStats.total_users} users</p>
+              </div>
+
+              <div className="relative overflow-hidden rounded-2xl border border-sky/20 bg-gradient-to-br from-sky/20 via-sky/5 to-transparent p-5">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="inline-flex size-8 items-center justify-center rounded-lg bg-sky/10 text-sky">
+                    <HugeiconsIcon icon={Calendar01Icon} className="size-4" />
+                  </div>
+                  <p className="text-xs font-medium text-muted-foreground">This Month</p>
+                </div>
+                <p className="text-2xl font-bold tracking-tight text-sky">
+                  {formatCurrency(activationStats.total_month)}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">{activationStats.month_users} users</p>
+              </div>
+
+              <div className="relative overflow-hidden rounded-2xl border border-purple/20 bg-gradient-to-br from-purple/20 via-purple/5 to-transparent p-5">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="inline-flex size-8 items-center justify-center rounded-lg bg-purple/10 text-purple">
+                    <HugeiconsIcon icon={Calendar03Icon} className="size-4" />
+                  </div>
+                  <p className="text-xs font-medium text-muted-foreground">This Week</p>
+                </div>
+                <p className="text-2xl font-bold tracking-tight text-purple">
+                  {formatCurrency(activationStats.total_week)}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">{activationStats.week_users} users</p>
+              </div>
+            </div>
+          )}
+
           {/* Search Card */}
           <Card>
             <CardHeader>
@@ -217,7 +279,7 @@ export default function ActivationPage({ recentActivations = [] }: { recentActiv
                       </div>
                       {user.activatedAt ? (
                         <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300 dark:border-green-800 shrink-0">
-                          Active
+                          Active · {formatCurrency(user.activationAmount || 0)}
                         </Badge>
                       ) : (
                         <Badge variant="outline" className="text-xs shrink-0">
