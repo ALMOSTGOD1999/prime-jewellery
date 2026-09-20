@@ -646,15 +646,16 @@ export default class RewardService {
       }
     }
 
-    // 3. Fetch descendants using CTE (up to 24 levels)
+    // 3. Fetch descendants using CTE (up to 24 levels) — include activated_at
+    //    so we can filter out purchases made before the descendant was activated.
     const descendants = await db.rawQuery(
       `
       WITH RECURSIVE descendants AS (
-        SELECT id, parent_id, 1 as depth
+        SELECT id, parent_id, activated_at, 1 as depth
         FROM users
         WHERE parent_id = ?
         UNION ALL
-        SELECT u.id, u.parent_id, d.depth + 1
+        SELECT u.id, u.parent_id, u.activated_at, d.depth + 1
         FROM users u
         INNER JOIN descendants d ON u.parent_id = d.id
         WHERE d.depth < 24
@@ -685,6 +686,12 @@ export default class RewardService {
     const descendantIds = descendants.rows.map((r: any) => r.id)
     const descendantDepths = new Map<number, number>(
       descendants.rows.map((r: any) => [r.id, r.depth])
+    )
+    const descendantActivatedAt = new Map<number, DateTime | null>(
+      descendants.rows.map((r: any) => [
+        r.id,
+        r.activated_at ? DateTime.fromJSDate(r.activated_at) : null,
+      ])
     )
 
     // 4. Fetch purchases
@@ -729,7 +736,17 @@ export default class RewardService {
       // Calculate daily level rewards based on cumulative purchases
       // Formula: (cumulative purchase amount) × percentage × 12 / 365
       // Validity: each purchase earns level income for up to 10 months from its approval date.
-      const validPurchases = userPurchases.filter((p) => !p.cancelledAt)
+      // A purchase only counts if the descendant was activated before or on the purchase date.
+      const memberActivatedAt = descendantActivatedAt.get(userId)
+      const validPurchases = userPurchases.filter((p) => {
+        if (p.cancelledAt) return false
+        // Skip purchases made before this descendant was activated
+        if (memberActivatedAt) {
+          const purchaseDate = DateTime.fromJSDate(new Date(p.approvedAt!.toString())).startOf('day')
+          if (purchaseDate < memberActivatedAt.startOf('day')) return false
+        }
+        return true
+      })
       if (validPurchases.length === 0) continue
 
       const firstPurchaseDate = DateTime.fromJSDate(
@@ -861,15 +878,15 @@ export default class RewardService {
       return { date, totalAmount: 0, breakdown: [] }
     }
 
-    // Fetch descendants
+    // Fetch descendants — include activated_at to filter pre-activation purchases
     const descendants = await db.rawQuery(
       `
       WITH RECURSIVE descendants AS (
-        SELECT id, name, parent_id, 1 as depth
+        SELECT id, name, parent_id, activated_at, 1 as depth
         FROM users
         WHERE parent_id = ?
         UNION ALL
-        SELECT u.id, u.name, u.parent_id, d.depth + 1
+        SELECT u.id, u.name, u.parent_id, u.activated_at, d.depth + 1
         FROM users u
         INNER JOIN descendants d ON u.parent_id = d.id
         WHERE d.depth < 24
@@ -884,8 +901,10 @@ export default class RewardService {
     }
 
     const descendantInfo = new Map<number, { name: string; depth: number }>()
+    const descendantActivatedAtMap = new Map<number, DateTime | null>()
     const descendantIds = descendants.rows.map((r: any) => {
       descendantInfo.set(r.id, { name: r.name, depth: r.depth })
+      descendantActivatedAtMap.set(r.id, r.activated_at ? DateTime.fromJSDate(r.activated_at) : null)
       return r.id
     })
 
@@ -923,7 +942,15 @@ export default class RewardService {
       const percentage = await LevelIncome.getPercentageForLevel(depth)
       if (percentage === 0) continue
 
-      const validPurchases = userPurchases.filter((p) => !p.cancelledAt)
+      const memberActivatedAt = descendantActivatedAtMap.get(userId)
+      const validPurchases = userPurchases.filter((p) => {
+        if (p.cancelledAt) return false
+        if (memberActivatedAt) {
+          const purchaseDate = DateTime.fromJSDate(new Date(p.approvedAt!.toString())).startOf('day')
+          if (purchaseDate < memberActivatedAt.startOf('day')) return false
+        }
+        return true
+      })
       if (validPurchases.length === 0) continue
 
       // Check if any purchase is active on the target date (up to 10 months validity)
@@ -1030,15 +1057,15 @@ export default class RewardService {
         stats: { totalRewards: 0, thisMonthRewards: 0, totalWithdrawn: 0 },
       }
 
-    // 3. Fetch descendants using CTE (up to 24 levels)
+    // 3. Fetch descendants using CTE (up to 24 levels) — include activated_at
     const descendants = await db.rawQuery(
       `
       WITH RECURSIVE descendants AS (
-        SELECT id, parent_id, 1 as depth
+        SELECT id, parent_id, activated_at, 1 as depth
         FROM users
         WHERE parent_id = ?
         UNION ALL
-        SELECT u.id, u.parent_id, d.depth + 1
+        SELECT u.id, u.parent_id, u.activated_at, d.depth + 1
         FROM users u
         INNER JOIN descendants d ON u.parent_id = d.id
         WHERE d.depth < 24
@@ -1069,6 +1096,12 @@ export default class RewardService {
     const descendantIds = descendants.rows.map((r: any) => r.id)
     const descendantDepths = new Map<number, number>(
       descendants.rows.map((r: any) => [r.id, r.depth])
+    )
+    const descendantActivatedAt = new Map<number, DateTime | null>(
+      descendants.rows.map((r: any) => [
+        r.id,
+        r.activated_at ? DateTime.fromJSDate(r.activated_at) : null,
+      ])
     )
 
     // 4. Fetch EMI transactions (approved payments)
@@ -1119,9 +1152,18 @@ export default class RewardService {
       if (percentage === 0) continue
 
       // Calculate cumulative EMI amount over time
-      if (userTransactions.length === 0) continue
+      // Skip transactions made before the descendant was activated
+      const memberActivatedAt = descendantActivatedAt.get(userId)
+      const validTransactions = userTransactions.filter((t: any) => {
+        if (memberActivatedAt) {
+          const txDate = DateTime.fromJSDate(new Date(t.approved_at)).startOf('day')
+          if (txDate < memberActivatedAt.startOf('day')) return false
+        }
+        return true
+      })
+      if (validTransactions.length === 0) continue
 
-      const firstEmiDate = DateTime.fromJSDate(new Date(userTransactions[0].approved_at)).startOf(
+      const firstEmiDate = DateTime.fromJSDate(new Date(validTransactions[0].approved_at)).startOf(
         'day'
       )
       const userActivatedAt = user.activatedAt
@@ -1133,8 +1175,8 @@ export default class RewardService {
 
       for (let date = startDate; date <= endDate; date = date.plus({ days: 1 })) {
         // Calculate cumulative EMI amount paid until current date (up to 10 months validity per transaction)
-        const cumulativeAmount = userTransactions
-          .filter((t) => {
+        const cumulativeAmount = validTransactions
+          .filter((t: any) => {
             const approvedAt = DateTime.fromJSDate(new Date(t.approved_at)).endOf('day')
             if (approvedAt > date.endOf('day')) return false
 
@@ -1241,15 +1283,15 @@ export default class RewardService {
       return { date, totalAmount: 0, breakdown: [] }
     }
 
-    // Fetch descendants
+    // Fetch descendants — include activated_at to filter pre-activation transactions
     const descendants = await db.rawQuery(
       `
       WITH RECURSIVE descendants AS (
-        SELECT id, name, parent_id, 1 as depth
+        SELECT id, name, parent_id, activated_at, 1 as depth
         FROM users
         WHERE parent_id = ?
         UNION ALL
-        SELECT u.id, u.name, u.parent_id, d.depth + 1
+        SELECT u.id, u.name, u.parent_id, u.activated_at, d.depth + 1
         FROM users u
         INNER JOIN descendants d ON u.parent_id = d.id
         WHERE d.depth < 24
@@ -1264,8 +1306,10 @@ export default class RewardService {
     }
 
     const descendantInfo = new Map<number, { name: string; depth: number }>()
+    const descendantActivatedAtMap = new Map<number, DateTime | null>()
     const descendantIds = descendants.rows.map((r: any) => {
       descendantInfo.set(r.id, { name: r.name, depth: r.depth })
+      descendantActivatedAtMap.set(r.id, r.activated_at ? DateTime.fromJSDate(r.activated_at) : null)
       return r.id
     })
 
@@ -1311,10 +1355,19 @@ export default class RewardService {
       const percentage = await LevelIncome.getPercentageForLevel(depth)
       if (percentage === 0) continue
 
-      if (userTransactions.length === 0) continue
+      // Skip transactions made before the descendant was activated
+      const memberActivatedAt = descendantActivatedAtMap.get(userId)
+      const validTransactions = userTransactions.filter((t: any) => {
+        if (memberActivatedAt) {
+          const txDate = DateTime.fromJSDate(new Date(t.approved_at)).startOf('day')
+          if (txDate < memberActivatedAt.startOf('day')) return false
+        }
+        return true
+      })
+      if (validTransactions.length === 0) continue
 
       // Calculate cumulative EMI amount paid until target date (up to 10 months validity)
-      const cumulativeAmount = userTransactions
+      const cumulativeAmount = validTransactions
         .filter((t) => {
           const approvedAt = DateTime.fromJSDate(new Date(t.approved_at)).endOf('day')
           if (approvedAt > targetDate.endOf('day')) return false
