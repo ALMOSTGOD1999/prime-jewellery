@@ -4,7 +4,7 @@ import { DateTime } from 'luxon'
 import db from '@adonisjs/lucid/services/db'
 import PayoutService from '#services/payout_service'
 import WalletService from '#services/wallet_service'
-import { UserRoleEnum } from '#enums/user'
+
 import User from '#models/user'
 import MonthlyIncomeSnapshot from '#models/monthly_income_snapshot'
 import PlatformConfig from '#models/platform_config'
