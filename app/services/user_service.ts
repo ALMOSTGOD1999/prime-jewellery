@@ -1,5 +1,4 @@
 import User from '#models/user'
-import Purchase from '#models/purchase'
 import db from '@adonisjs/lucid/services/db'
 import { attachmentManager } from '@jrmc/adonis-attachment'
 import { UserRoleEnum } from '#enums/user'
@@ -197,23 +196,26 @@ export default class UserService {
 
     const childIds = user.children.map((c) => c.id)
 
-    // Fetch business data for all children in one query
+    // Aggregate business data via SQL instead of loading all purchases into memory
     const businessMap = new Map<number, { totalBusiness: number; businessDate: string | null }>()
     if (childIds.length > 0) {
-      const purchases = await Purchase.query()
-        .whereIn('userId', childIds)
-        .whereNotNull('approvedAt')
-        .whereNull('cancelledAt')
-        .orderBy('approvedAt', 'desc')
-
-      for (const childId of childIds) {
-        const childPurchases = purchases.filter((p) => p.userId === childId)
-        const totalBusiness = childPurchases.reduce((sum, p) => sum + Number(p.amount), 0)
-        const latestPurchase = childPurchases[0]
-        const businessDate = latestPurchase?.approvedAt
-          ? latestPurchase.approvedAt.toISO()
-          : null
-        businessMap.set(childId, { totalBusiness, businessDate })
+      const placeholders = childIds.map(() => '?').join(',')
+      const bizRes = await db.rawQuery(
+        `SELECT user_id,
+                COALESCE(SUM(amount), 0)::float AS total_business,
+                MAX(approved_at) AS business_date
+         FROM purchases
+         WHERE user_id IN (${placeholders})
+           AND approved_at IS NOT NULL
+           AND cancelled_at IS NULL
+         GROUP BY user_id`,
+        childIds
+      )
+      for (const row of bizRes.rows) {
+        businessMap.set(row.user_id, {
+          totalBusiness: Number(row.total_business),
+          businessDate: row.business_date ? new Date(row.business_date).toISOString() : null,
+        })
       }
     }
 
@@ -245,23 +247,26 @@ export default class UserService {
 
     const childIds = children.map((c) => c.id)
 
-    // Fetch business data for all children in one query
+    // Aggregate business data via SQL instead of loading all purchases into memory
     const businessMap = new Map<number, { totalBusiness: number; businessDate: string | null }>()
     if (childIds.length > 0) {
-      const purchases = await Purchase.query()
-        .whereIn('userId', childIds)
-        .whereNotNull('approvedAt')
-        .whereNull('cancelledAt')
-        .orderBy('approvedAt', 'desc')
-
-      for (const childId of childIds) {
-        const childPurchases = purchases.filter((p) => p.userId === childId)
-        const totalBusiness = childPurchases.reduce((sum, p) => sum + Number(p.amount), 0)
-        const latestPurchase = childPurchases[0]
-        const businessDate = latestPurchase?.approvedAt
-          ? latestPurchase.approvedAt.toISO()
-          : null
-        businessMap.set(childId, { totalBusiness, businessDate })
+      const placeholders = childIds.map(() => '?').join(',')
+      const bizRes = await db.rawQuery(
+        `SELECT user_id,
+                COALESCE(SUM(amount), 0)::float AS total_business,
+                MAX(approved_at) AS business_date
+         FROM purchases
+         WHERE user_id IN (${placeholders})
+           AND approved_at IS NOT NULL
+           AND cancelled_at IS NULL
+         GROUP BY user_id`,
+        childIds
+      )
+      for (const row of bizRes.rows) {
+        businessMap.set(row.user_id, {
+          totalBusiness: Number(row.total_business),
+          businessDate: row.business_date ? new Date(row.business_date).toISOString() : null,
+        })
       }
     }
 
