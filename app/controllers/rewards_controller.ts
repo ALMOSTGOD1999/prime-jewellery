@@ -417,13 +417,14 @@ export default class RewardsController {
 
     const paginated = await baseQuery.clone().paginate(page, limit)
 
+    const tz = env.get('TZ', 'Asia/Kolkata')
     const data = paginated.map((t) => {
       const match = t.remark?.match(/\(Level (\d+)\) from (.+) \(ID (\d+)\)/)
       return {
         id: t.id,
         date: t.createdAt
           ? DateTime.fromJSDate(t.createdAt.toJSDate())
-              .setZone(env.get('TZ'))
+              .setZone(tz)
               .toFormat('dd-MM-yyyy')
           : null,
         level: match ? Number(match[1]) : null,
