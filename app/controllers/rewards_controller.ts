@@ -4,6 +4,7 @@ import PayoutService from '#services/payout_service'
 import { filterValidator, paginationValidator } from '#validators/common_validator'
 import { DateTime } from 'luxon'
 import env from '#start/env'
+import db from '@adonisjs/lucid/services/db'
 import { WithdrawlStatusEnum, WithdrawlTypeEnum } from '#enums/withdrawl'
 import { TransactionTypeEnum } from '#enums/transaction'
 import { WITHDRAWAL_DATES } from '#constants/withdrawal'
@@ -404,26 +405,45 @@ export default class RewardsController {
   async membershipLevelIncomePage({ auth, inertia, request }: HttpContext) {
     const user = auth.getUserOrFail()
     const { page = 1, limit = 10 } = await paginationValidator.validate(request.qs())
+    const tz = env.get('TZ', 'Asia/Kolkata')
 
-    const baseQuery = user
-      .related('transactions')
-      .query()
+    // Direct query to avoid relationship query clone issues
+    const totalResult = await db
+      .from('transactions')
+      .where('user_id', user.id)
       .where('type', TransactionTypeEnum.WALLET_CREDIT)
       .where('remark', 'like', 'Membership Level Income %')
-      .orderBy('createdAt', 'desc')
+      .sum('amount as total')
+      .first()
 
-    const totalResult = await baseQuery.clone().sum('amount as total').first()
-    const totalIncome = Number(totalResult?.$extras.total ?? 0)
+    const totalIncome = Number(totalResult?.total ?? 0)
 
-    const paginated = await baseQuery.clone().paginate(page, limit)
+    const rows = await db
+      .from('transactions')
+      .where('user_id', user.id)
+      .where('type', TransactionTypeEnum.WALLET_CREDIT)
+      .where('remark', 'like', 'Membership Level Income %')
+      .orderBy('created_at', 'desc')
+      .limit(limit)
+      .offset((page - 1) * limit)
 
-    const tz = env.get('TZ', 'Asia/Kolkata')
-    const data = paginated.map((t) => {
+    const countResult = await db
+      .from('transactions')
+      .where('user_id', user.id)
+      .where('type', TransactionTypeEnum.WALLET_CREDIT)
+      .where('remark', 'like', 'Membership Level Income %')
+      .count('* as total')
+      .first()
+
+    const totalRows = Number(countResult?.total ?? 0)
+    const lastPage = Math.max(1, Math.ceil(totalRows / limit))
+
+    const data = rows.map((t: any) => {
       const match = t.remark?.match(/\(Level (\d+)\) from (.+) \(ID (\d+)\)/)
       return {
         id: t.id,
-        date: t.createdAt
-          ? DateTime.fromJSDate(t.createdAt.toJSDate())
+        date: t.created_at
+          ? DateTime.fromJSDate(new Date(t.created_at))
               .setZone(tz)
               .toFormat('dd-MM-yyyy')
           : null,
@@ -436,18 +456,15 @@ export default class RewardsController {
     return inertia.render('rewards/membership-level-income', {
       membershipIncome: {
         meta: {
-          total: paginated.total,
-          per_page: paginated.perPage,
-          current_page: paginated.currentPage,
-          last_page: paginated.lastPage,
+          total: totalRows,
+          per_page: limit,
+          current_page: page,
+          last_page: lastPage,
           first_page: 1,
           first_page_url: '/?page=1',
-          last_page_url: `/?page=${paginated.lastPage}`,
-          next_page_url:
-            paginated.currentPage < paginated.lastPage
-              ? `/?page=${paginated.currentPage + 1}`
-              : null,
-          previous_page_url: paginated.currentPage > 1 ? `/?page=${paginated.currentPage - 1}` : null,
+          last_page_url: `/?page=${lastPage}`,
+          next_page_url: page < lastPage ? `/?page=${page + 1}` : null,
+          previous_page_url: page > 1 ? `/?page=${page - 1}` : null,
         },
         data,
         stats: { totalIncome },
