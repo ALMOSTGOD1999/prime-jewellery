@@ -1,4 +1,3 @@
-import { flags } from '@adonisjs/core/ace'
 import { BaseCommand } from '@adonisjs/core/ace'
 import type { CommandOptions } from '@adonisjs/core/types/ace'
 import { DateTime } from 'luxon'
@@ -21,11 +20,8 @@ export default class ReverseIllegibleLevelIncome extends BaseCommand {
   static description = 'Reverse level income received from pre-activation purchases'
   static options: CommandOptions = { startApp: true }
 
-  @flags.boolean({ description: 'Apply reversals (without this flag, it runs in dry-run mode)' })
-  declare apply: boolean
-
   async run() {
-    const apply = this.apply
+    const apply = process.argv.includes('--apply')
 
     this.logger.info('══════════════════════════════════════════════════')
     this.logger.info('  REVERSE ILLEGITIMATE LEVEL INCOME')
