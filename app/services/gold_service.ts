@@ -2,8 +2,8 @@ import { DateTime } from 'luxon'
 
 import User from '#models/user'
 import Purchase from '#models/purchase'
-import Investment from '#models/investment'
-import InvestmentPackage from '#models/investment_package'
+import PurchasePlan from '#models/purchase_plan'
+import PurchasePackage from '#models/purchase_package'
 import PlatformConfig from '#models/platform_config'
 import CalculateAchievement from '#jobs/calculate_achievement'
 import GoldBillingConfig from '#services/gold_billing_config'
@@ -16,16 +16,16 @@ export default class GoldService {
    * (idempotent) so monthly returns and the cashback-wallet payout pick it up
    * automatically, prorated from the purchase date.
    */
-  static async ensureInvestmentForPurchase(purchase: Purchase): Promise<Investment | null> {
+  static async ensurePurchasePlanForPurchase(purchase: Purchase): Promise<PurchasePlan | null> {
     if (!purchase.approvedAt) return null
 
-    const existing = await Investment.query().where('purchase_id', purchase.id).first()
+    const existing = await PurchasePlan.query().where('purchase_id', purchase.id).first()
     if (existing) return existing
 
-    const pkg = await InvestmentPackage.findPackageForAmount(Number(purchase.amount))
+    const pkg = await PurchasePackage.findPackageForAmount(Number(purchase.amount))
     const rate = pkg?.monthlyReturnPercent ?? 3
 
-    const investment = await Investment.create({
+    const purchasePlan = await PurchasePlan.create({
       userId: purchase.userId,
       amount: purchase.amount,
       monthlyReturnRate: rate,
@@ -42,18 +42,28 @@ export default class GoldService {
       await user.save()
     }
 
-    return investment
+    return purchasePlan
   }
 
-  /** Close the purchase linked to a purchase that was rejected/stopped/cancelled. */
-  static async closeInvestmentForPurchase(purchase: Purchase, reason: string) {
-    const investment = await Investment.query().where('purchase_id', purchase.id).first()
-    if (investment && investment.status === 'active') {
-      investment.status = 'closed'
-      investment.closedAt = DateTime.now()
-      investment.remark = `${reason} — purchase closed (purchase ${purchase.id})`
-      await investment.save()
+  // Legacy alias
+  static async ensureInvestmentForPurchase(purchase: Purchase): Promise<PurchasePlan | null> {
+    return this.ensurePurchasePlanForPurchase(purchase)
+  }
+
+  /** Close the purchase plan linked to a purchase that was rejected/stopped/cancelled. */
+  static async closePurchasePlanForPurchase(purchase: Purchase, reason: string) {
+    const purchasePlan = await PurchasePlan.query().where('purchase_id', purchase.id).first()
+    if (purchasePlan && purchasePlan.status === 'active') {
+      purchasePlan.status = 'closed'
+      purchasePlan.closedAt = DateTime.now()
+      purchasePlan.remark = `${reason} — purchase closed (purchase ${purchase.id})`
+      await purchasePlan.save()
     }
+  }
+
+  // Legacy aliases
+  static async closeInvestmentForPurchase(purchase: Purchase, reason: string) {
+    return this.closePurchasePlanForPurchase(purchase, reason)
   }
 
   static async getPurchaseData(
@@ -170,7 +180,7 @@ export default class GoldService {
     })
 
     // Every approved purchase is a purchase — register it for monthly returns.
-    await this.ensureInvestmentForPurchase(purchase)
+    await this.ensurePurchasePlanForPurchase(purchase)
 
     return purchase
   }
@@ -254,7 +264,7 @@ export default class GoldService {
     })
 
     // Every approved purchase is a purchase — register it for monthly returns.
-    await this.ensureInvestmentForPurchase(purchase)
+    await this.ensurePurchasePlanForPurchase(purchase)
 
     // Dispatch job to calculate achievements for user and ancestors
     await CalculateAchievement.enqueue(purchase.userId)
@@ -354,7 +364,7 @@ export default class GoldService {
     // Every approved purchase is a purchase: approve → create the linked
     // purchase; reject/stop/cancel → close it so it stops earning returns.
     if (status === 'approved') {
-      await this.ensureInvestmentForPurchase(purchase)
+      await this.ensurePurchasePlanForPurchase(purchase)
     } else {
       await this.closeInvestmentForPurchase(purchase, `Purchase ${status}`)
     }
@@ -442,45 +452,45 @@ export default class GoldService {
 
     await purchase.save()
 
-    // Keep the linked purchase (purchase == purchase) in sync with edits.
-    await this.syncInvestmentForPurchase(purchase)
+    // Keep the linked purchase plan in sync with edits.
+    await this.syncPurchasePlanForPurchase(purchase)
   }
 
   /**
-   * Align the linked purchase with the purchase record after an edit:
-   * approved purchases get an active purchase matching the new amount/date,
-   * anything else gets its purchase closed.
+   * Align the linked purchase plan with the purchase record after an edit:
+   * approved purchases get an active purchase plan matching the new amount/date,
+   * anything else gets its plan closed.
    */
-  static async syncInvestmentForPurchase(purchase: Purchase) {
+  static async syncPurchasePlanForPurchase(purchase: Purchase) {
     const approved =
       Boolean(purchase.approvedAt) &&
       !purchase.rejectedAt &&
       !purchase.stoppedAt &&
       !purchase.cancelledAt
 
-    const investment = await Investment.query().where('purchase_id', purchase.id).first()
+    const purchasePlan = await PurchasePlan.query().where('purchase_id', purchase.id).first()
 
     if (!approved) {
-      await this.closeInvestmentForPurchase(purchase, 'Purchase no longer approved')
+      await this.closePurchasePlanForPurchase(purchase, 'Purchase no longer approved')
       return
     }
 
-    if (!investment) {
-      await this.ensureInvestmentForPurchase(purchase)
+    if (!purchasePlan) {
+      await this.ensurePurchasePlanForPurchase(purchase)
       return
     }
 
-    const pkg = await InvestmentPackage.findPackageForAmount(Number(purchase.amount))
-    const oldAmount = Number(investment.amount)
+    const pkg = await PurchasePackage.findPackageForAmount(Number(purchase.amount))
+    const oldAmount = Number(purchasePlan.amount)
 
-    investment.amount = purchase.amount
-    investment.monthlyReturnRate = pkg?.monthlyReturnPercent ?? investment.monthlyReturnRate
-    investment.startedAt = purchase.createdAt
-    if (investment.status === 'closed') {
-      investment.status = 'active'
-      investment.closedAt = null
+    purchasePlan.amount = purchase.amount
+    purchasePlan.monthlyReturnRate = pkg?.monthlyReturnPercent ?? purchasePlan.monthlyReturnRate
+    purchasePlan.startedAt = purchase.createdAt
+    if (purchasePlan.status === 'closed') {
+      purchasePlan.status = 'active'
+      purchasePlan.closedAt = null
     }
-    await investment.save()
+    await purchasePlan.save()
 
     // Keep total invested in step with the amount change.
     const delta = Number(purchase.amount) - oldAmount
@@ -491,6 +501,11 @@ export default class GoldService {
         await user.save()
       }
     }
+  }
+
+  // Legacy aliases
+  static async syncInvestmentForPurchase(purchase: Purchase) {
+    return this.syncPurchasePlanForPurchase(purchase)
   }
 
   static async getUserPurchases(
@@ -545,3 +560,4 @@ export default class GoldService {
     return ''
   }
 }
+

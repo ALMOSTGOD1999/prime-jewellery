@@ -601,7 +601,7 @@ export default class AdminPayoutController {
           x: margin, y: yPos, size: 7.5, font: 'Helvetica-Bold', color: dark,
         })
         yPos -= 12
-        yPos = drawField(page, yPos, 'Investment Amount:', fmt(user.incomeWallet.investmentAmount))
+        yPos = drawField(page, yPos, 'PurchasePlan Amount:', fmt(user.incomeWallet.investmentAmount))
         yPos = drawField(page, yPos, 'Return Rate:', `${user.incomeWallet.returnRate}%`)
         yPos = drawField(page, yPos, 'Return Amount:', fmt(user.incomeWallet.returnAmount))
         page.drawText('→', { x: margin + 168, y: yPos + 11, size: 7, font: 'Helvetica-Bold', color: green })

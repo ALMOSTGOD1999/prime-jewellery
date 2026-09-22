@@ -1,6 +1,6 @@
 import db from '@adonisjs/lucid/services/db'
 import PlatformConfig from '#models/platform_config'
-import InvestmentPackage from '#models/investment_package'
+import PurchasePackage from '#models/purchase_package'
 import PerformanceIncentive from '#models/performance_incentive'
 import MembershipLevelIncome from '#models/membership_level_income'
 import LevelIncome from '#models/level_income'
@@ -136,7 +136,7 @@ export default class BusinessEngineService {
   // ─── Monthly Cash Reward Slabs ────────────────────────────────
 
   async getCashRewardSlabs() {
-    return InvestmentPackage.query().orderBy('sort_order', 'asc').orderBy('min_amount', 'asc')
+    return PurchasePackage.query().orderBy('sort_order', 'asc').orderBy('min_amount', 'asc')
   }
 
   async upsertCashRewardSlab(
@@ -154,8 +154,8 @@ export default class BusinessEngineService {
   ) {
     return db.transaction(async (trx) => {
       const slab = data.id
-        ? await InvestmentPackage.query({ client: trx }).where('id', data.id).firstOrFail()
-        : new InvestmentPackage()
+        ? await PurchasePackage.query({ client: trx }).where('id', data.id).firstOrFail()
+        : new PurchasePackage()
 
       const isNew = !data.id
 
@@ -263,7 +263,7 @@ export default class BusinessEngineService {
 
   async deleteCashRewardSlab(id: number, reason?: string) {
     return db.transaction(async (trx) => {
-      const slab = await InvestmentPackage.query({ client: trx }).where('id', id).firstOrFail()
+      const slab = await PurchasePackage.query({ client: trx }).where('id', id).firstOrFail()
       await this.auditTx(
         trx,
         'investment_package',

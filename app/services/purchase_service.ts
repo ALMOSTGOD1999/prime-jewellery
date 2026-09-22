@@ -1,8 +1,8 @@
 import { DateTime } from 'luxon'
 
-import Investment from '#models/investment'
-import InvestmentPackage from '#models/investment_package'
-import InvestmentReturnDistribution from '#models/investment_return_distribution'
+import PurchasePlan from '#models/purchase_plan'
+import PurchasePackage from '#models/purchase_package'
+import PurchaseReturn from '#models/purchase_return'
 import Purchase from '#models/purchase'
 import User from '#models/user'
 import Withdrawl from '#models/withdrawl'
@@ -12,7 +12,7 @@ const INCOME_WALLET_PERCENT = 70
 const REPURCHASE_WALLET_PERCENT = 20
 const ADMIN_CHARGE_PERCENT = 10
 
-export default class InvestmentService {
+export default class PurchaseService {
   static incomeWalletPercent = INCOME_WALLET_PERCENT
   static repurchaseWalletPercent = REPURCHASE_WALLET_PERCENT
   static adminChargePercent = ADMIN_CHARGE_PERCENT
@@ -22,25 +22,25 @@ export default class InvestmentService {
     return Math.round((value + Number.EPSILON) * 100) / 100
   }
 
-  static async findPackageForAmount(amount: number): Promise<InvestmentPackage> {
-    const pkg = await InvestmentPackage.findPackageForAmount(amount)
+  static async findPackageForAmount(amount: number): Promise<PurchasePackage> {
+    const pkg = await PurchasePackage.findPackageForAmount(amount)
     if (!pkg) {
       throw new Error(`No purchase package found for amount ₹${amount.toLocaleString('en-IN')}`)
     }
     return pkg
   }
 
-  static async calculateDistribution(investmentAmount: number, packageId?: number) {
+  static async calculateDistribution(purchaseAmount: number, packageId?: number) {
     let monthlyReturnPercent = 3
     if (packageId) {
-      const pkg = await InvestmentPackage.find(packageId)
+      const pkg = await PurchasePackage.find(packageId)
       if (pkg) monthlyReturnPercent = pkg.monthlyReturnPercent
     } else {
-      const pkg = await this.findPackageForAmount(investmentAmount)
+      const pkg = await this.findPackageForAmount(purchaseAmount)
       monthlyReturnPercent = pkg.monthlyReturnPercent
     }
 
-    const returnAmount = this.roundMoney((investmentAmount * monthlyReturnPercent) / 100)
+    const returnAmount = this.roundMoney((purchaseAmount * monthlyReturnPercent) / 100)
     const incomeAmount = this.roundMoney((returnAmount * INCOME_WALLET_PERCENT) / 100)
     const repurchaseAmount = this.roundMoney((returnAmount * REPURCHASE_WALLET_PERCENT) / 100)
     const adminCharge = this.roundMoney(returnAmount - incomeAmount - repurchaseAmount)
@@ -55,36 +55,35 @@ export default class InvestmentService {
   }
 
   /**
-   * Resolve the CURRENT amount of a self-purchase. A gold purchase and a
-   * purchase are the same thing — every approved purchase is the underlying
-   * self-purchase, and the admin may reduce or add to it after the fact. The
-   * linked purchase record is the source of truth, so its current amount is
-   * used for the return calculation (falls back to the purchase record).
+   * Resolve the CURRENT amount of a purchase. Purchases earn monthly returns
+   * and the admin may reduce or add to it after the fact. The linked purchase
+   * record is the source of truth, so its current amount is used for the return
+   * calculation (falls back to the purchase plan record).
    */
-  static async getEffectiveAmount(investment: Investment): Promise<number> {
-    if (investment.purchaseId) {
+  static async getEffectiveAmount(purchasePlan: PurchasePlan): Promise<number> {
+    if (purchasePlan.purchaseId) {
       const purchase = await Purchase.query()
         .select('amount', 'approvedAt', 'cancelledAt', 'stoppedAt')
-        .where('id', investment.purchaseId)
+        .where('id', purchasePlan.purchaseId)
         .first()
       if (purchase && purchase.approvedAt && !purchase.cancelledAt && !purchase.stoppedAt) {
         return Number(purchase.amount)
       }
     }
-    return Number(investment.amount)
+    return Number(purchasePlan.amount)
   }
 
   /**
    * Check if purchase has reached its maximum return cap (e.g. 100% of purchase)
    */
-  static async hasReachedMaxReturn(investment: Investment): Promise<boolean> {
-    const effectiveAmount = await this.getEffectiveAmount(investment)
-    const pkg = await InvestmentPackage.findPackageForAmount(effectiveAmount)
+  static async hasReachedMaxReturn(purchasePlan: PurchasePlan): Promise<boolean> {
+    const effectiveAmount = await this.getEffectiveAmount(purchasePlan)
+    const pkg = await PurchasePackage.findPackageForAmount(effectiveAmount)
     if (!pkg) return true
 
     const maxReturnPercent = pkg.maxReturnPercent
-    const totalReturned = await InvestmentReturnDistribution.query()
-      .where('investment_id', investment.id)
+    const totalReturned = await PurchaseReturn.query()
+      .where('investment_id', purchasePlan.id)
       .sum('return_amount as total')
       .first()
 
@@ -95,22 +94,22 @@ export default class InvestmentService {
   }
 
   static async getAvailablePackages() {
-    return InvestmentPackage.getActivePackages()
+    return PurchasePackage.getActivePackages()
   }
 
   static async getDashboard(
     user: User,
     { page = 1, limit = 10 }: { page?: number; limit?: number }
   ) {
-    const [investments, packages, distributions, incomeStats, withdrawalStats] = await Promise.all([
-      Investment.query().where('user_id', user.id).orderBy('created_at', 'desc'),
-      InvestmentPackage.getActivePackages(),
-      InvestmentReturnDistribution.query()
+    const [purchasePlans, packages, distributions, incomeStats, withdrawalStats] = await Promise.all([
+      PurchasePlan.query().where('user_id', user.id).orderBy('created_at', 'desc'),
+      PurchasePackage.getActivePackages(),
+      PurchaseReturn.query()
         .where('user_id', user.id)
-        .preload('investment')
+        .preload('purchasePlan')
         .orderBy('period_month', 'desc')
         .paginate(page, limit),
-      InvestmentReturnDistribution.query()
+      PurchaseReturn.query()
         .where('user_id', user.id)
         .sum('income_amount as total_income')
         .sum('gold_amount as total_gold')
@@ -118,15 +117,15 @@ export default class InvestmentService {
         .first(),
       Withdrawl.query()
         .where('user_id', user.id)
-        .where('type', WithdrawlTypeEnum.INVESTMENT_INCOME)
+        .where('type', WithdrawlTypeEnum.PURCHASE_INCOME)
         .whereIn('status', [WithdrawlStatusEnum.PENDING, WithdrawlStatusEnum.APPROVED])
         .sum('amount as total_withdrawn')
         .first(),
     ])
 
-    const activeInvestmentAmount = investments
-      .filter((investment) => investment.status === 'active')
-      .reduce((total, investment) => total + Number(investment.amount || 0), 0)
+    const activePurchaseAmount = purchasePlans
+      .filter((plan) => plan.status === 'active')
+      .reduce((total, plan) => total + Number(plan.amount || 0), 0)
 
     const stats = incomeStats?.$extras || {}
     const withdrawalExtras = withdrawalStats?.$extras || {}
@@ -134,11 +133,14 @@ export default class InvestmentService {
     const totalWithdrawn = Number(withdrawalExtras.total_withdrawn || 0)
 
     return {
-      investments,
+      purchasePlans,
+      // Legacy alias
+      investments: purchasePlans,
       packages,
       distributions,
       stats: {
-        activeInvestmentAmount,
+        activePurchaseAmount,
+        activeInvestmentAmount: activePurchaseAmount,
         totalInvested: Number(user.totalInvested ?? 0),
         totalReturn: Number(stats.total_return || 0),
         totalIncome,
@@ -168,7 +170,7 @@ export default class InvestmentService {
     await Withdrawl.create({
       userId: user.id,
       amount,
-      type: WithdrawlTypeEnum.INVESTMENT_INCOME,
+      type: WithdrawlTypeEnum.PURCHASE_INCOME,
       status: WithdrawlStatusEnum.PENDING,
     })
   }
@@ -177,7 +179,7 @@ export default class InvestmentService {
     periodMonth: DateTime<boolean> = DateTime.now().startOf('month')
   ) {
     const period = periodMonth.startOf('month')
-    const investments = await Investment.query()
+    const purchasePlans = await PurchasePlan.query()
       .where('status', 'active')
       .where('started_at', '<=', period.endOf('month').toSQL()!)
 
@@ -185,60 +187,51 @@ export default class InvestmentService {
     let skipped = 0
     let maxReturnReached = 0
 
-    for (const investment of investments) {
-      // Skip purchases belonging to inactive users. Select only the columns
-      // needed — loading the avatar attachment computes its URL, which fails
-      // in console/CLI contexts (no HTTP routes are registered).
-      const invUser = await User.query()
+    for (const plan of purchasePlans) {
+      const planUser = await User.query()
         .select('id', 'status')
-        .where('id', investment.userId)
+        .where('id', plan.userId)
         .first()
-      if (!invUser || invUser.status === 'inactive') {
+      if (!planUser || planUser.status === 'inactive') {
         skipped += 1
         continue
       }
 
-      // Guard: skip investments with no valid approved purchase (orphans).
-      // These should have been closed by find-orphan-investments, but
-      // this prevents new phantom distributions from being created.
-      if (investment.purchaseId) {
+      // Guard: skip purchase plans with no valid approved purchase (orphans).
+      if (plan.purchaseId) {
         const purchase = await Purchase.query()
           .select('id', 'approvedAt', 'cancelledAt', 'stoppedAt')
-          .where('id', investment.purchaseId)
+          .where('id', plan.purchaseId)
           .first()
         if (!purchase || !purchase.approvedAt || purchase.cancelledAt || purchase.stoppedAt) {
-          // Auto-close the orphaned investment
-          investment.status = 'closed'
-          investment.closedAt = DateTime.now()
-          investment.remark = `Auto-closed: linked purchase ${!purchase ? 'not found' : !purchase.approvedAt ? 'not approved' : 'cancelled/stopped'}`
-          await investment.save()
+          plan.status = 'closed'
+          plan.closedAt = DateTime.now()
+          plan.remark = `Auto-closed: linked purchase ${!purchase ? 'not found' : !purchase.approvedAt ? 'not approved' : 'cancelled/stopped'}`
+          await plan.save()
           skipped += 1
           continue
         }
       } else {
-        // No purchase_id at all — close immediately
-        investment.status = 'closed'
-        investment.closedAt = DateTime.now()
-        investment.remark = 'Auto-closed: no linked purchase'
-        await investment.save()
+        plan.status = 'closed'
+        plan.closedAt = DateTime.now()
+        plan.remark = 'Auto-closed: no linked purchase'
+        await plan.save()
         skipped += 1
         continue
       }
 
-      // Check if purchase has reached max return cap
-      const reachedMax = await this.hasReachedMaxReturn(investment)
+      const reachedMax = await this.hasReachedMaxReturn(plan)
       if (reachedMax) {
-        // Close the purchase
-        investment.status = 'closed'
-        investment.closedAt = DateTime.now()
-        investment.remark = 'Maximum return reached (100%)'
-        await investment.save()
+        plan.status = 'closed'
+        plan.closedAt = DateTime.now()
+        plan.remark = 'Maximum return reached (100%)'
+        await plan.save()
         maxReturnReached += 1
         continue
       }
 
-      const existing = await InvestmentReturnDistribution.query()
-        .where('investment_id', investment.id)
+      const existing = await PurchaseReturn.query()
+        .where('investment_id', plan.id)
         .where('period_month', period.toISODate()!)
         .first()
 
@@ -247,29 +240,23 @@ export default class InvestmentService {
         continue
       }
 
-      const rate = Number(investment.monthlyReturnRate) || 3
-      const investmentAmount = await this.getEffectiveAmount(investment)
+      const rate = Number(plan.monthlyReturnRate) || 3
+      const purchaseAmount = await this.getEffectiveAmount(plan)
 
-      // Prorate return based on days active in the month. The business rule:
-      // a "month" is 30 days; the member earns from the day of purchase
-      // (India/Asia-Kolkata calendar date) through the end of the month,
-      // inclusive. Investments started in an earlier month earn the full
-      // month. E.g. a purchase on Jul 28 18:57 UTC (Jul 29 IST) earns
-      // 3 days: Jul 29, 30, 31 → 3/30 of the monthly return.
-      const startedAt = investment.startedAt.setZone('Asia/Kolkata').startOf('day')
+      const startedAt = plan.startedAt.setZone('Asia/Kolkata').startOf('day')
       const monthEnd = period.endOf('month').setZone('Asia/Kolkata').startOf('day')
       const activeDays = Math.min(monthEnd.diff(startedAt, 'days').days + 1, 30)
       const prorateFactor = Math.max(activeDays, 1) / 30
 
-      const returnAmount = this.roundMoney((investmentAmount * rate * prorateFactor) / 100)
+      const returnAmount = this.roundMoney((purchaseAmount * rate * prorateFactor) / 100)
       const incomeAmount = this.roundMoney((returnAmount * INCOME_WALLET_PERCENT) / 100)
       const repurchaseAmount = this.roundMoney((returnAmount * REPURCHASE_WALLET_PERCENT) / 100)
 
-      await InvestmentReturnDistribution.create({
-        investmentId: investment.id,
-        userId: investment.userId,
+      await PurchaseReturn.create({
+        investmentId: plan.id,
+        userId: plan.userId,
         periodMonth: period,
-        investmentAmount,
+        investmentAmount: purchaseAmount,
         returnAmount,
         incomeAmount,
         goldAmount: repurchaseAmount,

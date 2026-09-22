@@ -3,11 +3,13 @@ import type { BelongsTo, HasMany } from '@adonisjs/lucid/types/relations'
 import { DateTime } from 'luxon'
 
 import User from '#models/user'
-import InvestmentReturnDistribution from '#models/investment_return_distribution'
+import PurchaseReturn from '#models/purchase_return'
 
-export type InvestmentStatus = 'active' | 'closed'
+export type PurchaseStatus = 'active' | 'closed'
 
-export default class Investment extends BaseModel {
+export default class PurchasePlan extends BaseModel {
+  static table = 'investments'
+
   @column({ isPrimary: true })
   declare id: number
 
@@ -18,8 +20,8 @@ export default class Investment extends BaseModel {
   declare amount: number
 
   /**
-   * Gold purchase this investment was created from. Gold purchases and
-   * investments are the same thing — every approved purchase is an investment.
+   * Gold purchase this purchase plan was created from.
+   * Purchases earn monthly returns — every approved purchase is a purchase plan.
    */
   @column()
   declare purchaseId: string | null
@@ -28,7 +30,7 @@ export default class Investment extends BaseModel {
   declare monthlyReturnRate: number
 
   @column()
-  declare status: InvestmentStatus
+  declare status: PurchaseStatus
 
   @column.dateTime()
   declare startedAt: DateTime
@@ -48,6 +50,6 @@ export default class Investment extends BaseModel {
   @belongsTo(() => User)
   declare user: BelongsTo<typeof User>
 
-  @hasMany(() => InvestmentReturnDistribution)
-  declare distributions: HasMany<typeof InvestmentReturnDistribution>
+  @hasMany(() => PurchaseReturn)
+  declare distributions: HasMany<typeof PurchaseReturn>
 }

@@ -16,7 +16,7 @@ import {
 } from '@hugeicons/core-free-icons'
 
 interface IncomeWallet {
-  investmentAmount: number
+  purchaseAmount: number
   returnRate: number
   returnAmount: number
   incomeShare: number
@@ -124,7 +124,7 @@ function UserCard({ user }: { user: PayoutUser }) {
                 Income Wallet (Cashback)
               </div>
               <div className="space-y-1.5">
-                <Field label="Purchase Amount" value={fmt(user.incomeWallet.investmentAmount)} />
+                <Field label="Purchase Amount" value={fmt(user.incomeWallet.purchaseAmount)} />
                 <Field label="Return Rate" value={`${user.incomeWallet.returnRate}%`} />
                 <Field label="Return Amount" value={fmt(user.incomeWallet.returnAmount)} />
                 <div className="border-t border-blue-200 dark:border-blue-800 my-1" />

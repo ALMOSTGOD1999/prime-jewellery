@@ -3,7 +3,7 @@ import type { CommandOptions } from '@adonisjs/core/types/ace'
 import { DateTime } from 'luxon'
 import db from '@adonisjs/lucid/services/db'
 
-import InvestmentReturnDistribution from '#models/investment_return_distribution'
+import PurchaseReturn from '#models/purchase_return'
 import Transaction from '#models/transaction'
 import { TransactionTypeEnum } from '#enums/transaction'
 
@@ -82,12 +82,12 @@ export default class ReconcileJulyPayouts extends BaseCommand {
   async run() {
     const period = DateTime.fromISO('2026-07-01').startOf('month')
 
-    const distributions = await InvestmentReturnDistribution.query()
+    const distributions = await PurchaseReturn.query()
       .where('period_month', period.toISODate()!)
       .whereNotNull('paid_out_at')
 
     // Group paid July distributions by user (each listed user has one).
-    const byUser = new Map<number, InvestmentReturnDistribution[]>()
+    const byUser = new Map<number, PurchaseReturn[]>()
     for (const dist of distributions) {
       const list = byUser.get(dist.userId) ?? []
       list.push(dist)
@@ -248,7 +248,7 @@ export default class ReconcileJulyPayouts extends BaseCommand {
 
     // ─── PJ617173: correct her UNPAID August distribution (record-only) ───
     const augStart = DateTime.fromISO('2026-08-01').startOf('month')
-    const pranatiAug = await InvestmentReturnDistribution.query()
+    const pranatiAug = await PurchaseReturn.query()
       .where('period_month', augStart.toISODate()!)
       .where('user_id', 617173)
       .whereNull('paid_out_at')

@@ -38,7 +38,7 @@ interface PayoutPageProps {
     activeUsers: number
     junePurchaseCount: number
     junePurchaseAmount: number
-    activeInvestments: number
+    activePurchases: number
   }
 }
 
@@ -140,11 +140,11 @@ export default function AdminPayoutPage({
                 </div>
                 <div>
                   <span className="text-muted-foreground">Active Purchases:</span>{' '}
-                  <strong>{diagnostic.activeInvestments}</strong>
+                  <strong>{diagnostic.activePurchases}</strong>
                 </div>
               </div>
               {(diagnostic.activeUsers === 0 ||
-                (diagnostic.junePurchaseCount === 0 && diagnostic.activeInvestments === 0)) && (
+                (diagnostic.junePurchaseCount === 0 && diagnostic.activePurchases === 0)) && (
                 <p className="mt-2 text-xs text-amber-600">
                   No data exists for {nextIncomeMonth}. Users need approved purchases or active
                   purchases to receive payouts.

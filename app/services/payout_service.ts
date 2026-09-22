@@ -3,9 +3,9 @@ import db from '@adonisjs/lucid/services/db'
 import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
 import logger from '@adonisjs/core/services/logger'
 import PlatformConfig from '#models/platform_config'
-import Investment from '#models/investment'
-import InvestmentReturnDistribution from '#models/investment_return_distribution'
-import InvestmentPackage from '#models/investment_package'
+import PurchasePlan from '#models/purchase_plan'
+import PurchaseReturn from '#models/purchase_return'
+import PurchasePackage from '#models/purchase_package'
 import MonthlyIncomeSnapshot from '#models/monthly_income_snapshot'
 import User from '#models/user'
 import Purchase from '#models/purchase'
@@ -14,7 +14,7 @@ import WalletService from '#services/wallet_service'
 import RewardService from '#services/reward_service'
 import { WithdrawlTypeEnum } from '#enums/withdrawl'
 import { TransactionTypeEnum } from '#enums/transaction'
-import InvestmentService from '#services/investment_service'
+import PurchaseService from '#services/purchase_service'
 
 // ─── Payout Preview Types ─────────────────────────────────────
 export interface PayoutPreviewIncomeWallet {
@@ -210,7 +210,7 @@ export default class PayoutService {
 
   static async hasUnpaidIncomeDistributions(month: DateTime): Promise<boolean> {
     const period = month.startOf('month')
-    const result = await InvestmentReturnDistribution.query()
+    const result = await PurchaseReturn.query()
       .where('period_month', period.toISODate()!)
       .whereNull('paid_out_at')
       .count('* as total')
@@ -359,14 +359,14 @@ export default class PayoutService {
       )
     }
 
-    let distributions = await InvestmentReturnDistribution.query()
+    let distributions = await PurchaseReturn.query()
       .where('period_month', period.toISODate()!)
       .whereNull('paid_out_at')
 
     if (distributions.length === 0) {
-      const { processed: created } = await InvestmentService.distributeMonthlyReturns(period)
+      const { processed: created } = await PurchaseService.distributeMonthlyReturns(period)
       if (created > 0) {
-        distributions = await InvestmentReturnDistribution.query()
+        distributions = await PurchaseReturn.query()
           .where('period_month', period.toISODate()!)
           .whereNull('paid_out_at')
       }
@@ -380,7 +380,7 @@ export default class PayoutService {
       // the FOR UPDATE query returns nothing and we simply skip it — this makes
       // double-processing (admin double-click, two tabs) harmless for every user.
       const credited = await db.transaction(async (trx) => {
-        const locked = await InvestmentReturnDistribution.query({ client: trx })
+        const locked = await PurchaseReturn.query({ client: trx })
           .where('id', distribution.id)
           .whereNull('paid_out_at')
           .forUpdate()
@@ -562,7 +562,7 @@ export default class PayoutService {
     const previewUsers: PayoutPreviewUser[] = []
 
     // ─── 1. Income Wallet Payout (Purchase Returns) ──────────
-    const investments = await Investment.query()
+    const investments = await PurchasePlan.query()
       .where('status', 'active')
       .where('started_at', '<=', monthEnd.toSQL()!)
       .preload('user', (q) => q.select('id', 'name', 'status'))
@@ -586,16 +586,16 @@ export default class PayoutService {
 
       for (const investment of userInvestments) {
         // Check if max return reached
-        const effectiveAmount = await InvestmentService.getEffectiveAmount(investment)
-        const pkg = await InvestmentPackage.findPackageForAmount(effectiveAmount)
+        const effectiveAmount = await PurchaseService.getEffectiveAmount(investment)
+        const pkg = await PurchasePackage.findPackageForAmount(effectiveAmount)
         if (!pkg) continue
 
-        const totalReturned = await InvestmentReturnDistribution.query()
+        const totalReturned = await PurchaseReturn.query()
           .where('investment_id', investment.id)
           .sum('return_amount as total')
           .first()
         const totalReturnSoFar = Number(totalReturned?.$extras?.total || 0)
-        const maxReturnAmount = InvestmentService.roundMoney(
+        const maxReturnAmount = PurchaseService.roundMoney(
           (effectiveAmount * pkg.maxReturnPercent) / 100
         )
         if (totalReturnSoFar >= maxReturnAmount) continue
@@ -605,12 +605,12 @@ export default class PayoutService {
         const activeDays = Math.min(monthEnd.diff(startedAt, 'days').days + 1, 30)
         const prorateFactor = Math.max(activeDays, 1) / 30
 
-        const returnAmount = InvestmentService.roundMoney(
+        const returnAmount = PurchaseService.roundMoney(
           (effectiveAmount * rate * prorateFactor) / 100
         )
-        const incomeShare = InvestmentService.roundMoney((returnAmount * 70) / 100)
-        const repurchaseShare = InvestmentService.roundMoney((returnAmount * 20) / 100)
-        const adminShare = InvestmentService.roundMoney(returnAmount - incomeShare - repurchaseShare)
+        const incomeShare = PurchaseService.roundMoney((returnAmount * 70) / 100)
+        const repurchaseShare = PurchaseService.roundMoney((returnAmount * 20) / 100)
+        const adminShare = PurchaseService.roundMoney(returnAmount - incomeShare - repurchaseShare)
 
         totalReturnAmount += returnAmount
         totalIncomeShare += incomeShare

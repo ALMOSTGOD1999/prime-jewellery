@@ -1,7 +1,7 @@
 import { DateTime } from 'luxon'
 import { BaseModel, column } from '@adonisjs/lucid/orm'
 
-export default class InvestmentPackage extends BaseModel {
+export default class PurchasePackage extends BaseModel {
   static table = 'investment_packages'
 
   @column({ isPrimary: true })
@@ -34,11 +34,11 @@ export default class InvestmentPackage extends BaseModel {
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime
 
-  static async getActivePackages(): Promise<InvestmentPackage[]> {
+  static async getActivePackages(): Promise<PurchasePackage[]> {
     return this.query().where('is_active', true).orderBy('sort_order', 'asc')
   }
 
-  static async findPackageForAmount(amount: number): Promise<InvestmentPackage | null> {
+  static async findPackageForAmount(amount: number): Promise<PurchasePackage | null> {
     return this.query()
       .where('is_active', true)
       .where('min_amount', '<=', amount)

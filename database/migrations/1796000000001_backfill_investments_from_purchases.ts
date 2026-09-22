@@ -18,7 +18,7 @@ import { BaseSchema } from '@adonisjs/lucid/schema'
  *     old one-per-user conversion; creating another one here would double-credit
  *     the July payout for the same purchase)
  *
- * Amounts use the same investment-package slabs as InvestmentService, so the
+ * Amounts use the same investment-package slabs as PurchaseService, so the
  * monthly return rate matches what a wallet-based investment of the same size
  * would earn.
  */

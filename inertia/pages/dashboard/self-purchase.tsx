@@ -10,15 +10,18 @@ import { Badge } from '~/components/ui/badge'
 interface Distribution {
   id: number
   period_month: string
+  purchase_amount: number
   investment_amount: number
   return_amount: number
   income_amount: number
   gold_amount: number
   paid_out_at: string | null
   created_at: string
+  purchase_total: number
   investment_total: number
   started_at: string
   closed_at: string | null
+  purchase_status: string
   investment_status: string
 }
 
@@ -124,7 +127,7 @@ export default function SelfPurchasePage({ distributions, purchases, summary }: 
                       </Badge>
                     </div>
                     <div className="flex gap-4 text-xs text-muted-foreground">
-                      <span>Purchased: {formatCurrency(d.investment_amount)}</span>
+                      <span>Purchased: {formatCurrency(d.purchase_amount ?? d.investment_amount)}</span>
                       <span className="text-violet">Income: {formatCurrency(d.income_amount)}</span>
                       <span className="text-gold">Repurchase: {formatCurrency(d.gold_amount)}</span>
                     </div>

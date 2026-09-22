@@ -27,9 +27,11 @@ type PurchaseRecord = {
 
 type Distribution = {
   id: number
-  investmentId: number
+  purchasePlanId: number
+  purchasePlanId: number
   periodMonth: string
-  investmentAmount: number
+  purchaseAmount: number
+  purchaseAmount: number
   returnAmount: number
   incomeAmount: number
   goldAmount: number
@@ -38,7 +40,8 @@ type Distribution = {
 
 type PurchasePageProps = {
   stats: {
-    activeInvestmentAmount: number
+    activePurchaseAmount: number
+    activePurchaseAmount: number
     totalReturn: number
     totalIncome: number
     totalGold: number
@@ -94,7 +97,7 @@ export default function PurchasesPage({
               <CardHeader>
                 <CardDescription>Active Purchase</CardDescription>
                 <CardTitle className="text-2xl">
-                  {formatCurrency(stats.activeInvestmentAmount)}
+                  {formatCurrency(stats.activePurchaseAmount ?? stats.activePurchaseAmount)}
                 </CardTitle>
               </CardHeader>
             </Card>
@@ -178,7 +181,7 @@ export default function PurchasesPage({
                     </tr>
                   </thead>
                   <tbody>
-                    {investments.map((investment) => {
+                    {(investments as any).map((investment: any) => {
                       const date = formatDateWithRelative(investment.startedAt)
                       return (
                         <tr key={investment.id} className="border-b last:border-0">
@@ -236,11 +239,11 @@ export default function PurchasesPage({
                     </tr>
                   </thead>
                   <tbody>
-                    {distributions.data.map((distribution) => (
+                    {distributions.data.map((distribution: any) => (
                       <tr key={distribution.id} className="border-b last:border-0">
                         <td className="py-3 pr-4">{distribution.periodMonth}</td>
                         <td className="py-3 pr-4">
-                          {formatCurrency(distribution.investmentAmount)}
+                          {formatCurrency(distribution.purchaseAmount ?? distribution.purchaseAmount)}
                         </td>
                         <td className="py-3 pr-4 font-medium">
                           {formatCurrency(distribution.returnAmount)}

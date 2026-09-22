@@ -63,8 +63,8 @@ router
   .use(middleware.auth())
 
 router
-  .get('dashboard/self-purchase', [DashboardController, 'selfInvestment'])
-  .as('dashboard.selfInvestment')
+  .get('dashboard/self-purchase', [DashboardController, 'selfPurchase'])
+  .as('dashboard.selfPurchase')
   .use(middleware.auth())
 
 router
@@ -178,15 +178,15 @@ router
 | Purchases
 |--------------------------------------------------------------------------
 */
-const InvestmentsController = () => import('#controllers/investments_controller')
+const PurchasesController = () => import('#controllers/purchases_controller')
 router
   .group(() => {
-    router.get('purchases', [InvestmentsController, 'index']).as('investments.index')
+    router.get('purchases', [PurchasesController, 'index']).as('purchases.index')
     router
-      .post('purchases/withdraw-income', [InvestmentsController, 'withdrawIncome'])
-      .as('investments.withdrawIncome')
+      .post('purchases/withdraw-income', [PurchasesController, 'withdrawIncome'])
+      .as('purchases.withdrawIncome')
   })
-  .as('investments')
+  .as('purchases')
   .use(middleware.auth())
 
 /*
@@ -392,11 +392,11 @@ router
     ////// User Purchase (admin makes purchase on behalf of user)
     router
       .get('/purchase', async ({ inertia }) => {
-        const investmentPackageModule = await import('#models/investment_package')
-        const InvestmentPackage = investmentPackageModule.default
+        const purchasePackageModule = await import('#models/purchase_package')
+        const PurchasePackage = purchasePackageModule.default
         const goldBillingConfigModule = await import('#services/gold_billing_config')
         const GoldBillingConfig = goldBillingConfigModule.default
-        const packages = await InvestmentPackage.getActivePackages()
+        const packages = await PurchasePackage.getActivePackages()
         const billingRates = await GoldBillingConfig.getRates()
         return inertia.render('admin/purchase', {
           billingRates,
@@ -439,14 +439,14 @@ router
       .as('config')
 
     router
-      .get('/config/investment-packages', [AdminConfigController, 'investmentPackages'])
-      .as('config.investment.packages')
+      .get('/config/purchase-packages', [AdminConfigController, 'purchasePackages'])
+      .as('config.purchase.packages')
     router
-      .post('/config/investment-packages/update', [
+      .post('/config/purchase-packages/update', [
         AdminConfigController,
-        'updateInvestmentPackage',
+        'updatePurchasePackage',
       ])
-      .as('config.investment.packages.update')
+      .as('config.purchase.packages.update')
 
     router
       .get('/config/performance-incentives', [AdminConfigController, 'performanceIncentives'])

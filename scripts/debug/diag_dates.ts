@@ -2,8 +2,8 @@ import { BaseCommand } from '@adonisjs/core/ace'
 import type { CommandOptions } from '@adonisjs/core/types/ace'
 import { DateTime } from 'luxon'
 
-import Investment from '#models/investment'
-import InvestmentReturnDistribution from '#models/investment_return_distribution'
+import PurchasePlan from '#models/purchase_plan'
+import PurchaseReturn from '#models/purchase_return'
 
 export default class DiagDates extends BaseCommand {
   static commandName = 'diag:dates'
@@ -14,13 +14,13 @@ export default class DiagDates extends BaseCommand {
     const period = DateTime.fromISO('2026-07-01').startOf('month')
     const daysInMonth = period.daysInMonth!
 
-    const investments = await Investment.query()
+    const investments = await PurchasePlan.query()
       .where('status', 'active')
       .where('started_at', '<=', period.endOf('month').toSQL()!)
       .orderBy('user_id')
 
     for (const investment of investments) {
-      const dist = await InvestmentReturnDistribution.query()
+      const dist = await PurchaseReturn.query()
         .where('investment_id', investment.id)
         .where('period_month', period.toISODate()!)
         .first()

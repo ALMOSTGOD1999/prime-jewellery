@@ -3,7 +3,7 @@ import type { CommandOptions } from '@adonisjs/core/types/ace'
 import { schedule } from 'adonisjs-scheduler'
 import { DateTime } from 'luxon'
 
-import InvestmentService from '#services/investment_service'
+import PurchaseService from '#services/purchase_service'
 import env from '#start/env'
 
 @schedule((s) => s.timezone(env.get('TZ')).monthlyOn(1, '00:05'))
@@ -16,10 +16,10 @@ export default class DistributeInvestmentReturns extends BaseCommand {
 
   async run() {
     const period = DateTime.now().setZone(env.get('TZ')).startOf('month')
-    const result = await InvestmentService.distributeMonthlyReturns(period)
+    const result = await PurchaseService.distributeMonthlyReturns(period)
 
     this.logger.success(
-      `Investment returns distributed for ${result.periodMonth}. Processed: ${result.processed}, skipped: ${result.skipped}`
+      `PurchasePlan returns distributed for ${result.periodMonth}. Processed: ${result.processed}, skipped: ${result.skipped}`
     )
   }
 }

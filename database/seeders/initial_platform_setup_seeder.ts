@@ -1,6 +1,6 @@
 import { BaseSeeder } from '@adonisjs/lucid/seeders'
 import PlatformConfig from '#models/platform_config'
-import InvestmentPackage from '#models/investment_package'
+import PurchasePackage from '#models/purchase_package'
 import PerformanceIncentive from '#models/performance_incentive'
 import RewardAward from '#models/reward_award'
 import MembershipLevelIncome from '#models/membership_level_income'
@@ -9,8 +9,8 @@ import TeamBusinessLevel from '#models/team_business_level'
 
 export default class extends BaseSeeder {
   async run() {
-    // ─── Investment Packages (3 tiers) ───
-    await InvestmentPackage.createMany([
+    // ─── PurchasePlan Packages (3 tiers) ───
+    await PurchasePackage.createMany([
       {
         name: 'Silver Plan',
         minAmount: 10000,

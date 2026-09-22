@@ -3,10 +3,10 @@ import type { BelongsTo } from '@adonisjs/lucid/types/relations'
 import { DateTime } from 'luxon'
 
 import User from '#models/user'
-import Investment from '#models/investment'
+import PurchasePlan from '#models/purchase_plan'
 import Transaction from '#models/transaction'
 
-export default class InvestmentReturnDistribution extends BaseModel {
+export default class PurchaseReturn extends BaseModel {
   static table = 'investment_return_distributions'
 
   @column({ isPrimary: true })
@@ -48,8 +48,13 @@ export default class InvestmentReturnDistribution extends BaseModel {
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime
 
-  @belongsTo(() => Investment)
-  declare investment: BelongsTo<typeof Investment>
+  @belongsTo(() => PurchasePlan)
+  declare purchasePlan: BelongsTo<typeof PurchasePlan>
+
+  // Legacy alias for backward compatibility
+  get investment(): BelongsTo<typeof PurchasePlan> {
+    return this.purchasePlan
+  }
 
   @belongsTo(() => User)
   declare user: BelongsTo<typeof User>

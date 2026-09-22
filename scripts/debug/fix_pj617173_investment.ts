@@ -17,7 +17,7 @@ export default class FixPj617173Investment extends BaseCommand {
     const user = await db.rawQuery(`SELECT id, name, total_invested FROM users WHERE id = ?`, [userId])
 
     if (inv.rows.length === 0 || user.rows.length === 0) {
-      this.logger.error('Investment or user not found')
+      this.logger.error('PurchasePlan or user not found')
       await db.manager.close('read')
       return
     }
@@ -28,7 +28,7 @@ export default class FixPj617173Investment extends BaseCommand {
 
     console.log('\n=== BEFORE ===')
     console.log('  User:', user.rows[0])
-    console.log('  Investment:', inv.rows[0])
+    console.log('  PurchasePlan:', inv.rows[0])
 
     // 1. Fix the investment record
     await db.rawQuery(
@@ -47,7 +47,7 @@ export default class FixPj617173Investment extends BaseCommand {
 
     console.log('\n=== AFTER ===')
     console.log('  User:', userAfter.rows[0])
-    console.log('  Investment:', after.rows[0])
+    console.log('  PurchasePlan:', after.rows[0])
     console.log(`\n  Delta applied to total_invested: ${delta.toLocaleString('en-IN')}`)
     console.log('  New monthly return @3.5%: ₹7,000 (income 70% = ₹4,900)')
 

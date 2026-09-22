@@ -1,15 +1,15 @@
 import type { HttpContext } from '@adonisjs/core/http'
 
-import InvestmentService from '#services/investment_service'
+import PurchaseService from '#services/purchase_service'
 import PayoutService from '#services/payout_service'
 import { paginationValidator } from '#validators/common_validator'
-import { withdrawInvestmentIncomeValidator } from '#validators/investment_validator'
+import { withdrawPurchaseIncomeValidator } from '#validators/purchase_validator'
 
-export default class InvestmentsController {
+export default class PurchasesController {
   async index({ auth, inertia, request }: HttpContext) {
     const user = auth.getUserOrFail()
     const { page = 1, limit = 10 } = await paginationValidator.validate(request.qs())
-    const { investments, distributions, stats } = await InvestmentService.getDashboard(user, {
+    const { purchasePlans, distributions, stats } = await PurchaseService.getDashboard(user, {
       page,
       limit,
     })
@@ -25,11 +25,10 @@ export default class InvestmentsController {
       filteredDistributions = []
     }
 
-    // Also filter stats to only include paid-out distributions
     const visibleStats = isPayoutReleased
       ? stats
       : {
-          activeInvestmentAmount: stats.activeInvestmentAmount,
+          activePurchaseAmount: stats.activePurchaseAmount,
           totalInvested: stats.totalInvested,
           totalReturn: 0,
           totalIncome: 0,
@@ -40,24 +39,36 @@ export default class InvestmentsController {
           goldWalletPercent: stats.goldWalletPercent,
         }
 
-    return inertia.render('investments/index', {
+    return inertia.render('purchases/index', {
       stats: visibleStats,
       isPayoutReleased,
-      investments: investments.map((investment) => ({
-        id: investment.id,
-        amount: Number(investment.amount),
-        monthlyReturnRate: Number(investment.monthlyReturnRate),
-        status: investment.status,
-        startedAt: investment.startedAt,
-        closedAt: investment.closedAt,
-        remark: investment.remark,
+      purchasePlans: purchasePlans.map((plan) => ({
+        id: plan.id,
+        amount: Number(plan.amount),
+        monthlyReturnRate: Number(plan.monthlyReturnRate),
+        status: plan.status,
+        startedAt: plan.startedAt,
+        closedAt: plan.closedAt,
+        remark: plan.remark,
+      })),
+      // Legacy alias for backward compat
+      investments: purchasePlans.map((plan) => ({
+        id: plan.id,
+        amount: Number(plan.amount),
+        monthlyReturnRate: Number(plan.monthlyReturnRate),
+        status: plan.status,
+        startedAt: plan.startedAt,
+        closedAt: plan.closedAt,
+        remark: plan.remark,
       })),
       distributions: {
         meta: distributions.getMeta(),
         data: filteredDistributions.map((distribution: any) => ({
           id: distribution.id,
+          purchasePlanId: distribution.investmentId,
           investmentId: distribution.investmentId,
           periodMonth: distribution.periodMonth,
+          purchaseAmount: Number(distribution.investmentAmount),
           investmentAmount: Number(distribution.investmentAmount),
           returnAmount: Number(distribution.returnAmount),
           incomeAmount: Number(distribution.incomeAmount),
@@ -70,11 +81,11 @@ export default class InvestmentsController {
 
   async withdrawIncome({ auth, request, response, session }: HttpContext) {
     const user = auth.getUserOrFail()
-    const { amount } = await request.validateUsing(withdrawInvestmentIncomeValidator)
+    const { amount } = await request.validateUsing(withdrawPurchaseIncomeValidator)
 
     try {
-      await InvestmentService.requestIncomeWithdrawal(user, amount)
-      session.flash('success', 'Investment income withdrawal request submitted successfully')
+      await PurchaseService.requestIncomeWithdrawal(user, amount)
+      session.flash('success', 'Purchase income withdrawal request submitted successfully')
     } catch (error) {
       session.flash('errors.global', error.message)
     }

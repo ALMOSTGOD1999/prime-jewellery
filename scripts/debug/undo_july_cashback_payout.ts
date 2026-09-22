@@ -4,7 +4,7 @@ import { DateTime } from 'luxon'
 import db from '@adonisjs/lucid/services/db'
 import Transaction from '#models/transaction'
 import { TransactionTypeEnum } from '#enums/transaction'
-import InvestmentReturnDistribution from '#models/investment_return_distribution'
+import PurchaseReturn from '#models/purchase_return'
 
 /**
  * One-off: safely undo the July 2026 cashback (income) wallet payout so the
@@ -153,7 +153,7 @@ export default class UndoJulyCashbackPayout extends BaseCommand {
 
       // 4. Mark the July distributions unpaid again (match via the transaction
       //    ids the payout stored on them — no timezone-dependent comparison).
-      const unflippedResult = await InvestmentReturnDistribution.query({ client: trx })
+      const unflippedResult = await PurchaseReturn.query({ client: trx })
         .where((query) => {
           query
             .whereIn('incomeWalletTransactionId', cashbackIds)

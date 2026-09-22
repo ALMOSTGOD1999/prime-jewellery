@@ -71,7 +71,7 @@ export default class FindOrphanInvestments extends BaseCommand {
             ? 'purchase exists but NOT approved'
             : 'purchase was cancelled'
 
-      this.logger.info(`\n  Investment #${row.investment_id} — User: ${row.user_name || 'Unknown'} (ID: ${row.user_id}, Code: ${row.user_code || 'N/A'})`)
+      this.logger.info(`\n  PurchasePlan #${row.investment_id} — User: ${row.user_name || 'Unknown'} (ID: ${row.user_id}, Code: ${row.user_code || 'N/A'})`)
       this.logger.info(`    Amount: ₹${row.investment_amount} | Status: ${row.investment_status}`)
       this.logger.info(`    Purchase ID: ${row.purchase_id || 'NULL'} | Reason: ${reason}`)
       totalInvestmentAmount += Number(row.investment_amount)

@@ -1,6 +1,6 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import PlatformConfig from '#models/platform_config'
-import InvestmentPackage from '#models/investment_package'
+import PurchasePackage from '#models/purchase_package'
 import PerformanceIncentive from '#models/performance_incentive'
 import RewardAward from '#models/reward_award'
 import MembershipLevelIncome from '#models/membership_level_income'
@@ -8,12 +8,17 @@ import LevelIncome from '#models/level_income'
 import cache from '@adonisjs/cache/services/main'
 
 export default class AdminConfigController {
-  async investmentPackages({ inertia }: HttpContext) {
-    const packages = await InvestmentPackage.query().orderBy('sort_order', 'asc')
-    return inertia.render('admin/config/investment_packages', { packages })
+  async purchasePackages({ inertia }: HttpContext) {
+    const packages = await PurchasePackage.query().orderBy('sort_order', 'asc')
+    return inertia.render('admin/config/purchase_packages', { packages })
   }
 
-  async updateInvestmentPackage({ request, response }: HttpContext) {
+  // Legacy alias
+  async investmentPackages(ctx: HttpContext) {
+    return this.purchasePackages(ctx)
+  }
+
+  async updatePurchasePackage({ request, response }: HttpContext) {
     const {
       id,
       name,
@@ -24,7 +29,7 @@ export default class AdminConfigController {
       sortOrder,
       isActive,
     } = request.all()
-    const pkg = id ? await InvestmentPackage.findOrFail(id) : new InvestmentPackage()
+    const pkg = id ? await PurchasePackage.findOrFail(id) : new PurchasePackage()
     if (name) pkg.name = name
     if (minAmount !== undefined) pkg.minAmount = Number(minAmount)
     if (maxAmount !== undefined) pkg.maxAmount = maxAmount ? Number(maxAmount) : null

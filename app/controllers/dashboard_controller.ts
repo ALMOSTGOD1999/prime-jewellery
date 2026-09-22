@@ -171,7 +171,7 @@ export default class DashboardController {
    * GET /dashboard/self-purchase
    * Current user's purchase return history.
    */
-  async selfInvestment({ auth, inertia }: HttpContext) {
+  async selfPurchase({ auth, inertia }: HttpContext) {
     const user = auth.getUserOrFail()
 
     const distributionsRes = await db.rawQuery(
@@ -194,7 +194,7 @@ export default class DashboardController {
       [user.id]
     )
 
-    const investmentsRes = await db.rawQuery(
+    const purchasePlansRes = await db.rawQuery(
       `SELECT i.id, i.amount, i.status, i.started_at, i.closed_at, i.monthly_return_rate,
               p.id as purchase_id
        FROM investments i
@@ -204,15 +204,22 @@ export default class DashboardController {
       [user.id]
     )
 
-    return inertia.render('dashboard/self-investment', {
+    return inertia.render('dashboard/self-purchase', {
       distributions: distributionsRes.rows,
-      investments: investmentsRes.rows,
+      purchasePlans: purchasePlansRes.rows,
+      investments: purchasePlansRes.rows,
+      purchases: purchasePlansRes.rows,
       summary: {
         totalReturn: Number(totalReturnRes.rows[0]?.total_return || 0),
         totalIncome: Number(totalReturnRes.rows[0]?.total_income || 0),
         totalGold: Number(totalReturnRes.rows[0]?.total_gold || 0),
       },
     })
+  }
+
+  // Legacy alias
+  async selfInvestment(ctx: HttpContext) {
+    return this.selfPurchase(ctx)
   }
 
   /**

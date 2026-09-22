@@ -6,7 +6,7 @@ import Transaction from '#models/transaction'
 import PayoutService from '#services/payout_service'
 import RewardService from '#services/reward_service'
 import MonthlyIncomeSnapshot from '#models/monthly_income_snapshot'
-import InvestmentReturnDistribution from '#models/investment_return_distribution'
+import PurchaseReturn from '#models/purchase_return'
 
 export default class DebugController {
   /**
@@ -197,7 +197,7 @@ export default class DebugController {
     }
     result.total += salary
 
-    // ─── 7. Cashback / Investment Return (Income Wallet) ───
+    // ─── 7. Cashback / PurchasePlan Return (Income Wallet) ───
     let cashbackReturn = 0
     const distributions = await db.rawQuery(
       `SELECT return_amount, income_amount, gold_amount, investment_id, period_month
@@ -682,7 +682,7 @@ export default class DebugController {
     const monthStr = month.toFormat('yyyy-MM')
 
     // 1. Cashback Wallet Payout preview
-    const distributions = await InvestmentReturnDistribution.query()
+    const distributions = await PurchaseReturn.query()
       .where('period_month', month.toISODate()!)
       .whereNull('paid_out_at')
 

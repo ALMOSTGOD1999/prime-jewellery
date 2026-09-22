@@ -4,7 +4,7 @@ import { DateTime } from 'luxon'
 import db from '@adonisjs/lucid/services/db'
 import Transaction from '#models/transaction'
 import { TransactionTypeEnum } from '#enums/transaction'
-import InvestmentReturnDistribution from '#models/investment_return_distribution'
+import PurchaseReturn from '#models/purchase_return'
 import MonthlyIncomeSnapshot from '#models/monthly_income_snapshot'
 
 /**
@@ -252,7 +252,7 @@ export default class RevertJulyPayout extends BaseCommand {
         const cashbackIds = cashbackTxns.map((t) => t.id)
         const repurchaseIds = repurchaseTxns.map((t) => t.id)
 
-        const unflippedResult = await InvestmentReturnDistribution.query({ client: trx })
+        const unflippedResult = await PurchaseReturn.query({ client: trx })
           .where((query) => {
             query
               .whereIn('incomeWalletTransactionId', cashbackIds)
