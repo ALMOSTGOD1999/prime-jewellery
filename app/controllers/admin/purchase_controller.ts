@@ -95,6 +95,39 @@ export default class AdminPurchaseController {
     }
   }
 
+  async generateInvoice({ params, request, response }: HttpContext) {
+    try {
+      const { buyerName, ornamentName, goldCarat, quantity, totalAmount } = request.only([
+        'buyerName',
+        'ornamentName',
+        'goldCarat',
+        'quantity',
+        'totalAmount',
+      ])
+
+      const overrides: Record<string, any> = {}
+      if (buyerName !== undefined) overrides.buyerName = buyerName
+      if (ornamentName !== undefined) overrides.ornamentName = ornamentName
+      if (goldCarat !== undefined) overrides.goldCarat = goldCarat
+      if (quantity !== undefined) overrides.quantity = Number(quantity)
+      if (totalAmount !== undefined) overrides.totalAmount = Number(totalAmount)
+
+      const pdfBytes = await InvoiceService.generateGoldPurchaseInvoiceWithOverrides(
+        params.id,
+        overrides
+      )
+
+      response.header('Content-Type', 'application/pdf')
+      response.header(
+        'Content-Disposition',
+        `attachment; filename="purchase-invoice-${params.id}.pdf"`
+      )
+      return response.send(Buffer.from(pdfBytes))
+    } catch (error) {
+      return response.status(400).json({ error: error.message })
+    }
+  }
+
   async history({ inertia, params, request }: HttpContext) {
     const { status = 'all' } = request.qs()
     const { page = 1, limit = 10 } = await paginationValidator.validate(request.qs())

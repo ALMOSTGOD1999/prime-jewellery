@@ -120,6 +120,85 @@ export default class InvoiceService {
   }
 
   /**
+   * Generate gold purchase invoice with admin overrides.
+   * Admin can override buyerName, ornamentName, goldCarat, quantity, and totalAmount.
+   */
+  static async generateGoldPurchaseInvoiceWithOverrides(
+    purchaseId: string,
+    overrides: {
+      buyerName?: string
+      ornamentName?: string
+      goldCarat?: string
+      quantity?: number
+      totalAmount?: number
+    }
+  ): Promise<Uint8Array> {
+    const purchase = await Purchase.query().where('id', purchaseId).preload('user').firstOrFail()
+
+    const purchases = await Purchase.query().orderBy('created_at', 'asc').select('id')
+    const invoiceIndex = purchases.findIndex((item) => item.id === purchase.id) + 1
+    const invoiceNo = `PSJ${String(Math.max(invoiceIndex, 1)).padStart(6, '0')}`
+
+    // Use stored gold billing values if available, otherwise use admin-set rates from config
+    const goldCarat = overrides.goldCarat || purchase.goldCarat
+    const goldWeight = overrides.quantity || Number(purchase.goldWeight) || Number(purchase.quantity) || 1
+    let goldRate = Number(purchase.goldRate)
+    let goldPrice = Number(purchase.goldPrice)
+    let makingCharges = Number(purchase.makingCharges)
+    let gstAmount = Number(purchase.gstAmount)
+    let additionalCharges = Number(purchase.additionalCharges)
+
+    // If goldRate wasn't stored on the purchase, derive it from admin config
+    if (!goldRate && goldCarat) {
+      const billingRates = await GoldBillingConfig.getRates()
+      goldRate = GoldBillingConfig.getRateForCarat(billingRates, goldCarat)
+    }
+
+    // Recalculate breakdown if quantity or totalAmount changed
+    const quantityChanged = overrides.quantity && overrides.quantity !== Number(purchase.quantity)
+    const amountChanged = overrides.totalAmount && overrides.totalAmount !== Number(purchase.amount)
+
+    if (quantityChanged || amountChanged) {
+      const calc = GoldBillingConfig.calculate(
+        await GoldBillingConfig.getRates(),
+        goldCarat || '22ct',
+        goldWeight
+      )
+      goldPrice = calc.goldValue
+      makingCharges = calc.makingCharges
+      gstAmount = calc.gstAmount
+      additionalCharges = calc.additionalCharges
+    } else if (!goldPrice && goldRate && goldWeight) {
+      const calc = GoldBillingConfig.calculate(
+        await GoldBillingConfig.getRates(),
+        goldCarat || '22ct',
+        goldWeight
+      )
+      goldPrice = calc.goldValue
+      makingCharges = calc.makingCharges
+      gstAmount = calc.gstAmount
+      additionalCharges = calc.additionalCharges
+    }
+
+    return this.createGoldPurchasePDF({
+      invoiceNo,
+      invoiceDate: purchase.createdAt.toFormat('dd-MM-yyyy'),
+      buyerName: overrides.buyerName || purchase.buyerName || purchase.user.name,
+      customerPhone: purchase.user.phone,
+      memberCode: String(purchase.user.id),
+      quantity: goldWeight,
+      totalAmount: overrides.totalAmount || Number(purchase.amount),
+      goldCarat: goldCarat || '',
+      goldRate,
+      goldPrice,
+      makingCharges,
+      gstAmount,
+      additionalCharges,
+      ornamentName: overrides.ornamentName || purchase.ornamentName || '',
+    })
+  }
+
+  /**
    * Generate shareable invoice PDF for a gold purchase.
    */
   static async generateGoldPurchaseInvoice(

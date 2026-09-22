@@ -416,6 +416,9 @@ router
     router
       .get('/purchases/:id/invoice', [AdminPurchaseController, 'downloadInvoice'])
       .as('purchases.invoice')
+    router
+      .post('/purchases/:id/invoice/generate', [AdminPurchaseController, 'generateInvoice'])
+      .as('purchases.invoice.generate')
 
     ////// Statements - View all transactions across all users
     router
@@ -619,5 +622,9 @@ const DebugController = () => import('#controllers/debug_controller')
 router.get('debug/payout', [DebugController, 'payout']).use(middleware.admin())
 router.get('debug/payout/cleanup', [DebugController, 'cleanupPayout']).use(middleware.admin())
 router.get('debug/payout/dry-run', [DebugController, 'dryRunPayout']).use(middleware.admin())
+router.get('debug/user-income/:id', [DebugController, 'userIncome']).use(middleware.admin())
+router.post('debug/find-orphans', [DebugController, 'findOrphans']).use(middleware.admin())
+router.post('debug/reverse-illegible-income', [DebugController, 'reverseIllegibleIncome']).use(middleware.admin())
+router.post('debug/recalculate-snapshot', [DebugController, 'recalculateSnapshots']).use(middleware.admin())
 
 router.attachments()

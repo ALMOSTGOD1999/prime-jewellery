@@ -725,22 +725,21 @@ export default class RewardService {
       purchasesByUser.get(p.userId)!.push(p)
     }
 
-    // 5. Calculate level income based on depth percentage (model-driven), respecting unlocked levels
-    const levelRewardsMap = new Map<string, number>()
+    // 5. Calculate level income by MONTH (not by day).
+    // Business rule: if a purchase exists in a month (approved by month-end,
+    // not expired, not stopped before month-start), the full monthly % applies.
+    // No day prorating — a purchase on Aug 30 earns the same as Aug 1.
+    const levelRewardsMap = new Map<string, number>() // monthKey (yyyy-MM) -> amount
 
+    const asOfDate = asOf || DateTime.now().setZone(env.get('TZ'))
+    const endMonth = asOfDate.startOf('month')
+
+    // Find the earliest start month across all descendants
+    let earliestMonth: DateTime | null = null
     for (const [userId, userPurchases] of purchasesByUser.entries()) {
-      const depth = descendantDepths.get(userId)!
-      const percentage = await LevelIncome.getPercentageForLevel(depth)
-      if (percentage === 0) continue
-
-      // Calculate daily level rewards based on cumulative purchases
-      // Formula: (cumulative purchase amount) × percentage × 12 / 365
-      // Validity: each purchase earns level income for up to 10 months from its approval date.
-      // A purchase only counts if the descendant was activated before or on the purchase date.
       const memberActivatedAt = descendantActivatedAt.get(userId)
       const validPurchases = userPurchases.filter((p) => {
         if (p.cancelledAt) return false
-        // Skip purchases made before this descendant was activated
         if (memberActivatedAt) {
           const purchaseDate = DateTime.fromJSDate(new Date(p.approvedAt!.toString())).startOf('day')
           if (purchaseDate < memberActivatedAt.startOf('day')) return false
@@ -749,31 +748,89 @@ export default class RewardService {
       })
       if (validPurchases.length === 0) continue
 
-      const firstPurchaseDate = DateTime.fromJSDate(
-        new Date(validPurchases[0].approvedAt!.toString())
-      ).startOf('day')
       const userActivatedAt = user.activatedAt
         ? DateTime.fromJSDate(new Date(user.activatedAt.toString())).startOf('day')
-        : firstPurchaseDate
-      const startDate = firstPurchaseDate > userActivatedAt ? firstPurchaseDate : userActivatedAt
-      const endDate = (asOf || DateTime.now().setZone(env.get('TZ'))).startOf('day')
-      const daysInMonth = endDate.daysInMonth
+        : DateTime.fromJSDate(new Date(validPurchases[0].approvedAt!.toString())).startOf('day')
 
-      for (let date = startDate; date <= endDate; date = date.plus({ days: 1 })) {
-        // Calculate cumulative purchase amount until the current date.
-        // A purchase counts for each day from its approval date up to 10 months later.
-        // For stopped purchases, only count if current date is before or on stoppedAt.
+      const purchaseStartMonth = DateTime.fromJSDate(
+        new Date(validPurchases[0].approvedAt!.toString())
+      ).startOf('month')
+      const effectiveStartMonth =
+        purchaseStartMonth > userActivatedAt.startOf('month')
+          ? purchaseStartMonth
+          : userActivatedAt.startOf('month')
+
+      if (!earliestMonth || effectiveStartMonth < earliestMonth) {
+        earliestMonth = effectiveStartMonth
+      }
+    }
+
+    if (!earliestMonth) {
+      return {
+        meta: {
+          total: 0,
+          per_page: limit,
+          current_page: page,
+          last_page: 1,
+          first_page: 1,
+          first_page_url: '/?page=1',
+          last_page_url: '/?page=1',
+          next_page_url: null,
+          previous_page_url: null,
+        },
+        data: [],
+        stats: { totalRewards: 0, thisMonthRewards: 0, totalWithdrawn: 0 },
+      }
+    }
+
+    // Iterate month by month
+    for (let month = earliestMonth; month <= endMonth; month = month.plus({ months: 1 })) {
+      const monthKey = month.toFormat('yyyy-MM')
+      const monthEnd = month.endOf('month')
+
+      for (const [userId, userPurchases] of purchasesByUser.entries()) {
+        const depth = descendantDepths.get(userId)!
+        const percentage = await LevelIncome.getPercentageForLevel(depth)
+        if (percentage === 0) continue
+
+        const memberActivatedAt = descendantActivatedAt.get(userId)
+        const validPurchases = userPurchases.filter((p) => {
+          if (p.cancelledAt) return false
+          if (memberActivatedAt) {
+            const purchaseDate = DateTime.fromJSDate(
+              new Date(p.approvedAt!.toString())
+            ).startOf('day')
+            if (purchaseDate < memberActivatedAt.startOf('day')) return false
+          }
+          return true
+        })
+        if (validPurchases.length === 0) continue
+
+        // User must be activated by end of this month
+        const userActivatedAt = user.activatedAt
+          ? DateTime.fromJSDate(new Date(user.activatedAt.toString())).startOf('day')
+          : DateTime.fromJSDate(new Date(validPurchases[0].approvedAt!.toString())).startOf('day')
+        if (userActivatedAt > monthEnd) continue
+
+        // Cumulative purchases active during this month:
+        //   1. Approved on or before month-end
+        //   2. Not expired by month-start (expiry = approvedAt + 10 months > month-start)
+        //   3. Not stopped before month-start
         const cumulativeAmount = validPurchases
           .filter((p) => {
-            const approvedAt = DateTime.fromJSDate(new Date(p.approvedAt!.toString())).endOf('day')
-            if (approvedAt > date.endOf('day')) return false
+            const approvedAt = DateTime.fromJSDate(
+              new Date(p.approvedAt!.toString())
+            ).endOf('day')
+            if (approvedAt > monthEnd.endOf('day')) return false
 
             const expiry = approvedAt.plus({ months: 10 })
-            if (date.endOf('day') > expiry) return false
+            if (month.startOf('month') > expiry) return false
 
             if (p.stoppedAt) {
-              const stoppedAt = DateTime.fromJSDate(new Date(p.stoppedAt!.toString())).endOf('day')
-              if (date.endOf('day') > stoppedAt) return false
+              const stoppedAt = DateTime.fromJSDate(
+                new Date(p.stoppedAt!.toString())
+              ).startOf('day')
+              if (stoppedAt < month.startOf('month')) return false
             }
 
             return true
@@ -782,11 +839,9 @@ export default class RewardService {
 
         if (cumulativeAmount === 0) continue
 
-        // Daily level reward = cumulative amount × percentage / daysInMonth (flat monthly)
-        const dailyLevelReward = (cumulativeAmount * (percentage / 100)) / (daysInMonth || 30)
-        const dateKey = date.toISODate()!
-
-        levelRewardsMap.set(dateKey, (levelRewardsMap.get(dateKey) || 0) + dailyLevelReward)
+        // FULL monthly reward — no day prorating
+        const monthlyReward = cumulativeAmount * (percentage / 100)
+        levelRewardsMap.set(monthKey, (levelRewardsMap.get(monthKey) || 0) + monthlyReward)
       }
     }
 
@@ -796,7 +851,6 @@ export default class RewardService {
       amount: Number(amount.toFixed(2)),
     }))
 
-    // Sorting
     rewards.sort((a, b) => {
       if (sortBy === 'date') {
         return sortOrder === 'asc' ? a.date.localeCompare(b.date) : b.date.localeCompare(a.date)
@@ -806,21 +860,16 @@ export default class RewardService {
       return 0
     })
 
-    // Calculate Stats
     const totalRewards = rewards.reduce((sum, r) => sum + r.amount, 0)
     const targetMonth = (asOf || DateTime.now().setZone(env.get('TZ'))).toFormat('yyyy-MM')
-    const thisMonthRewards = rewards
-      .filter((r) => r.date.startsWith(targetMonth))
-      .reduce((sum, r) => sum + r.amount, 0)
+    const thisMonthRewards = levelRewardsMap.get(targetMonth) || 0
 
-    // Pagination
     const total = rewards.length
     const startIndex = (page - 1) * limit
     const endIndex = startIndex + limit
     const paginatedRewards = rewards.slice(startIndex, endIndex)
     const lastPage = Math.ceil(total / limit)
 
-    // Fetch total withdrawn for level
     const withdrawnRes = await db
       .from('withdrawls')
       .where('user_id', user.id)
@@ -925,7 +974,10 @@ export default class RewardService {
       purchasesByUser.get(p.userId)!.push(p)
     }
 
-    // Calculate breakdown by level for the specific date
+    // Calculate breakdown by level for the MONTH containing targetDate
+    const targetMonth = targetDate.startOf('month')
+    const targetMonthEnd = targetMonth.endOf('month')
+
     const levelBreakdown = new Map<
       number,
       {
@@ -953,40 +1005,44 @@ export default class RewardService {
       })
       if (validPurchases.length === 0) continue
 
-      // Check if any purchase is active on the target date (up to 10 months validity)
+      // User must be activated by end of target month
+      const userActivatedAt = user.activatedAt
+        ? DateTime.fromJSDate(new Date(user.activatedAt.toString())).startOf('day')
+        : DateTime.fromJSDate(new Date(validPurchases[0].approvedAt!.toString())).startOf('day')
+      if (userActivatedAt > targetMonthEnd) continue
+
+      // Cumulative purchases active during this MONTH (not daily)
       const cumulativeAmount = validPurchases
         .filter((p) => {
           const approvedAt = DateTime.fromJSDate(new Date(p.approvedAt!.toString())).endOf('day')
-          if (approvedAt > targetDate.endOf('day')) return false
-
+          if (approvedAt > targetMonthEnd.endOf('day')) return false
           const expiry = approvedAt.plus({ months: 10 })
-          if (targetDate.endOf('day') > expiry) return false
-
+          if (targetMonth.startOf('month') > expiry) return false
           if (p.stoppedAt) {
-            const stoppedAt = DateTime.fromJSDate(new Date(p.stoppedAt!.toString())).endOf('day')
-            if (targetDate.endOf('day') > stoppedAt) return false
+            const stoppedAt = DateTime.fromJSDate(new Date(p.stoppedAt!.toString())).startOf('day')
+            if (stoppedAt < targetMonth.startOf('month')) return false
           }
-
           return true
         })
         .reduce((sum, p) => sum + Number(p.amount), 0)
 
       if (cumulativeAmount === 0) continue
 
-      const dailyReward = (cumulativeAmount * (percentage / 100) * 12) / 365
+      // FULL monthly reward — no day prorating
+      const monthlyReward = cumulativeAmount * (percentage / 100)
 
       if (!levelBreakdown.has(depth)) {
         levelBreakdown.set(depth, { level: depth, amount: 0, memberCount: 0, members: [] })
       }
 
       const levelData = levelBreakdown.get(depth)!
-      levelData.amount += dailyReward
+      levelData.amount += monthlyReward
       levelData.memberCount += 1
       levelData.members.push({
         userId,
         name: info.name,
         cumulativeAmount,
-        reward: Number(dailyReward.toFixed(2)),
+        reward: Number(monthlyReward.toFixed(2)),
       })
     }
 
@@ -1143,8 +1199,9 @@ export default class RewardService {
       transactionsByUser.get(t.user_id)!.push(t)
     }
 
-    // 5. Calculate rewards with level percentages
+    // 5. Calculate rewards by MONTH — same logic as getLevelRewards
     const levelRewardsMap = new Map<string, number>()
+    let earliestMonthRef: DateTime | null = null
 
     for (const [userId, userTransactions] of transactionsByUser.entries()) {
       const depth = descendantDepths.get(userId)!
@@ -1169,29 +1226,68 @@ export default class RewardService {
       const userActivatedAt = user.activatedAt
         ? DateTime.fromJSDate(new Date(user.activatedAt.toString())).startOf('day')
         : firstEmiDate
-      const startDate = firstEmiDate > userActivatedAt ? firstEmiDate : userActivatedAt
-      const endDate = (asOf || DateTime.now().setZone(env.get('TZ'))).startOf('day')
-      const daysInMonth = endDate.daysInMonth
 
-      for (let date = startDate; date <= endDate; date = date.plus({ days: 1 })) {
-        // Calculate cumulative EMI amount paid until current date (up to 10 months validity per transaction)
+      // Earliest month is when both user is activated and transaction exists
+      const purchaseStartMonth = firstEmiDate.startOf('month')
+      const effectiveStartMonth =
+        purchaseStartMonth > userActivatedAt.startOf('month')
+          ? purchaseStartMonth
+          : userActivatedAt.startOf('month')
+      // Monthly calculation — no day prorating
+      if (!earliestMonthRef || effectiveStartMonth < earliestMonthRef) {
+        earliestMonthRef = effectiveStartMonth
+      }
+    }
+
+    const asOfDate = asOf || DateTime.now().setZone(env.get('TZ'))
+    const endMonth = asOfDate.startOf('month')
+
+    if (!earliestMonthRef) {
+      return {
+        meta: { total: 0, per_page: limit, current_page: page, last_page: 1, first_page: 1, first_page_url: '/?page=1', last_page_url: '/?page=1', next_page_url: null, previous_page_url: null },
+        data: [],
+        stats: { totalRewards: 0, thisMonthRewards: 0, totalWithdrawn: 0 },
+      }
+    }
+
+    for (let month = earliestMonthRef; month <= endMonth; month = month.plus({ months: 1 })) {
+      const monthKey = month.toFormat('yyyy-MM')
+      const monthEnd = month.endOf('month')
+
+      for (const [userId, userTransactions] of transactionsByUser.entries()) {
+        const depth = descendantDepths.get(userId)!
+        const percentage = await LevelIncome.getPercentageForLevel(depth)
+        if (percentage === 0) continue
+
+        const memberActivatedAt = descendantActivatedAt.get(userId)
+        const validTransactions = userTransactions.filter((t: any) => {
+          if (memberActivatedAt) {
+            const txDate = DateTime.fromJSDate(new Date(t.approved_at)).startOf('day')
+            if (txDate < memberActivatedAt.startOf('day')) return false
+          }
+          return true
+        })
+        if (validTransactions.length === 0) continue
+
+        const userActivatedAt = user.activatedAt
+          ? DateTime.fromJSDate(new Date(user.activatedAt.toString())).startOf('day')
+          : DateTime.fromJSDate(new Date(validTransactions[0].approved_at)).startOf('day')
+        if (userActivatedAt > monthEnd) continue
+
         const cumulativeAmount = validTransactions
           .filter((t: any) => {
             const approvedAt = DateTime.fromJSDate(new Date(t.approved_at)).endOf('day')
-            if (approvedAt > date.endOf('day')) return false
-
+            if (approvedAt > monthEnd.endOf('day')) return false
             const expiry = approvedAt.plus({ months: 10 })
-            return date.endOf('day') <= expiry
+            if (month.startOf('month') > expiry) return false
+            return true
           })
           .reduce((sum, t) => sum + Number(t.amount), 0)
 
         if (cumulativeAmount === 0) continue
 
-        // Daily level reward = cumulative amount × percentage / daysInMonth (flat monthly)
-        const dailyLevelReward = (cumulativeAmount * (percentage / 100)) / (daysInMonth || 30)
-        const dateKey = date.toISODate()!
-
-        levelRewardsMap.set(dateKey, (levelRewardsMap.get(dateKey) || 0) + dailyLevelReward)
+        const monthlyReward = cumulativeAmount * (percentage / 100)
+        levelRewardsMap.set(monthKey, (levelRewardsMap.get(monthKey) || 0) + monthlyReward)
       }
     }
 
@@ -1214,9 +1310,7 @@ export default class RewardService {
     // Calculate Stats
     const totalRewards = rewards.reduce((sum, r) => sum + r.amount, 0)
     const currentMonth = (asOf || DateTime.now().setZone(env.get('TZ'))).toFormat('yyyy-MM')
-    const thisMonthRewards = rewards
-      .filter((r) => r.date.startsWith(currentMonth))
-      .reduce((sum, r) => sum + r.amount, 0)
+    const thisMonthRewards = levelRewardsMap.get(currentMonth) || 0
 
     // Pagination
     const total = rewards.length
@@ -1338,7 +1432,10 @@ export default class RewardService {
       transactionsByUser.get(t.user_id)!.push(t)
     }
 
-    // Calculate breakdown by level for the specific date
+    // Calculate breakdown by level for the MONTH containing targetDate
+    const targetMonth = targetDate.startOf('month')
+    const targetMonthEnd = targetMonth.endOf('month')
+
     const levelBreakdown = new Map<
       number,
       {
@@ -1355,7 +1452,6 @@ export default class RewardService {
       const percentage = await LevelIncome.getPercentageForLevel(depth)
       if (percentage === 0) continue
 
-      // Skip transactions made before the descendant was activated
       const memberActivatedAt = descendantActivatedAtMap.get(userId)
       const validTransactions = userTransactions.filter((t: any) => {
         if (memberActivatedAt) {
@@ -1366,33 +1462,33 @@ export default class RewardService {
       })
       if (validTransactions.length === 0) continue
 
-      // Calculate cumulative EMI amount paid until target date (up to 10 months validity)
+      // Cumulative EMI active during this MONTH (not daily)
       const cumulativeAmount = validTransactions
         .filter((t) => {
           const approvedAt = DateTime.fromJSDate(new Date(t.approved_at)).endOf('day')
-          if (approvedAt > targetDate.endOf('day')) return false
-
+          if (approvedAt > targetMonthEnd.endOf('day')) return false
           const expiry = approvedAt.plus({ months: 10 })
-          return targetDate.endOf('day') <= expiry
+          if (targetMonth.startOf('month') > expiry) return false
+          return true
         })
         .reduce((sum, t) => sum + Number(t.amount), 0)
 
       if (cumulativeAmount === 0) continue
 
-      const dailyReward = (cumulativeAmount * (percentage / 100) * 12) / 365
+      const monthlyReward = cumulativeAmount * (percentage / 100)
 
       if (!levelBreakdown.has(depth)) {
         levelBreakdown.set(depth, { level: depth, amount: 0, memberCount: 0, members: [] })
       }
 
       const levelData = levelBreakdown.get(depth)!
-      levelData.amount += dailyReward
+      levelData.amount += monthlyReward
       levelData.memberCount += 1
       levelData.members.push({
         userId,
         name: info.name,
         cumulativeAmount,
-        reward: Number(dailyReward.toFixed(2)),
+        reward: Number(monthlyReward.toFixed(2)),
       })
     }
 
@@ -2097,9 +2193,10 @@ export default class RewardService {
       purchasesByUser.get(p.userId)!.push(p)
     }
 
-    // 6. Calculate per-user level income
+    // 6. Calculate per-user level income for the target MONTH (not daily)
     const endDate = (asOf || DateTime.now().setZone(env.get('TZ'))).startOf('day')
-    const daysInMonth = endDate.daysInMonth
+    const targetMonth = endDate.startOf('month')
+    const targetMonthEnd = targetMonth.endOf('month')
 
     const userResults: {
       userId: number
@@ -2125,33 +2222,29 @@ export default class RewardService {
       const userActivatedAt = user.activatedAt
         ? DateTime.fromJSDate(new Date(user.activatedAt.toString())).startOf('day')
         : firstPurchaseDate
-      const startDate = firstPurchaseDate > userActivatedAt ? firstPurchaseDate : userActivatedAt
 
-      if (startDate > endDate) continue
+      // User must be activated by end of target month
+      if (userActivatedAt > targetMonthEnd) continue
 
-      let totalLevelIncome = 0
-      for (let date = startDate; date <= endDate; date = date.plus({ days: 1 })) {
-        const cumulativeAmount = validPurchases
-          .filter((p) => {
-            const approvedAt = DateTime.fromJSDate(new Date(p.approvedAt!.toString())).endOf('day')
-            if (approvedAt > date.endOf('day')) return false
-            const expiry = approvedAt.plus({ months: 10 })
-            if (date.endOf('day') > expiry) return false
-            if (p.stoppedAt) {
-              const stoppedAt = DateTime.fromJSDate(new Date(p.stoppedAt!.toString())).endOf('day')
-              if (date.endOf('day') > stoppedAt) return false
-            }
-            return true
-          })
-          .reduce((sum, p) => sum + Number(p.amount), 0)
+      // Cumulative purchases active during this MONTH
+      const cumulativeAmount = validPurchases
+        .filter((p) => {
+          const approvedAt = DateTime.fromJSDate(new Date(p.approvedAt!.toString())).endOf('day')
+          if (approvedAt > targetMonthEnd.endOf('day')) return false
+          const expiry = approvedAt.plus({ months: 10 })
+          if (targetMonth.startOf('month') > expiry) return false
+          if (p.stoppedAt) {
+            const stoppedAt = DateTime.fromJSDate(new Date(p.stoppedAt!.toString())).startOf('day')
+            if (stoppedAt < targetMonth.startOf('month')) return false
+          }
+          return true
+        })
+        .reduce((sum, p) => sum + Number(p.amount), 0)
 
-        if (cumulativeAmount === 0) continue
-        const dailyLevelReward = (cumulativeAmount * (percentage / 100)) / (daysInMonth || 30)
-        totalLevelIncome += dailyLevelReward
-      }
+      if (cumulativeAmount === 0) continue
 
-      if (totalLevelIncome <= 0) continue
-
+      // FULL monthly reward — no day prorating
+      const totalLevelIncome = cumulativeAmount * (percentage / 100)
       const totalPurchase = validPurchases.reduce((sum, p) => sum + Number(p.amount), 0)
 
       userResults.push({

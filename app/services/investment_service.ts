@@ -198,6 +198,33 @@ export default class InvestmentService {
         continue
       }
 
+      // Guard: skip investments with no valid approved purchase (orphans).
+      // These should have been closed by find-orphan-investments, but
+      // this prevents new phantom distributions from being created.
+      if (investment.purchaseId) {
+        const purchase = await Purchase.query()
+          .select('id', 'approvedAt', 'cancelledAt', 'stoppedAt')
+          .where('id', investment.purchaseId)
+          .first()
+        if (!purchase || !purchase.approvedAt || purchase.cancelledAt || purchase.stoppedAt) {
+          // Auto-close the orphaned investment
+          investment.status = 'closed'
+          investment.closedAt = DateTime.now()
+          investment.remark = `Auto-closed: linked purchase ${!purchase ? 'not found' : !purchase.approvedAt ? 'not approved' : 'cancelled/stopped'}`
+          await investment.save()
+          skipped += 1
+          continue
+        }
+      } else {
+        // No purchase_id at all — close immediately
+        investment.status = 'closed'
+        investment.closedAt = DateTime.now()
+        investment.remark = 'Auto-closed: no linked purchase'
+        await investment.save()
+        skipped += 1
+        continue
+      }
+
       // Check if purchase has reached max return cap
       const reachedMax = await this.hasReachedMaxReturn(investment)
       if (reachedMax) {

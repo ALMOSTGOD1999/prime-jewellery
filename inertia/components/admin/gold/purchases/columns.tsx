@@ -198,10 +198,12 @@ export const columns: ColumnDef<Purchase>[] = [
 ]
 
 import { EditPurchaseDialog } from './edit-dialog'
+import { InvoiceEditDialog } from './invoice-edit-dialog'
 
 function ActionCell({ purchase }: { purchase: Purchase }) {
   const [isOpen, setIsOpen] = useState(false)
   const [isEditOpen, setIsEditOpen] = useState(false)
+  const [isInvoiceOpen, setIsInvoiceOpen] = useState(false)
   const [actionType, setActionType] = useState<'approve' | 'reject' | 'stop' | 'cancel' | null>(
     null
   )
@@ -250,11 +252,16 @@ function ActionCell({ purchase }: { purchase: Purchase }) {
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
             <DropdownMenuItem onClick={() => setIsEditOpen(true)}>Edit Details</DropdownMenuItem>
             {purchase.status === 'approved' && (
-              <DropdownMenuItem
-                onClick={() => window.open(`/admin/purchases/${purchase.id}/invoice`, '_blank')}
-              >
-                Download Invoice
-              </DropdownMenuItem>
+              <>
+                <DropdownMenuItem onClick={() => setIsInvoiceOpen(true)}>
+                  Edit & Download Invoice
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => window.open(`/admin/purchases/${purchase.id}/invoice`, '_blank')}
+                >
+                  Download Invoice (Original)
+                </DropdownMenuItem>
+              </>
             )}
             <DropdownMenuSeparator />
             {purchase.status === 'pending' && (
@@ -277,6 +284,12 @@ function ActionCell({ purchase }: { purchase: Purchase }) {
       </DropdownMenu>
 
       <EditPurchaseDialog purchase={purchase} isOpen={isEditOpen} onOpenChange={setIsEditOpen} />
+
+      <InvoiceEditDialog
+        purchase={purchase}
+        isOpen={isInvoiceOpen}
+        onOpenChange={setIsInvoiceOpen}
+      />
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent>
