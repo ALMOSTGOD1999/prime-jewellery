@@ -537,4 +537,49 @@ export default class RewardsController {
       isPayoutReleased,
     })
   }
+
+  async levelWiseIncomePage({ auth, inertia }: HttpContext) {
+    const user = auth.getUserOrFail()
+    const isPayoutReleased = await PayoutService.isPayoutReleased()
+    const asOf = isPayoutReleased ? (await PayoutService.getVisibleCutoff())?.endOf('month') : undefined
+    const levelWise = await RewardService.getLevelWiseIncome(user, { asOf })
+    return inertia.render('rewards/level-wise-income', {
+      levelWise,
+      isPayoutReleased,
+      user: { id: user.id, name: user.name, code: `PJ${String(user.id).padStart(6, '0')}` },
+    })
+  }
+
+  async adminLevelWiseIncomePage({ auth, inertia, request }: HttpContext) {
+    const searchId = request.qs().userId || request.qs().search
+    let targetUser = auth.getUserOrFail()
+    let isSearch = false
+
+    if (searchId) {
+      const searchNum = Number(String(searchId).replace(/\D/g, ''))
+      if (searchNum) {
+        const found = await db.from('users').where('id', searchNum).first()
+        if (found) {
+          targetUser = { id: found.id, name: found.name, activatedAt: found.activated_at ? DateTime.fromJSDate(new Date(found.activated_at)) : null } as any
+          // Load full user model for RewardService
+          const User = (await import('#models/user')).default
+          const fullUser = await User.find(found.id)
+          if (fullUser) targetUser = fullUser
+          isSearch = true
+        }
+      }
+    }
+
+    const isPayoutReleased = await PayoutService.isPayoutReleased()
+    const asOf = isPayoutReleased ? (await PayoutService.getVisibleCutoff())?.endOf('month') : undefined
+    const levelWise = await RewardService.getLevelWiseIncome(targetUser as any, { asOf })
+
+    return inertia.render('admin/level-wise-income', {
+      levelWise,
+      isPayoutReleased,
+      targetUser: { id: targetUser.id, name: (targetUser as any).name, code: `PJ${String(targetUser.id).padStart(6, '0')}` },
+      isSearch,
+      searchId: searchId || '',
+    })
+  }
 }

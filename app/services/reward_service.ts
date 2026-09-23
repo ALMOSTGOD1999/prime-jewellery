@@ -2135,6 +2135,151 @@ export default class RewardService {
    * Returns each descendant user, their level depth, purchase amount,
    * level income percentage, and total level income earned.
    */
+  static async getLevelWiseIncome(
+    user: User,
+    filters: { asOf?: DateTime } = {}
+  ) {
+    if (!user.activatedAt) {
+      return { levels: [], total: 0, totalMembers: 0, totalBusiness: 0 }
+    }
+
+    const { asOf } = filters
+    const targetMonth = (asOf || DateTime.now().setZone(env.get('TZ'))).startOf('month')
+    const targetMonthEnd = targetMonth.endOf('month')
+
+    const directChildren = await user.related('children').query().count('* as total')
+    const directCount = Number(directChildren[0].$extras.total)
+
+    const tbd = await db.rawQuery(
+      `WITH RECURSIVE descendants AS (
+         SELECT id FROM users WHERE parent_id = ?
+         UNION ALL SELECT u.id FROM users u INNER JOIN descendants d ON u.parent_id = d.id
+       )
+       SELECT COALESCE(SUM(p.amount), 0)::float as total_team_business
+       FROM descendants d
+       LEFT JOIN purchases p ON p.user_id = d.id AND p.approved_at IS NOT NULL AND p.cancelled_at IS NULL`,
+      [user.id]
+    )
+    const teamBusiness = Number(tbd.rows[0]?.total_team_business) || 0
+    const teamBusinessLevel = await TeamBusinessLevel.getLevelForBusiness(teamBusiness)
+    const maxDepth = await LevelIncome.getMaxUnlockedLevel(directCount, teamBusinessLevel)
+
+    if (maxDepth === 0) {
+      return { levels: [], total: 0, totalMembers: 0, totalBusiness: 0 }
+    }
+
+    const descendants = await db.rawQuery(
+      `WITH RECURSIVE descendants AS (
+        SELECT id, parent_id, activated_at, 1 as depth
+        FROM users
+        WHERE parent_id = ?
+        UNION ALL
+        SELECT u.id, u.parent_id, u.activated_at, d.depth + 1
+        FROM users u
+        INNER JOIN descendants d ON u.parent_id = d.id
+        WHERE d.depth < 24
+      )
+      SELECT * FROM descendants WHERE depth <= ?`,
+      [user.id, maxDepth]
+    )
+
+    if (descendants.rows.length === 0) {
+      return { levels: [], total: 0, totalMembers: 0, totalBusiness: teamBusiness }
+    }
+
+    const descendantIds = descendants.rows.map((r: any) => r.id)
+    const descendantDepths = new Map<number, number>(descendants.rows.map((r: any) => [r.id, r.depth]))
+    const descendantActivatedAt = new Map<number, DateTime | null>(
+      descendants.rows.map((r: any) => [r.id, r.activated_at ? DateTime.fromJSDate(r.activated_at) : null])
+    )
+
+    const purchases = await db.rawQuery(
+      `SELECT user_id, amount, approved_at, stopped_at, cancelled_at
+       FROM purchases
+       WHERE user_id IN (${descendantIds.join(',')})
+         AND approved_at IS NOT NULL AND cancelled_at IS NULL
+       ORDER BY approved_at ASC`
+    )
+
+    const purchasesByUser = new Map<number, any[]>()
+    for (const p of purchases.rows) {
+      if (!purchasesByUser.has(p.user_id)) purchasesByUser.set(p.user_id, [])
+      purchasesByUser.get(p.user_id)!.push(p)
+    }
+
+    const levelMap = new Map<number, { level: number; percentage: number; memberCount: number; totalAmount: number; totalBusiness: number; members: any[] }>()
+
+    for (const [userId, userPurchases] of purchasesByUser.entries()) {
+      const depth = descendantDepths.get(userId)!
+      const percentage = await LevelIncome.getPercentageForLevel(depth)
+      if (percentage === 0) continue
+
+      const memberActivatedAt = descendantActivatedAt.get(userId)
+      const validPurchases = userPurchases.filter((p: any) => {
+        if (p.cancelled_at) return false
+        if (memberActivatedAt) {
+          const purchaseDate = DateTime.fromJSDate(new Date(p.approved_at)).startOf('day')
+          if (purchaseDate < memberActivatedAt.startOf('day')) return false
+        }
+        return true
+      })
+      if (validPurchases.length === 0) continue
+
+      const userActivatedAt = user.activatedAt
+        ? DateTime.fromJSDate(new Date(user.activatedAt.toString())).startOf('day')
+        : DateTime.fromJSDate(new Date(validPurchases[0].approved_at)).startOf('day')
+      if (userActivatedAt > targetMonthEnd) continue
+
+      const cumulativeAmount = validPurchases
+        .filter((p: any) => {
+          const approvedAt = DateTime.fromJSDate(new Date(p.approved_at)).endOf('day')
+          if (approvedAt > targetMonthEnd.endOf('day')) return false
+          const expiry = approvedAt.plus({ months: 10 })
+          if (targetMonth.startOf('month') > expiry) return false
+          if (p.stopped_at) {
+            const stoppedAt = DateTime.fromJSDate(new Date(p.stopped_at)).startOf('day')
+            if (stoppedAt < targetMonth.startOf('month')) return false
+          }
+          return true
+        })
+        .reduce((sum: number, p: any) => sum + Number(p.amount), 0)
+
+      if (cumulativeAmount === 0) continue
+
+      const monthlyReward = cumulativeAmount * (percentage / 100)
+
+      if (!levelMap.has(depth)) {
+        levelMap.set(depth, {
+          level: depth,
+          percentage,
+          memberCount: 0,
+          totalAmount: 0,
+          totalBusiness: 0,
+          members: [],
+        })
+      }
+
+      const levelData = levelMap.get(depth)!
+      levelData.memberCount += 1
+      levelData.totalAmount += monthlyReward
+      levelData.totalBusiness += cumulativeAmount
+      levelData.members.push({ userId, cumulativeAmount, reward: Number(monthlyReward.toFixed(2)) })
+    }
+
+    const levels = Array.from(levelMap.values())
+      .map((l) => ({
+        ...l,
+        totalAmount: Number(l.totalAmount.toFixed(2)),
+        totalBusiness: Number(l.totalBusiness.toFixed(2)),
+      }))
+      .sort((a, b) => a.level - b.level)
+
+    const total = levels.reduce((sum, l) => sum + l.totalAmount, 0)
+    const totalMembers = levels.reduce((sum, l) => sum + l.memberCount, 0)
+
+    return { levels, total: Number(total.toFixed(2)), totalMembers, totalBusiness: teamBusiness }
+  }
+
   static async getLevelIncomePerUser(
     user: User,
     filters: {

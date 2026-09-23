@@ -212,6 +212,7 @@ router
     router.get('salaries', [RewardsController, 'salaryPage']).as('salary.page')
     router.get('level-income', [RewardsController, 'levelIncomePage']).as('level.income.page')
     router.get('level-income-history', [RewardsController, 'levelIncomeHistoryPage']).as('level.income.history.page')
+    router.get('level-wise-income', [RewardsController, 'levelWiseIncomePage']).as('level.wise.income.page')
     router
       .get('membership-level-income', [RewardsController, 'membershipLevelIncomePage'])
       .as('membership.level.income.page')
@@ -540,6 +541,9 @@ router
       })
       .prefix('payout')
       .as('payout')
+
+    ////// Level Wise Income (admin can view any user)
+    router.get('/level-wise-income', [RewardsController, 'adminLevelWiseIncomePage']).as('levelWiseIncome.page')
   })
   .prefix('admin')
   .as('admin')
