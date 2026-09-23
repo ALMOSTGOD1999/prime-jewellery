@@ -1660,6 +1660,33 @@ export default class RewardService {
 
     const monthSalary = monthSalaries[0]
 
+    // 20% growth after 3 months: anchor at first paid salary, check from 4th month
+    const anchor = await user
+      .related('salaries')
+      .query()
+      .where('status', 'paid')
+      .whereNotNull('paid_at')
+      .orderBy('paid_at', 'asc')
+      .first()
+
+    if (anchor) {
+      const anchorPaidAt = anchor.paidAt!.setZone('Asia/Kolkata')
+      const monthsSinceFirstCredit =
+        targetIST.year * 12 + targetIST.month - (anchorPaidAt.year * 12 + anchorPaidAt.month)
+      const anchorBusiness =
+        Number(anchor.qualifyingBusiness) ||
+        Math.floor(Number(anchor.power) + Number(anchor.weaker))
+
+      if (monthsSinceFirstCredit >= 4 && currentBusiness < anchorBusiness * 1.2) {
+        if (!preview && monthSalary && monthSalary.status === 'pending') {
+          monthSalary.status = 'expired'
+          monthSalary.updatedAt = createdAt
+          await monthSalary.save()
+        }
+        return { status: 'growth-failed' }
+      }
+    }
+
     if (monthSalary && monthSalary.status === 'paid') {
       return { status: 'already-credited', reward: monthSalary.info?.reward || eligibleInfo.reward }
     }
