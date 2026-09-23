@@ -231,6 +231,24 @@ export default class RewardService {
       asOf?: DateTime
     } = {}
   ) {
+    if (!user.activatedAt) {
+      return {
+        meta: {
+          total: 0,
+          per_page: 10,
+          current_page: 1,
+          last_page: 1,
+          first_page: 1,
+          first_page_url: '/?page=1',
+          last_page_url: '/?page=1',
+          next_page_url: null,
+          previous_page_url: null,
+        },
+        data: [],
+        stats: { totalEligible: 0, totalWithdrawable: 0, totalWithdrawn: 0 },
+      }
+    }
+
     const { page = 1, limit = 10, sortBy = 'date', sortOrder = 'desc', search = '', asOf } = filters
 
     // 1. Get direct children count to determine eligibility depth
@@ -604,6 +622,25 @@ export default class RewardService {
       asOf?: DateTime
     } = {}
   ) {
+    // Inactive (not activated) users earn no level income
+    if (!user.activatedAt) {
+      return {
+        meta: {
+          total: 0,
+          per_page: 10,
+          current_page: 1,
+          last_page: 1,
+          first_page: 1,
+          first_page_url: '/?page=1',
+          last_page_url: '/?page=1',
+          next_page_url: null,
+          previous_page_url: null,
+        },
+        data: [],
+        stats: { totalRewards: 0, thisMonthRewards: 0, totalWithdrawn: 0 },
+      }
+    }
+
     const { page = 1, limit = 10, sortBy = 'date', sortOrder = 'desc', asOf } = filters
 
     // 1. Get direct children count
@@ -901,6 +938,9 @@ export default class RewardService {
   }
 
   static async getLevelRewardBreakdown(user: User, date: string) {
+    if (!user.activatedAt) {
+      return { date, totalAmount: 0, breakdown: [] }
+    }
     const targetDate = DateTime.fromISO(date).startOf('day')
 
     // Get direct children count to determine eligibility depth
@@ -1072,6 +1112,24 @@ export default class RewardService {
       asOf?: DateTime
     } = {}
   ) {
+    if (!user.activatedAt) {
+      return {
+        meta: {
+          total: 0,
+          per_page: 10,
+          current_page: 1,
+          last_page: 1,
+          first_page: 1,
+          first_page_url: '/?page=1',
+          last_page_url: '/?page=1',
+          next_page_url: null,
+          previous_page_url: null,
+        },
+        data: [],
+        stats: { totalRewards: 0, thisMonthRewards: 0, totalWithdrawn: 0 },
+      }
+    }
+
     const { page = 1, limit = 10, sortBy = 'date', sortOrder = 'desc', asOf } = filters
 
     // 1. Get direct children count
@@ -1351,6 +1409,9 @@ export default class RewardService {
   }
 
   static async getEmiLevelRewardBreakdown(user: User, date: string) {
+    if (!user.activatedAt) {
+      return { date, totalAmount: 0, breakdown: [] }
+    }
     const targetDate = DateTime.fromISO(date).startOf('day')
 
     // Get direct children count to determine eligibility depth
@@ -1954,6 +2015,8 @@ export default class RewardService {
    * Optimized to skip expensive genealogy scans when no downline activity exists.
    */
   static async getUserMonthlyWorkingIncome(user: User, month: DateTime): Promise<number> {
+    if (!user.activatedAt) return 0
+
     const monthStr = month.toFormat('yyyy-MM')
     const monthStart = month.startOf('month')
     const monthEnd = month.endOf('month')
@@ -2080,6 +2143,24 @@ export default class RewardService {
       asOf?: DateTime
     } = {}
   ) {
+    if (!user.activatedAt) {
+      return {
+        meta: {
+          total: 0,
+          per_page: 20,
+          current_page: 1,
+          last_page: 1,
+          first_page: 1,
+          first_page_url: '/?page=1',
+          last_page_url: '/?page=1',
+          next_page_url: null,
+          previous_page_url: null,
+        },
+        data: [],
+        stats: { totalLevelIncome: 0, totalMembers: 0 },
+      }
+    }
+
     const { page = 1, limit = 20, asOf } = filters
 
     // 1. Get direct children count
