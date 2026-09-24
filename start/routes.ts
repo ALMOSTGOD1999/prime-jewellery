@@ -295,15 +295,28 @@ router
     ////// Activation
     router
       .group(() => {
-        router.get('/', async ({ inertia }) => {
+        router.get('/', async ({ inertia, request }) => {
           const db = await import('@adonisjs/lucid/services/db')
+
+          const page = Math.max(1, Number(request.qs().page) || 1)
+          const limit = 10
+          const offset = (page - 1) * limit
+
+          const countRes = await db.default.rawQuery(
+            `SELECT COUNT(*)::int AS total
+             FROM users
+             WHERE role != 'admin' AND activated_at IS NOT NULL`
+          )
+          const total: number = countRes.rows[0]?.total || 0
+          const lastPage = Math.max(1, Math.ceil(total / limit))
 
           const result = await db.default.rawQuery(
             `SELECT id, name, email, phone, activated_at, activation_amount
              FROM users
              WHERE role != 'admin' AND activated_at IS NOT NULL
              ORDER BY activated_at DESC
-             LIMIT 50`
+             LIMIT $1 OFFSET $2`,
+            [limit, offset]
           )
 
           const statsRes = await db.default.rawQuery(`
@@ -320,6 +333,12 @@ router
 
           return inertia.render('admin/activation', {
             recentActivations: result.rows,
+            activationMeta: {
+              total,
+              current_page: page,
+              last_page: lastPage,
+              per_page: limit,
+            },
             activationStats: statsRes.rows[0],
           })
         }).as('page')

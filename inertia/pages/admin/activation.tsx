@@ -11,6 +11,8 @@ import {
   Wallet01Icon,
   Calendar01Icon,
   Calendar03Icon,
+  ArrowLeft01Icon,
+  ArrowRight01Icon,
 } from '@hugeicons/core-free-icons'
 
 import AppLayout from '~/components/app/layout'
@@ -24,6 +26,11 @@ import { Badge } from '~/components/ui/badge'
 
 // const ACTIVATION_OPTIONS = [0, 1000, 3000] // TODO: Enable when ₹3,000 package is ready
 const ACTIVATION_OPTIONS = [0, 1000]
+
+const ACTIVATION_OPTION_LABELS: Record<number, string> = {
+  0: 'Activate with 0',
+  1000: 'Activate with 1000',
+}
 
 interface SearchResult {
   id: number
@@ -42,6 +49,13 @@ interface RecentActivation {
   phone: string
   activated_at: string
   activation_amount: number
+}
+
+interface ActivationMeta {
+  total: number
+  current_page: number
+  last_page: number
+  per_page: number
 }
 
 interface ActivationStats {
@@ -81,9 +95,11 @@ function timeAgo(dateStr: string) {
 
 export default function ActivationPage({
   recentActivations = [],
+  activationMeta,
   activationStats,
 }: {
   recentActivations?: RecentActivation[]
+  activationMeta?: ActivationMeta
   activationStats?: ActivationStats
 }) {
   const [searchQuery, setSearchQuery] = useState('')
@@ -94,6 +110,15 @@ export default function ActivationPage({
   const [activating, setActivating] = useState(false)
   const [activationError, setActivationError] = useState<string | null>(null)
   const [activationSuccess, setActivationSuccess] = useState(false)
+
+  const goToPage = (page: number) => {
+    if (!activationMeta || page < 1 || page > activationMeta.last_page) return
+    router.get(
+      `/admin/activation?page=${page}`,
+      {},
+      { preserveState: true, preserveScroll: true }
+    )
+  }
 
   const performSearch = useCallback(async (query: string) => {
     if (!query.trim()) {
@@ -138,7 +163,8 @@ export default function ActivationPage({
   }
 
   const handleActivate = async () => {
-    if (!selectedUser || !selectedAmount) return
+    // selectedAmount can legitimately be 0 — must not use falsy check
+    if (!selectedUser || selectedAmount === null) return
 
     setActivating(true)
     setActivationError(null)
@@ -378,9 +404,11 @@ export default function ActivationPage({
                             >
                               <div>
                                 <p className="font-semibold text-lg">
-                                  ₹{amount.toLocaleString('en-IN')}
+                                  {ACTIVATION_OPTION_LABELS[amount] ?? `Activate with ${amount}`}
                                 </p>
-                                <p className="text-xs text-muted-foreground">Account Activation</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {amount > 0 ? `₹${amount.toLocaleString('en-IN')} activation` : 'No payment required'}
+                                </p>
                               </div>
                               <div
                                 className={`flex h-6 w-6 items-center justify-center rounded-full border-2 ${
@@ -426,7 +454,7 @@ export default function ActivationPage({
                       className="w-full"
                       size="lg"
                       onClick={handleActivate}
-                      disabled={!selectedAmount || activating}
+                      disabled={selectedAmount === null || activating}
                     >
                       {activating ? (
                         <>
@@ -436,8 +464,9 @@ export default function ActivationPage({
                       ) : (
                         <>
                           <HugeiconsIcon icon={UserCheck01Icon} className="mr-2 h-4 w-4" />
-                          Activate {selectedUser.name} (₹{(selectedAmount || 0).toLocaleString('en-IN')}
-                          )
+                          {selectedAmount === 0
+                            ? `Activate ${selectedUser.name} with 0`
+                            : `Activate ${selectedUser.name} (₹${(selectedAmount ?? 0).toLocaleString('en-IN')})`}
                         </>
                       )}
                     </Button>
@@ -447,19 +476,21 @@ export default function ActivationPage({
             </Card>
           )}
 
-          {/* Recent Activations */}
+          {/* All Activations (paginated) */}
           {recentActivations.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <HugeiconsIcon icon={Clock01Icon} className="h-5 w-5 text-primary" />
                   Recent Activations
-                  <Badge variant="secondary" className="ml-auto text-xs">
-                    {recentActivations.length}
-                  </Badge>
+                  {activationMeta && (
+                    <Badge variant="secondary" className="ml-auto text-xs">
+                      {activationMeta.total}
+                    </Badge>
+                  )}
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
                 <div className="border rounded-lg overflow-hidden">
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
@@ -495,6 +526,36 @@ export default function ActivationPage({
                     </table>
                   </div>
                 </div>
+
+                {/* Pagination */}
+                {activationMeta && activationMeta.last_page > 1 && (
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-muted-foreground">
+                      Page {activationMeta.current_page} of {activationMeta.last_page} ·{' '}
+                      {activationMeta.total} total
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => goToPage(activationMeta.current_page - 1)}
+                        disabled={activationMeta.current_page <= 1}
+                      >
+                        <HugeiconsIcon icon={ArrowLeft01Icon} className="h-4 w-4" />
+                        Previous
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => goToPage(activationMeta.current_page + 1)}
+                        disabled={activationMeta.current_page >= activationMeta.last_page}
+                      >
+                        Next
+                        <HugeiconsIcon icon={ArrowRight01Icon} className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}

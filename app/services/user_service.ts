@@ -486,7 +486,7 @@ export default class UserService {
       type: TransactionTypeEnum.ACTIVATION,
       approvedAt: DateTime.now(),
       remark: adminId
-        ? `Activated by admin #${adminId}${amount ? ` (₹${amount})` : ''}`
+        ? `Activated by admin #${adminId}${amount !== undefined && amount !== null ? ` (₹${amount})` : ''}`
         : 'Activated manually',
     })
   }

@@ -15,7 +15,10 @@ export default class ActivationController {
     }
 
     try {
-      await UserService.activateUser(Number(userId), admin.id, amount ? Number(amount) : undefined)
+      // amount may legitimately be 0 — only treat null/undefined as "not provided"
+      const parsedAmount =
+        amount === undefined || amount === null ? undefined : Number(amount)
+      await UserService.activateUser(Number(userId), admin.id, parsedAmount)
       return response.ok({
         message: 'User activated successfully',
       })
