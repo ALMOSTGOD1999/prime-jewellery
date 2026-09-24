@@ -315,7 +315,7 @@ router
              FROM users
              WHERE role != 'admin' AND activated_at IS NOT NULL
              ORDER BY activated_at DESC
-             LIMIT $1 OFFSET $2`,
+             LIMIT ? OFFSET ?`,
             [limit, offset]
           )
 
