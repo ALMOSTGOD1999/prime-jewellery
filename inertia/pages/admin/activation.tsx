@@ -56,6 +56,7 @@ interface ActivationMeta {
   current_page: number
   last_page: number
   per_page: number
+  amount_filter: number | null
 }
 
 interface ActivationStats {
@@ -65,6 +66,8 @@ interface ActivationStats {
   total_users: number
   month_users: number
   week_users: number
+  zero_count: number
+  thousand_count: number
 }
 
 function formatUserId(id: number) {
@@ -111,13 +114,23 @@ export default function ActivationPage({
   const [activationError, setActivationError] = useState<string | null>(null)
   const [activationSuccess, setActivationSuccess] = useState(false)
 
+  const currentAmountFilter = activationMeta?.amount_filter ?? null
+
+  const buildUrl = (page: number, amount: number | null) => {
+    const params = new URLSearchParams()
+    if (page > 1) params.set('page', String(page))
+    if (amount !== null) params.set('amount', String(amount))
+    const qsStr = params.toString()
+    return qsStr ? `/admin/activation?${qsStr}` : '/admin/activation'
+  }
+
   const goToPage = (page: number) => {
     if (!activationMeta || page < 1 || page > activationMeta.last_page) return
-    router.get(
-      `/admin/activation?page=${page}`,
-      {},
-      { preserveState: true, preserveScroll: true }
-    )
+    router.get(buildUrl(page, currentAmountFilter), {}, { preserveState: true, preserveScroll: true })
+  }
+
+  const setAmountFilter = (amount: number | null) => {
+    router.get(buildUrl(1, amount), {}, { preserveState: true, preserveScroll: false })
   }
 
   const performSearch = useCallback(async (query: string) => {
@@ -477,20 +490,67 @@ export default function ActivationPage({
           )}
 
           {/* All Activations (paginated) */}
-          {recentActivations.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <HugeiconsIcon icon={Clock01Icon} className="h-5 w-5 text-primary" />
-                  Recent Activations
-                  {activationMeta && (
-                    <Badge variant="secondary" className="ml-auto text-xs">
-                      {activationMeta.total}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <HugeiconsIcon icon={Clock01Icon} className="h-5 w-5 text-primary" />
+                Recent Activations
+                {activationMeta && (
+                  <Badge variant="secondary" className="ml-auto text-xs">
+                    {activationMeta.total}
+                  </Badge>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Amount filters */}
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant={currentAmountFilter === null ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setAmountFilter(null)}
+                >
+                  All
+                  {activationStats && (
+                    <Badge variant="secondary" className="ml-2 text-xs">
+                      {activationStats.total_users}
                     </Badge>
                   )}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+                </Button>
+                <Button
+                  variant={currentAmountFilter === 0 ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setAmountFilter(0)}
+                >
+                  Activated with ₹0
+                  {activationStats && (
+                    <Badge variant="secondary" className="ml-2 text-xs">
+                      {activationStats.zero_count}
+                    </Badge>
+                  )}
+                </Button>
+                <Button
+                  variant={currentAmountFilter === 1000 ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setAmountFilter(1000)}
+                >
+                  Activated with ₹1,000
+                  {activationStats && (
+                    <Badge variant="secondary" className="ml-2 text-xs">
+                      {activationStats.thousand_count}
+                    </Badge>
+                  )}
+                </Button>
+              </div>
+
+              {recentActivations.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-6">
+                  No users found{currentAmountFilter !== null ? ` activated with ₹${currentAmountFilter.toLocaleString('en-IN')}` : ''}.
+                </p>
+              )}
+
+              {recentActivations.length > 0 ? (
+                <>
                 <div className="border rounded-lg overflow-hidden">
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
@@ -556,9 +616,10 @@ export default function ActivationPage({
                     </div>
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          )}
+                </>
+              ) : null}
+            </CardContent>
+          </Card>
         </Main>
       </AppLayout>
     </>

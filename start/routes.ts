@@ -298,14 +298,24 @@ router
         router.get('/', async ({ inertia, request }) => {
           const db = await import('@adonisjs/lucid/services/db')
 
-          const page = Math.max(1, Number(request.qs().page) || 1)
+          const qs = request.qs()
+          const page = Math.max(1, Number(qs.page) || 1)
           const limit = 10
           const offset = (page - 1) * limit
+          // Optional amount filter: "0" | "1000" | undefined (all)
+          const amountFilter =
+            qs.amount !== undefined && qs.amount !== '' && !Number.isNaN(Number(qs.amount))
+              ? Number(qs.amount)
+              : null
+
+          const whereAmount = amountFilter !== null ? ' AND activation_amount = ?' : ''
+          const whereAmountParams = amountFilter !== null ? [amountFilter] : []
 
           const countRes = await db.default.rawQuery(
             `SELECT COUNT(*)::int AS total
              FROM users
-             WHERE role != 'admin' AND activated_at IS NOT NULL`
+             WHERE role != 'admin' AND activated_at IS NOT NULL${whereAmount}`,
+            whereAmountParams
           )
           const total: number = countRes.rows[0]?.total || 0
           const lastPage = Math.max(1, Math.ceil(total / limit))
@@ -313,10 +323,10 @@ router
           const result = await db.default.rawQuery(
             `SELECT id, name, email, phone, activated_at, activation_amount
              FROM users
-             WHERE role != 'admin' AND activated_at IS NOT NULL
+             WHERE role != 'admin' AND activated_at IS NOT NULL${whereAmount}
              ORDER BY activated_at DESC
              LIMIT ? OFFSET ?`,
-            [limit, offset]
+            [...whereAmountParams, limit, offset]
           )
 
           const statsRes = await db.default.rawQuery(`
@@ -326,7 +336,9 @@ router
               COALESCE(SUM(activation_amount) FILTER (WHERE activated_at >= date_trunc('week', NOW())), 0)::float AS total_week,
               COUNT(*)::int AS total_users,
               COUNT(*) FILTER (WHERE activated_at >= date_trunc('month', NOW()))::int AS month_users,
-              COUNT(*) FILTER (WHERE activated_at >= date_trunc('week', NOW()))::int AS week_users
+              COUNT(*) FILTER (WHERE activated_at >= date_trunc('week', NOW()))::int AS week_users,
+              COUNT(*) FILTER (WHERE activation_amount = 0)::int AS zero_count,
+              COUNT(*) FILTER (WHERE activation_amount = 1000)::int AS thousand_count
             FROM users
             WHERE role != 'admin' AND activated_at IS NOT NULL
           `)
@@ -338,6 +350,7 @@ router
               current_page: page,
               last_page: lastPage,
               per_page: limit,
+              amount_filter: amountFilter,
             },
             activationStats: statsRes.rows[0],
           })
