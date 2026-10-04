@@ -3,13 +3,13 @@ import PayoutService from '#services/payout_service'
 import type { PayoutPreviewResult } from '#services/payout_service'
 import PlatformConfig from '#models/platform_config'
 import ProcessWorkingPayout from '#jobs/process_working_payout'
-import GeneratePayoutPreview from '#jobs/generate_payout_preview'
 import User from '#models/user'
 import Transaction from '#models/transaction'
 import { TransactionTypeEnum } from '#enums/transaction'
 import db from '@adonisjs/lucid/services/db'
 import { DateTime } from 'luxon'
 import { PDF, rgb } from '@libpdf/core'
+import logger from '@adonisjs/core/services/logger'
 
 export default class AdminPayoutController {
   async index({ inertia }: HttpContext) {
@@ -379,6 +379,14 @@ export default class AdminPayoutController {
     // Serve from cache — instant load
     const cached = await this.getCachedPreview(monthStr)
 
+    // Real server-side generating flag (don't make the client guess from
+    // empty data, which caused bogus "Generating..." states on first visit)
+    const generatingRow = await PlatformConfig.query()
+      .where('key', `payout_preview_generating_${monthStr}`)
+      .select('value')
+      .first()
+    const generating = generatingRow?.value === 'true'
+
     // Build last 12 months for the dropdown
     const availableMonths: { value: string; label: string }[] = []
     for (let i = 0; i < 12; i++) {
@@ -395,6 +403,7 @@ export default class AdminPayoutController {
       summary: cached?.summary || { totalIncomeWallet: 0, totalWorkingWallet: 0, grandTotal: 0, eligibleUsers: 0 },
       availableMonths,
       generatedAt: cached ? (cached as any).generatedAt || null : null,
+      generating,
     })
   }
 
@@ -405,7 +414,7 @@ export default class AdminPayoutController {
       : DateTime.now().minus({ months: 1 }).startOf('month')
     const monthStr = month.toFormat('yyyy-MM')
 
-    // Check if already generating (prevent duplicate enqueues)
+    // Check if already generating (prevent duplicate runs)
     const existingCache = await PlatformConfig.get(`payout_preview_generating_${monthStr}`)
     if (existingCache === 'true') {
       session.flash('info', `Payout preview for ${month.toFormat('LLLL yyyy')} is already being generated. Please wait...`)
@@ -415,31 +424,35 @@ export default class AdminPayoutController {
     // Mark as generating
     await PlatformConfig.set(`payout_preview_generating_${monthStr}`, 'true', 'payout_preview')
 
-    // Try background queue first; fall back to synchronous if Redis/queue is unavailable
-    let enqueueFailed = false
-    try {
-      await GeneratePayoutPreview.enqueue(monthStr)
-    } catch (error) {
-      enqueueFailed = true
-    }
-
-    if (enqueueFailed) {
-      // Run synchronously in the request — slower but at least works
+    // Run detached in this process. The container only starts bin/server.js,
+    // and the queue depends on Redis (frequently unavailable), so the previous
+    // enqueue → synchronous-fallback path ran the heavy per-user computation
+    // inside the request and tripped Cloudflare's 100s limit (error 524).
+    // The generating flag plus /preview/status polling drive the UI refresh.
+    void (async () => {
       try {
         const result = await PayoutService.getPayoutPreview(month)
         const payload = { ...result, generatedAt: DateTime.now().toISO() }
         await PlatformConfig.set(`payout_preview_${monthStr}`, JSON.stringify(payload), 'payout_preview')
-        await PlatformConfig.set(`payout_preview_generating_${monthStr}`, 'false', 'payout_preview')
-        session.flash('success', `Payout preview for ${month.toFormat('LLLL yyyy')} generated (${result.users.length} users).`)
-        return response.redirect(`/admin/payout/preview?month=${monthStr}`)
-      } catch (innerError) {
-        await PlatformConfig.set(`payout_preview_generating_${monthStr}`, 'false', 'payout_preview')
-        session.flash('errors.global', `Failed to generate preview: ${innerError instanceof Error ? innerError.message : 'Unknown error'}`)
-        return response.redirect(`/admin/payout/preview?month=${monthStr}`)
+        logger.info(
+          `[payout-preview] Generated ${monthStr}: ${result.users.length} users, total ₹${result.summary.grandTotal.toLocaleString('en-IN')}`
+        )
+      } catch (error) {
+        logger.error(
+          `[payout-preview] Generation for ${monthStr} failed: ${error instanceof Error ? error.message : error}`
+        )
+      } finally {
+        try {
+          await PlatformConfig.set(`payout_preview_generating_${monthStr}`, 'false', 'payout_preview')
+        } catch (flagError) {
+          logger.error(
+            `[payout-preview] Failed to clear generating flag for ${monthStr}: ${flagError instanceof Error ? flagError.message : flagError}`
+          )
+        }
       }
-    }
+    })()
 
-    session.flash('success', `Payout preview generation for ${month.toFormat('LLLL yyyy')} started. This may take a few minutes — the page will refresh automatically.`)
+    session.flash('success', `Payout preview for ${month.toFormat('LLLL yyyy')} started. This may take a few minutes — the page will refresh automatically.`)
     return response.redirect(`/admin/payout/preview?month=${monthStr}`)
   }
 

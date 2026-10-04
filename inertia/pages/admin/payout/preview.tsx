@@ -16,7 +16,7 @@ import {
 } from '@hugeicons/core-free-icons'
 
 interface IncomeWallet {
-  purchaseAmount: number
+  investmentAmount: number
   returnRate: number
   returnAmount: number
   incomeShare: number
@@ -57,6 +57,7 @@ interface Props {
   }
   availableMonths: { value: string; label: string }[]
   generatedAt: string | null
+  generating: boolean
 }
 
 function fmt(n: number): string {
@@ -124,7 +125,7 @@ function UserCard({ user }: { user: PayoutUser }) {
                 Income Wallet (Cashback)
               </div>
               <div className="space-y-1.5">
-                <Field label="Purchase Amount" value={fmt(user.incomeWallet.purchaseAmount)} />
+                <Field label="Purchase Amount" value={fmt(user.incomeWallet.investmentAmount)} />
                 <Field label="Return Rate" value={`${user.incomeWallet.returnRate}%`} />
                 <Field label="Return Amount" value={fmt(user.incomeWallet.returnAmount)} />
                 <div className="border-t border-blue-200 dark:border-blue-800 my-1" />
@@ -187,9 +188,12 @@ export default function PayoutPreview({
   summary,
   availableMonths,
   generatedAt,
+  generating,
 }: Props) {
   const [showAll, setShowAll] = useState(false)
-  const [isGenerating, setIsGenerating] = useState(!generatedAt && users.length === 0)
+  // Server tells us whether a generation run is actually in progress —
+  // don't guess from empty data (that showed a phantom spinner on first visit)
+  const [isGenerating, setIsGenerating] = useState(generating)
   const generateForm = useForm({})
   const visibleUsers = showAll ? users : users.slice(0, 50)
 
@@ -204,7 +208,7 @@ export default function PayoutPreview({
 
     let cancelled = false
     const controller = new AbortController()
-    const MAX_POLLS = 120 // 10 minutes at 5s intervals
+    const MAX_POLLS = 240 // 20 minutes at 5s intervals (covers the 15-min stale-flag self-heal)
     let polls = 0
 
     const checkStatus = async () => {
@@ -215,10 +219,16 @@ export default function PayoutPreview({
           signal: controller.signal,
         })
         const data = await res.json()
-        if (!cancelled && data.ready) {
+        if (cancelled) return
+        if (data.ready && !data.generating) {
+          // Finished (or was already ready and the run ended) — load the fresh cache
           setIsGenerating(false)
           router.reload({ only: ['users', 'summary', 'generatedAt'] })
+        } else if (!data.generating) {
+          // Run failed or was never actually started — stop the spinner
+          setIsGenerating(false)
         }
+        // generating=true → keep polling
       } catch (err: any) {
         if (err?.name === 'AbortError' || cancelled) return
         // network error — keep polling but don't crash
@@ -275,12 +285,12 @@ export default function PayoutPreview({
               {/* Generate Button */}
               <Button
                 onClick={handleGenerate}
-                disabled={generateForm.processing}
+                disabled={generateForm.processing || isGenerating}
                 variant="default"
                 size="sm"
               >
-                <HugeiconsIcon icon={RefreshIcon} className={`h-4 w-4 ${generateForm.processing ? 'animate-spin' : ''}`} />
-                {generateForm.processing ? 'Generating...' : 'Generate Preview'}
+                <HugeiconsIcon icon={RefreshIcon} className={`h-4 w-4 ${generateForm.processing || isGenerating ? 'animate-spin' : ''}`} />
+                {isGenerating ? 'Generating...' : generateForm.processing ? 'Generating...' : 'Generate Preview'}
               </Button>
 
               {/* PDF Download — only when data exists */}
@@ -373,9 +383,9 @@ export default function PayoutPreview({
                   Click "Generate Preview" above to compute the full payout breakdown.
                   This may take a minute for large user bases.
                 </p>
-                <Button onClick={handleGenerate} disabled={generateForm.processing}>
-                  <HugeiconsIcon icon={RefreshIcon} className={`h-4 w-4 ${generateForm.processing ? 'animate-spin' : ''}`} />
-                  {generateForm.processing ? 'Generating... please wait' : 'Generate Preview for ' + monthLabel}
+                <Button onClick={handleGenerate} disabled={generateForm.processing || isGenerating}>
+                  <HugeiconsIcon icon={RefreshIcon} className={`h-4 w-4 ${generateForm.processing || isGenerating ? 'animate-spin' : ''}`} />
+                  {isGenerating ? 'Generating... please wait' : generateForm.processing ? 'Generating... please wait' : 'Generate Preview for ' + monthLabel}
                 </Button>
               </CardContent>
             </Card>
