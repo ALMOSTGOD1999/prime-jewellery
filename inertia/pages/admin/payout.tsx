@@ -176,7 +176,7 @@ export default function AdminPayoutPage({
                   <div>
                     <CardTitle>Cashback Wallet Payout</CardTitle>
                     <CardDescription>
-                      Cashback only — 70% cashback + 30% gold wallet
+                      After 2% admin charge — 78.4% cashback wallet + 19.6% repurchase wallet
                     </CardDescription>
                   </div>
                 </div>

@@ -413,14 +413,14 @@ export default class PayoutService {
           locked.userId,
           repurchaseAmount,
           adminId,
-          `Repurchase wallet (20%) from investment return for ${period.toFormat('LLLL yyyy')}`,
+          `Repurchase wallet (19.6%) from investment return for ${period.toFormat('LLLL yyyy')}`,
           trx
         )
         const incomeTransaction = await this.creditIncomeWallet(
           locked.userId,
           incomeAmount,
           adminId,
-          `Cashback wallet (70%) from investment return for ${period.toFormat('LLLL yyyy')}`,
+          `Cashback wallet (78.4%) from investment return for ${period.toFormat('LLLL yyyy')}`,
           trx
         )
 
@@ -608,8 +608,9 @@ export default class PayoutService {
         const returnAmount = PurchaseService.roundMoney(
           (effectiveAmount * rate * prorateFactor) / 100
         )
-        const incomeShare = PurchaseService.roundMoney((returnAmount * 70) / 100)
-        const repurchaseShare = PurchaseService.roundMoney((returnAmount * 20) / 100)
+        // Cashback split: 2% admin charge, then 98% ÷ (80% cashback / 20% repurchase)
+        const incomeShare = PurchaseService.roundMoney((returnAmount * 78.4) / 100)
+        const repurchaseShare = PurchaseService.roundMoney((returnAmount * 19.6) / 100)
         const adminShare = PurchaseService.roundMoney(returnAmount - incomeShare - repurchaseShare)
 
         totalReturnAmount += returnAmount

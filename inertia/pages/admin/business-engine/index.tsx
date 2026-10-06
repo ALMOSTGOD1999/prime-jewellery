@@ -423,16 +423,16 @@ export default function BusinessEngineIndex(props: Props) {
                   <ConfigField
                     label="Repurchase Wallet %"
                     name="repurchase_wallet_percent"
-                    value={incomePost.data.repurchase_wallet_percent ?? '20'}
+                    value={incomePost.data.repurchase_wallet_percent ?? '19.6'}
                     onChange={updateIncome}
-                    hint="Default: 20%"
+                    hint="Default: 19.6% (after 2% admin charge, 80/20 split)"
                   />
                   <ConfigField
                     label="Admin Charge %"
                     name="admin_charge_percent"
-                    value={incomePost.data.admin_charge_percent ?? '10'}
+                    value={incomePost.data.admin_charge_percent ?? '2'}
                     onChange={updateIncome}
-                    hint="Default: 10%"
+                    hint="Default: 2%"
                   />
                 </div>
               </SectionCard>

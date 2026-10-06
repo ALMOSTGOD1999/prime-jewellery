@@ -491,11 +491,11 @@ export default function AdminPurchasePage({
                         </div>
                         <div>
                           <p className="text-muted-foreground text-xs">Cashback Wallet</p>
-                          <p className="font-semibold">70%</p>
+                          <p className="font-semibold">78.4%</p>
                         </div>
                         <div>
                           <p className="text-muted-foreground text-xs">Repurchase Wallet</p>
-                          <p className="font-semibold">20%</p>
+                          <p className="font-semibold">19.6%</p>
                         </div>
                       </div>
                     </div>

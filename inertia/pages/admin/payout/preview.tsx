@@ -129,9 +129,9 @@ function UserCard({ user }: { user: PayoutUser }) {
                 <Field label="Return Rate" value={`${user.incomeWallet.returnRate}%`} />
                 <Field label="Return Amount" value={fmt(user.incomeWallet.returnAmount)} />
                 <div className="border-t border-blue-200 dark:border-blue-800 my-1" />
-                <Field label="→ Income Wallet (70%)" value={fmt(user.incomeWallet.incomeShare)} accent />
-                <Field label="→ Repurchase (20%)" value={fmt(user.incomeWallet.repurchaseShare)} />
-                <Field label="→ Admin (10%)" value={fmt(user.incomeWallet.adminShare)} />
+                <Field label="→ Income Wallet (78.4%)" value={fmt(user.incomeWallet.incomeShare)} accent />
+                <Field label="→ Repurchase (19.6%)" value={fmt(user.incomeWallet.repurchaseShare)} />
+                <Field label="→ Admin (2%)" value={fmt(user.incomeWallet.adminShare)} />
               </div>
             </div>
           )}

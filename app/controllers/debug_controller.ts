@@ -218,10 +218,10 @@ export default class DebugController {
     result.sources.cashbackReturn = {
       amount: Math.round(cashbackReturn * 100) / 100,
       detail: cashbackDetails.length > 0
-        ? `${cashbackDetails.length} investment(s) — 70% income + 20% repurchase`
+        ? `${cashbackDetails.length} investment(s) — 78.4% cashback wallet + 19.6% repurchase (after 2% admin charge)`
         : 'No investments or no distribution this month',
       distributions: cashbackDetails,
-      wallet: 'income (70%) + repurchase (20%)',
+      wallet: 'income (78.4%) + repurchase (19.6%)',
     }
     result.total += cashbackReturn
 
@@ -230,8 +230,8 @@ export default class DebugController {
     result.summary = {
       totalWorkingWallet:
         Math.round((activationCashback + activationSponsor + activationLevel + levelIncome + emiLevelIncome + salary) * 100) / 100,
-      totalIncomeWallet: Math.round(cashbackReturn * 0.7 * 100) / 100,
-      totalRepurchaseWallet: Math.round(cashbackReturn * 0.2 * 100) / 100,
+      totalIncomeWallet: Math.round(cashbackReturn * 0.784 * 100) / 100,
+      totalRepurchaseWallet: Math.round(cashbackReturn * 0.196 * 100) / 100,
       totalAllSources: result.total,
     }
 

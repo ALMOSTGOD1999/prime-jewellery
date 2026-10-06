@@ -8,9 +8,13 @@ import User from '#models/user'
 import Withdrawl from '#models/withdrawl'
 import { WithdrawlStatusEnum, WithdrawlTypeEnum } from '#enums/withdrawl'
 
-const INCOME_WALLET_PERCENT = 70
-const REPURCHASE_WALLET_PERCENT = 20
-const ADMIN_CHARGE_PERCENT = 10
+// Cashback split rule (effective Oct 2026): from each month's return amount,
+// 2% is kept as admin charge (wiped from the system, never credited), and the
+// remaining 98% splits 80% → cashback (income) wallet, 20% → repurchase wallet.
+// Example: ₹100 return → ₹2 admin, ₹78.40 cashback wallet, ₹19.60 repurchase.
+const INCOME_WALLET_PERCENT = 78.4
+const REPURCHASE_WALLET_PERCENT = 19.6
+const ADMIN_CHARGE_PERCENT = 2
 
 export default class PurchaseService {
   static incomeWalletPercent = INCOME_WALLET_PERCENT

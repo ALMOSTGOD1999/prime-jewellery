@@ -618,9 +618,9 @@ export default class AdminPayoutController {
         yPos = drawField(page, yPos, 'Return Rate:', `${user.incomeWallet.returnRate}%`)
         yPos = drawField(page, yPos, 'Return Amount:', fmt(user.incomeWallet.returnAmount))
         page.drawText('→', { x: margin + 168, y: yPos + 11, size: 7, font: 'Helvetica-Bold', color: green })
-        yPos = drawField(page, yPos, 'Income Wallet (70%):', fmt(user.incomeWallet.incomeShare))
-        yPos = drawField(page, yPos, 'Repurchase (20%):', fmt(user.incomeWallet.repurchaseShare))
-        yPos = drawField(page, yPos, 'Admin (10%):', fmt(user.incomeWallet.adminShare))
+        yPos = drawField(page, yPos, 'Income Wallet (78.4%):', fmt(user.incomeWallet.incomeShare))
+        yPos = drawField(page, yPos, 'Repurchase (19.6%):', fmt(user.incomeWallet.repurchaseShare))
+        yPos = drawField(page, yPos, 'Admin (2%):', fmt(user.incomeWallet.adminShare))
         yPos = drawLine(page, yPos)
       }
 
