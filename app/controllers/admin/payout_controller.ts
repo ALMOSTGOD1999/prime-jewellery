@@ -387,6 +387,19 @@ export default class AdminPayoutController {
       .first()
     const generating = generatingRow?.value === 'true'
 
+    // Last failed generation attempt (if any) — surfaced so silent background
+    // failures don't leave the operator guessing
+    let lastError: string | null = null
+    const errRaw = await PlatformConfig.get(`payout_preview_error_${monthStr}`)
+    if (errRaw && errRaw !== 'null') {
+      try {
+        const parsed = JSON.parse(errRaw)
+        lastError = typeof parsed === 'string' ? parsed : parsed.message || null
+      } catch {
+        lastError = String(errRaw).slice(0, 500)
+      }
+    }
+
     // Build last 12 months for the dropdown
     const availableMonths: { value: string; label: string }[] = []
     for (let i = 0; i < 12; i++) {
@@ -404,6 +417,7 @@ export default class AdminPayoutController {
       availableMonths,
       generatedAt: cached ? (cached as any).generatedAt || null : null,
       generating,
+      lastError,
     })
   }
 
@@ -421,8 +435,9 @@ export default class AdminPayoutController {
       return response.redirect(`/admin/payout/preview?month=${monthStr}`)
     }
 
-    // Mark as generating
+    // Mark as generating (and clear any stale error from a previous attempt)
     await PlatformConfig.set(`payout_preview_generating_${monthStr}`, 'true', 'payout_preview')
+    await PlatformConfig.set(`payout_preview_error_${monthStr}`, 'null', 'payout_preview')
 
     // Run detached in this process. The container only starts bin/server.js,
     // and the queue depends on Redis (frequently unavailable), so the previous
@@ -438,9 +453,21 @@ export default class AdminPayoutController {
           `[payout-preview] Generated ${monthStr}: ${result.users.length} users, total ₹${result.summary.grandTotal.toLocaleString('en-IN')}`
         )
       } catch (error) {
-        logger.error(
-          `[payout-preview] Generation for ${monthStr} failed: ${error instanceof Error ? error.message : error}`
-        )
+        const message = error instanceof Error ? error.message : String(error)
+        logger.error(`[payout-preview] Generation for ${monthStr} failed: ${message}`)
+        if (error instanceof Error && error.stack) logger.error(error.stack)
+        // Persist the failure so /preview/status can surface it to the operator
+        try {
+          await PlatformConfig.set(
+            `payout_preview_error_${monthStr}`,
+            JSON.stringify({ at: DateTime.now().toISO(), message: message.slice(0, 1500) }),
+            'payout_preview'
+          )
+        } catch (persistError) {
+          logger.error(
+            `[payout-preview] Failed to persist error for ${monthStr}: ${persistError instanceof Error ? persistError.message : persistError}`
+          )
+        }
       } finally {
         try {
           await PlatformConfig.set(`payout_preview_generating_${monthStr}`, 'false', 'payout_preview')
@@ -478,23 +505,23 @@ export default class AdminPayoutController {
     let generatedAt: string | null = null
 
     if (ready && cacheRow) {
-      // Self-heal: if the generating flag is stuck but data already exists, clear it
-      if (isGeneratingFlag) {
-        await PlatformConfig.set(`payout_preview_generating_${month}`, 'false', 'payout_preview')
-      }
-
       try {
         const parsed = JSON.parse(cacheRow.value)
         generatedAt = parsed.generatedAt || null
       } catch {
         // corrupted cache — treat as not ready
-        return response.json({ generating: false, ready: false, generatedAt: null })
+        return response.json({ generating: isGeneratingFlag, ready: false, generatedAt: null, error: null })
       }
     }
 
-    // Self-heal: if generating flag has been stuck for >15 minutes with no result, auto-clear
-    let generating = isGeneratingFlag && !ready
+    // IMPORTANT: report the flag as-is, even when a cache already exists —
+    // regenerating an existing month must keep the client polling until the
+    // run replaces the stale cache (the old `flag && !ready` logic made
+    // regeneration look instantly finished).
+    let generating = isGeneratingFlag
     if (generating && generatingRow?.updatedAt) {
+      // Self-heal: if the flag has been stuck for >15 minutes (crashed run),
+      // clear it — this also covers crashed regenerations where data exists.
       const elapsed = DateTime.now().diff(generatingRow.updatedAt, 'minutes').minutes
       if (elapsed > 15) {
         await PlatformConfig.set(`payout_preview_generating_${month}`, 'false', 'payout_preview')
@@ -502,10 +529,25 @@ export default class AdminPayoutController {
       }
     }
 
+    // Last failed attempt (cleared when a new run starts)
+    let error: string | null = null
+    if (!generating) {
+      const errRaw = await PlatformConfig.get(`payout_preview_error_${month}`)
+      if (errRaw && errRaw !== 'null') {
+        try {
+          const parsed = JSON.parse(errRaw)
+          error = typeof parsed === 'string' ? parsed : parsed.message || null
+        } catch {
+          error = String(errRaw).slice(0, 500)
+        }
+      }
+    }
+
     return response.json({
       generating,
       ready,
       generatedAt,
+      error,
     })
   }
 

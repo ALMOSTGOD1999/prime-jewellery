@@ -58,6 +58,7 @@ interface Props {
   availableMonths: { value: string; label: string }[]
   generatedAt: string | null
   generating: boolean
+  lastError?: string | null
 }
 
 function fmt(n: number): string {
@@ -189,11 +190,15 @@ export default function PayoutPreview({
   availableMonths,
   generatedAt,
   generating,
+  lastError,
 }: Props) {
   const [showAll, setShowAll] = useState(false)
   // Server tells us whether a generation run is actually in progress —
   // don't guess from empty data (that showed a phantom spinner on first visit)
   const [isGenerating, setIsGenerating] = useState(generating)
+  // Last background failure (from server or live polling) — shown so silent
+  // detached-run errors don't leave the operator staring at stale data
+  const [genError, setGenError] = useState<string | null>(lastError ?? null)
   const generateForm = useForm({})
   const visibleUsers = showAll ? users : users.slice(0, 50)
 
@@ -220,12 +225,20 @@ export default function PayoutPreview({
         })
         const data = await res.json()
         if (cancelled) return
+        if (data.error) {
+          // Generation failed server-side — stop and surface the error
+          setGenError(String(data.error))
+          setIsGenerating(false)
+          return
+        }
         if (data.ready && !data.generating) {
           // Finished (or was already ready and the run ended) — load the fresh cache
+          setGenError(null)
           setIsGenerating(false)
           router.reload({ only: ['users', 'summary', 'generatedAt'] })
         } else if (!data.generating) {
-          // Run failed or was never actually started — stop the spinner
+          // Flag cleared without a result (e.g. crashed run hit the 15-min self-heal)
+          setGenError('Generation stopped without completing. Please try again.')
           setIsGenerating(false)
         }
         // generating=true → keep polling
@@ -248,6 +261,7 @@ export default function PayoutPreview({
   }
 
   function handleGenerate() {
+    setGenError(null)
     setIsGenerating(true)
     generateForm.post(`/admin/payout/preview/generate?month=${month}`, {})
   }
@@ -320,6 +334,17 @@ export default function PayoutPreview({
               <div>
                 <div className="font-medium text-sm">Generating payout preview...</div>
                 <div className="text-xs text-amber-600">This may take a few minutes. The page will refresh automatically when ready.</div>
+              </div>
+            </div>
+          )}
+
+          {/* Generation failure banner */}
+          {genError && !isGenerating && (
+            <div className="p-4 rounded-lg border border-red-200 bg-red-50/50 text-red-800">
+              <div className="font-medium text-sm">Payout preview generation failed</div>
+              <div className="text-xs text-red-600 mt-1 break-words">{genError}</div>
+              <div className="text-xs text-red-600 mt-1">
+                The data below may be from an older run — check the timestamp above before using it.
               </div>
             </div>
           )}
