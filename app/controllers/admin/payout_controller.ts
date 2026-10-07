@@ -2,7 +2,6 @@ import type { HttpContext } from '@adonisjs/core/http'
 import PayoutService from '#services/payout_service'
 import type { PayoutPreviewResult } from '#services/payout_service'
 import PlatformConfig from '#models/platform_config'
-import ProcessWorkingPayout from '#jobs/process_working_payout'
 import User from '#models/user'
 import Transaction from '#models/transaction'
 import { TransactionTypeEnum } from '#enums/transaction'
@@ -54,6 +53,23 @@ export default class AdminPayoutController {
         PayoutService.isPayoutInProgress('working'),
       ])
 
+      // Last failed working-payout attempt (background run failures are only
+      // visible here — they cannot be flashed after the redirect)
+      let workingPayoutError: string | null = null
+      try {
+        const errRaw = await PlatformConfig.get('working_wallet_payout_error')
+        if (errRaw && errRaw !== 'null') {
+          try {
+            const parsed = JSON.parse(errRaw)
+            workingPayoutError = typeof parsed === 'string' ? parsed : parsed.message || null
+          } catch {
+            workingPayoutError = String(errRaw).slice(0, 500)
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+
       return inertia.render('admin/payout', {
         incomeWalletPayoutMonth: incomeMonth?.toFormat('yyyy-MM') ?? null,
         workingWalletPayoutMonth: workingMonth?.toFormat('yyyy-MM') ?? null,
@@ -64,6 +80,7 @@ export default class AdminPayoutController {
         needsReset: incomeIsFuture || workingIsFuture,
         incomeInProgress,
         workingInProgress,
+        workingPayoutError,
         diagnostic,
       })
     } catch {
@@ -77,6 +94,7 @@ export default class AdminPayoutController {
         needsReset: false,
         incomeInProgress: false,
         workingInProgress: false,
+        workingPayoutError: null,
         diagnostic: {
           activeUsers: 0,
           junePurchaseCount: 0,
@@ -196,10 +214,46 @@ export default class AdminPayoutController {
     }
 
     try {
-      // The working payout computation is heavy (several minutes), so it runs
-      // in the background. The job credits wallets for the full target month
-      // (day 1 → last day), records the payout month, and releases the lock.
-      await ProcessWorkingPayout.enqueue(targetMonth.toFormat('yyyy-MM'), admin.id)
+      // The production container only starts bin/server.js — there is no queue
+      // worker process and Redis (127.0.0.1:6379) is unreachable, so the old
+      // ProcessWorkingPayout.enqueue() never executed: the click flashed an
+      // error and nothing happened. Run detached in this process instead,
+      // guarded by the lock above (TTL 2h covers the run) and released in
+      // finally either way, same pattern as the payout preview generator.
+      await PlatformConfig.set('working_wallet_payout_error', 'null', 'payout')
+      void (async () => {
+        try {
+          const result = await PayoutService.processWorkingWalletPayout(targetMonth, admin.id)
+          logger.info(
+            `[payout] Working payout for ${targetMonth.toFormat('yyyy-MM')} done: ${result.credited} users credited, gross ₹${result.totalAmount.toLocaleString('en-IN')}`
+          )
+          await PlatformConfig.set('working_wallet_payout_error', 'null', 'payout')
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error)
+          logger.error(
+            `[payout] Working payout for ${targetMonth.toFormat('yyyy-MM')} failed: ${message}`
+          )
+          if (error instanceof Error && error.stack) logger.error(error.stack)
+          // Persist the failure so the payout page can surface it
+          try {
+            await PlatformConfig.set(
+              'working_wallet_payout_error',
+              JSON.stringify({
+                at: DateTime.now().toISO(),
+                month: targetMonth.toFormat('yyyy-MM'),
+                message: message.slice(0, 1500),
+              }),
+              'payout'
+            )
+          } catch (persistError) {
+            logger.error(
+              `[payout] Failed to persist working payout error: ${persistError instanceof Error ? persistError.message : persistError}`
+            )
+          }
+        } finally {
+          await PayoutService.releasePayoutLock('working')
+        }
+      })()
       session.flash(
         'success',
         `Working payout for ${targetMonth.toFormat('yyyy-MM')} started in the background. Wallets will be credited automatically once processing completes (usually a few minutes).`

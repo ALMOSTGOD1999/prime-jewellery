@@ -34,6 +34,7 @@ interface PayoutPageProps {
   needsReset: boolean
   incomeInProgress: boolean
   workingInProgress: boolean
+  workingPayoutError?: string | null
   diagnostic: {
     activeUsers: number
     junePurchaseCount: number
@@ -56,6 +57,7 @@ export default function AdminPayoutPage({
   needsReset,
   incomeInProgress,
   workingInProgress,
+  workingPayoutError,
   diagnostic,
 }: PayoutPageProps) {
   const incomeForm = useForm({ month: nextIncomeMonth })
@@ -285,6 +287,16 @@ export default function AdminPayoutPage({
                   <div className="flex items-center gap-2 text-sm text-amber-600">
                     <HugeiconsIcon icon={InformationCircleIcon} className="h-4 w-4" />
                     <span>Processing working payout for {nextWorkingMonth}… please wait.</span>
+                  </div>
+                )}
+
+                {workingPayoutError && !workingInProgress && (
+                  <div className="p-3 rounded-lg border border-red-200 bg-red-50/50 text-red-800">
+                    <p className="text-xs font-medium">Last working payout attempt failed</p>
+                    <p className="text-xs text-red-600 mt-1 break-words">{workingPayoutError}</p>
+                    <p className="text-xs text-red-600 mt-1">
+                      No wallets were credited — check the logs or contact support, then try again.
+                    </p>
                   </div>
                 )}
 
